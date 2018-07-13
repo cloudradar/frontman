@@ -1,0 +1,27 @@
+{
+  "serviceChecks": [{
+    "checkUUID": "hostname",
+    "checkType": "icmp.ping",
+    "data": { "connect": "google.com"}
+  },{
+    "checkUUID": "ipv4",
+    "checkType": "icmp.ping",
+    "data": { "connect": "8.8.8.8"}
+  },{
+    "checkUUID": "ipv6",
+    "checkType": "icmp.ping",
+    "data": { "connect": "2001:4860:4860::8888"}
+  },{
+    "checkUUID": "request_timeout",
+    "checkType": "icmp.ping",
+    "data": { "connect": "233.124.125.244"}
+  },{
+    "checkUUID": "high_latency",
+    "checkType": "icmp.ping",
+    "data": { "connect": "www.aucklandcouncil.govt.nz"}
+  },{
+    "checkUUID": "domain_not_exists",
+    "checkType": "icmp.ping",
+    "data": { "connect": "not_exists_domain1234.com"}
+  }]
+}
