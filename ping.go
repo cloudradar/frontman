@@ -136,13 +136,9 @@ func (p *Pinger) run() {
 	wg.Add(1)
 	go p.recvICMP(conn, recv, &wg)
 
-	err := p.sendICMP(conn)
-	if err != nil {
-		log.Errorf("Error sending ICMP packets: %s\n", err.Error())
-	}
 
 	for {
-		err = p.sendICMP(conn)
+		err := p.sendICMP(conn)
 		if err != nil {
 			log.WithError(err).Error("ICMP send error")
 			continue
@@ -347,7 +343,7 @@ func timeToBytes(t time.Time) []byte {
 
 func (fm *Frontman) runPing(check ServiceCheck) Result {
 
-	result := Result{CheckUUID: check.UUID, Timestamp: time.Now().Unix()}
+	result := Result{CheckUUID: check.UUID, Timestamp: time.Now().Unix(), CheckType: "serviceCheck"}
 	result.Data.Check.Connect = check.Data.Connect
 	result.CheckKey = string(check.Type)
 
