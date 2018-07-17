@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	"net"
 	"runtime"
 	"sync"
 	"time"
@@ -47,21 +48,49 @@ func (fm *Frontman) Run(input *Input, output io.Writer, interrupt chan struct{})
 func (fm *Frontman) Once(input *Input, output io.Writer) {
 	jsonEncoder := json.NewEncoder(output)
 	wg := sync.WaitGroup{}
+	outputLock := sync.Mutex{}
 	startedAt := time.Now()
 	succeed := 0
+
 	for _, check := range input.ServiceChecks {
-		if check.Type == CheckTypeICMPPing {
-			wg.Add(1)
-			go func(check ServiceCheck) {
-				res := fm.runPing(check)
-				if res.FinalResult == 1 {
-					succeed++
+		wg.Add(1)
+		go func(check ServiceCheck) {
+			res := Result{
+				CheckType: "serviceCheck",
+				CheckKey:  string(check.Key),
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+			res.Data.Check = check.Data
+
+			defer wg.Done()
+			ipaddr, err := net.ResolveIPAddr("ip", check.Data.Connect)
+			if err != nil {
+				res.Data.Message = err.Error()
+			} else {
+
+				switch check.Key {
+				case CheckTypeICMPPing:
+					res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runPing(ipaddr)
+				case CheckTypeTCP:
+					port, _ := check.Data.Port.Int64()
+
+					res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
+				default:
+					res.Data.Message = "Unknown checkKey"
 				}
-				jsonEncoder.Encode(res)
-				wg.Done()
-			}(check)
-		}
+			}
+
+			if res.FinalResult == 1 {
+				succeed++
+			}
+
+			outputLock.Lock()
+			defer outputLock.Unlock()
+			jsonEncoder.Encode(res)
+		}(check)
 	}
+
 	wg.Wait()
 
 	log.Infof("%d/%d checks succeed in %.1f sec", succeed, len(input.ServiceChecks), time.Since(startedAt).Seconds())

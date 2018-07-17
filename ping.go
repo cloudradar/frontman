@@ -27,14 +27,9 @@ var (
 )
 
 // NewPinger returns a new Pinger struct pointer
-func NewPinger(addr string) (*Pinger, error) {
-	ipaddr, err := net.ResolveIPAddr("ip", addr)
-	if err != nil {
-		return nil, err
-	}
-
+func NewPinger(addr *net.IPAddr) (*Pinger, error) {
 	return &Pinger{
-		ipaddr:  ipaddr,
+		ipaddr:  addr,
 		Timeout: time.Second * 4,
 		Count:   -1,
 
@@ -135,7 +130,6 @@ func (p *Pinger) run() {
 	recv := make(chan *packet, 5)
 	wg.Add(1)
 	go p.recvICMP(conn, recv, &wg)
-
 
 	for {
 		err := p.sendICMP(conn)
@@ -341,21 +335,16 @@ func timeToBytes(t time.Time) []byte {
 	return b
 }
 
-func (fm *Frontman) runPing(check ServiceCheck) Result {
+func (fm *Frontman) runPing(addr *net.IPAddr) (m MeasurementICMP, finalResult int, err error) {
 
-	result := Result{CheckUUID: check.UUID, Timestamp: time.Now().Unix(), CheckType: "serviceCheck"}
-	result.Data.Check.Connect = check.Data.Connect
-	result.CheckKey = string(check.Type)
-
-	p, err := NewPinger(check.Data.Connect)
+	p, err := NewPinger(addr)
 
 	if os.Getuid() == 0 {
 		p.SetPrivileged(true)
 	}
 
 	if err != nil {
-		result.Data.Message = err.Error()
-		return result
+		return
 	}
 
 	p.Timeout = secToDuration(fm.ICMPTimeout)
@@ -364,23 +353,19 @@ func (fm *Frontman) runPing(check ServiceCheck) Result {
 	p.run()
 
 	var total time.Duration
-
 	for _, rtt := range p.rtts {
 		total += rtt
 	}
-	m := MeasurementICMP{}
 
-	m.PingLoss.Value = float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100
-	m.PingLoss.Unit = "%"
+	m.PingLoss = ValueInUnit{float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100, "%"}
 
 	if len(p.rtts) > 0 {
-		m.RoundTripTime.Value = total.Seconds() / float64(len(p.rtts))
-		m.RoundTripTime.Unit = "s"
+		m.RoundTripTime = ValueInUnit{total.Seconds() / float64(len(p.rtts)), "s"}
 	}
 
-	result.Data.Measurements = m
 	if p.PacketsRecv > 0 {
-		result.FinalResult = 1
+		finalResult = 1
 	}
-	return result
+
+	return
 }

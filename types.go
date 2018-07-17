@@ -1,30 +1,45 @@
 package frontman
 
-type CheckType string
+import "encoding/json"
 
-const CheckTypeICMPPing CheckType = "icmp.ping"
+type ServiceCheckKey string
+type ServiceName string
+
+const (
+	CheckTypeICMPPing ServiceCheckKey = "icmp.ping"
+	CheckTypeTCP      ServiceCheckKey = "net.tcp"
+
+	ServiceTCP ServiceName = "tcp"
+)
 
 type Input struct {
 	ServiceChecks []ServiceCheck `json:"serviceChecks"`
 }
 
 type ServiceCheck struct {
-	UUID string    `json:"checkUuid"`
-	Type CheckType `json:"checkType"`
-	Data struct {
-		Connect string `json:"connect"`
-	} `json:"data"`
+	UUID string           `json:"checkUuid"`
+	Key  ServiceCheckKey  `json:"checkKey"`
+	Data ServiceCheckData `json:"data"`
+}
+
+type ServiceCheckData struct {
+	Connect string      `json:",omitempty"`
+	Service string      `json:",omitempty"`
+	Port    json.Number `json:",omitempty"`
 }
 
 type MeasurementICMP struct {
-	RoundTripTime struct {
-		Value float64 `json:"value"`
-		Unit  string  `json:"unit"`
-	} `json:"roundTripTime"`
-	PingLoss struct {
-		Value float64 `json:"value"`
-		Unit  string  `json:"unit"`
-	} `json:"pingLoss"`
+	RoundTripTime ValueInUnit `json:"roundTripTime"`
+	PingLoss      ValueInUnit `json:"pingLoss"`
+}
+
+type ValueInUnit struct {
+	Value float64 `json:"value"`
+	Unit  string  `json:"unit"`
+}
+
+type MeasurementTCP struct {
+	ConnectTime ValueInUnit `json:"connectTime"`
 }
 
 type Result struct {
@@ -34,10 +49,8 @@ type Result struct {
 	CheckKey    string `json:"checkKey"`
 	CheckType   string `json:"checkType"`
 	Data        struct {
-		Check struct {
-			Connect string `json:"connect"`
-		} `json:"check"`
-		Measurements interface{} `json:"measurements"`
-		Message      interface{} `json:"message"`
+		Check        ServiceCheckData `json:"check"`
+		Measurements interface{}      `json:"measurements"`
+		Message      interface{}      `json:"message"`
 	} `json:"data"`
 }
