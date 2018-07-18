@@ -26,13 +26,12 @@ func main() {
 
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
 	outputFilePtr := flag.String("o", "./results.out", "file to write the results")
-	oneLineOutputModePtr := flag.Bool("a", false, "append – output each result as one-line JSON, useful with pipe (only with -i)")
 
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
 
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
-	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit, useful for testing")
+	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
 
 	flag.Parse()
 
@@ -73,15 +72,12 @@ func main() {
 	if inputFilePtr != nil && *inputFilePtr != "" {
 		input, err = frontman.InputFromFile(*inputFilePtr)
 
-		if oneLineOutputModePtr != nil {
-			fm.OneLineOutputMode = true
-		}
-
 		if err != nil {
 			log.Fatalf("InputFromFile(%s) error: %s", *inputFilePtr, err.Error())
 		}
 
 		if *outputFilePtr != "-" {
+
 			if _, err := os.Stat(*outputFilePtr); os.IsNotExist(err) {
 				dir := filepath.Dir(*outputFilePtr)
 				if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -93,10 +89,13 @@ func main() {
 			}
 
 			mode := os.O_WRONLY | os.O_CREATE
-			if *oneLineOutputModePtr {
-				// in case of one line JSON mode we can append to the file. This will be invalid JSON file, but we can save disk writes while output more frequently
+
+			if *oneRunOnlyModePtr {
+				mode = mode | os.O_TRUNC
+			} else {
 				mode = mode | os.O_APPEND
 			}
+
 			output, err = os.OpenFile(*outputFilePtr, mode, 0644)
 			defer output.Close()
 

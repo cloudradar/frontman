@@ -115,18 +115,12 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 		resultsChan := make(chan Result, 100)
 
 		fm.onceChan(input, resultsChan)
-		if outputFile != nil && fm.OneLineOutputMode {
+		if outputFile != nil {
 			for res := range resultsChan {
 				outputLock.Lock()
 				jsonEncoder.Encode(res)
 				outputLock.Unlock()
 			}
-		} else if outputFile != nil {
-			results := []Result{}
-			for res := range resultsChan {
-				results = append(results, res)
-			}
-			jsonEncoder.Encode(Results{results})
 		} else if fm.SenderMode == SenderModeInterval {
 		modeIntervalLoop:
 			for {
@@ -174,25 +168,17 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 
 func (fm *Frontman) Once(input *Input, outputFile io.Writer) {
 	jsonEncoder := json.NewEncoder(outputFile)
-	outputLock := sync.Mutex{}
+
 	resultsChan := make(chan Result)
 
 	go fm.onceChan(input, resultsChan)
 
-	if fm.OneLineOutputMode {
-		for res := range resultsChan {
-			outputLock.Lock()
-			jsonEncoder.Encode(res)
-			outputLock.Unlock()
-		}
-	} else {
-		var results []Result
-		for res := range resultsChan {
-			results = append(results, res)
-		}
-
-		jsonEncoder.Encode(results)
+	var results []Result
+	for res := range resultsChan {
+		results = append(results, res)
 	}
+
+	jsonEncoder.Encode(results)
 }
 
 func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {

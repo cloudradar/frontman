@@ -32,8 +32,6 @@ type Frontman struct {
 	NetTCPTimeout      float64 `toml:"net_tcp_timeout"`
 	SenderMode         string  `toml:"sender_mode"`
 	SenderModeInterval float64 `toml:"sender_mode_interval"`
-
-	OneLineOutputMode bool `toml:"-"`
 }
 
 var DefaultCfgPath string
