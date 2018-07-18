@@ -10,14 +10,30 @@ import (
 	"time"
 )
 
+const (
+	IOModeFile = "file"
+	IOModeHTTP = "http"
+
+	SenderModeWait     = "wait"
+	SenderModeInterval = "interval"
+)
+
 type Frontman struct {
 	LogFile     string   `toml:"log"`
 	LogLevel    LogLevel `toml:"log_level"`
 	ICMPTimeout float64  `toml:"icmp_timeout"`
 	Sleep       float64  `toml:"sleep"`
 
-	// can be set only with flags
-	OneRunOnly bool `toml:"-"`
+	IOMode      string `toml:"io_mode"`
+	HubURL      string `toml:"hub_url"`
+	HubUser     string `toml:"hub_user"`
+	HubPassword string `toml:"hub_password"`
+
+	NetTCPTimeout      float64 `toml:"net_tcp_timeout"`
+	SenderMode         string  `toml:"sender_mode"`
+	SenderModeInterval float64 `toml:"sender_mode_interval"`
+
+	OneLineOutputMode bool `toml:"-"`
 }
 
 var DefaultCfgPath string
@@ -41,6 +57,7 @@ func New() *Frontman {
 		LogFile:     "/tmp/frontman.log",
 		ICMPTimeout: 0.1,
 		Sleep:       5,
+		SenderMode:  SenderModeWait,
 	}
 
 	fm.SetLogLevel(LogLevelInfo)

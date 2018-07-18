@@ -13,6 +13,7 @@ import (
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
+	"runtime"
 )
 
 const (
@@ -134,7 +135,7 @@ func (p *Pinger) run() {
 	for {
 		err := p.sendICMP(conn)
 		if err != nil {
-			log.WithError(err).Error("ICMP send error")
+			log.Errorf("#%d ICMP send error: %s", p.sequence, err.Error())
 			continue
 		}
 		timeout := time.NewTimer(p.Timeout)
@@ -145,7 +146,7 @@ func (p *Pinger) run() {
 			wg.Wait()
 			return
 		case <-timeout.C:
-			log.Debugf("%s timeouted", p.ipaddr.String())
+			log.Debugf("#%d %s timeouted", p.sequence, p.ipaddr.String())
 
 			wg.Done()
 			timeout = time.NewTimer(p.Timeout)
@@ -154,7 +155,7 @@ func (p *Pinger) run() {
 			wg.Done()
 			err := p.processPacket(r)
 			if err != nil {
-				log.Errorf("%s: %s", p.ipaddr.IP, err.Error())
+				log.Errorf("#%d %s: %s", p.sequence, p.ipaddr.IP, err.Error())
 			}
 		}
 
@@ -301,6 +302,16 @@ func (p *Pinger) listen(netProto string, source string) *icmp.PacketConn {
 	return conn
 }
 
+func CheckIfRawICMPAvailable() bool {
+	conn, err := icmp.ListenPacket("ip4:1", "0.0.0.0")
+	if err != nil {
+		return false
+	}
+
+	conn.Close()
+	return true
+}
+
 func byteSliceOfSize(n int) []byte {
 	b := make([]byte, n)
 	for i := 0; i < len(b); i++ {
@@ -339,7 +350,7 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m MeasurementICMP, finalResult in
 
 	p, err := NewPinger(addr)
 
-	if os.Getuid() == 0 {
+	if os.Getuid() == 0 || runtime.GOOS == "windows" {
 		p.SetPrivileged(true)
 	}
 

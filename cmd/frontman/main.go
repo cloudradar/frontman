@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"runtime"
 )
 
 func main() {
@@ -25,6 +26,7 @@ func main() {
 
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
 	outputFilePtr := flag.String("o", "./results.out", "file to write the results")
+	oneLineOutputModePtr := flag.Bool("a", false, "append – output each result as one-line JSON, useful with pipe (only with -i)")
 
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
@@ -34,6 +36,13 @@ func main() {
 
 	flag.Parse()
 
+	tfmt := log.TextFormatter{FullTimestamp: true}
+	if runtime.GOOS == "windows" {
+		tfmt.DisableColors = true
+	}
+
+	log.SetFormatter(&tfmt)
+
 	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
 		rerunDetached()
 		log.SetOutput(ioutil.Discard)
@@ -41,48 +50,74 @@ func main() {
 	}
 
 	if cfgPathPtr != nil {
-		fm.ReadConfigFromFile(*cfgPathPtr, true)
+		err := fm.ReadConfigFromFile(*cfgPathPtr, true)
+		if err != nil {
+			log.Fatalf("Config load error: %s", err.Error())
+		}
 	}
 
 	if *logLevelPtr == string(frontman.LogLevelError) || *logLevelPtr == string(frontman.LogLevelInfo) || *logLevelPtr == string(frontman.LogLevelDebug) {
 		fm.SetLogLevel(frontman.LogLevel(*logLevelPtr))
 	}
 
-	fm.OneRunOnly = *oneRunOnlyModePtr
-
-	if inputFilePtr == nil || *inputFilePtr == "" {
-		fmt.Println("Missing input file")
+	if (inputFilePtr == nil || *inputFilePtr == "") && fm.HubURL == "" {
+		fmt.Println("Missing input file flag(-i) or hub_url param in config")
 		flag.PrintDefaults()
 		return
 	}
 
-	input, err := frontman.InputFromFile(*inputFilePtr)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	var input *frontman.Input
+	var err error
 	var output *os.File
-	if *outputFilePtr != "-" {
-		if _, err := os.Stat(*outputFilePtr); os.IsNotExist(err) {
-			dir := filepath.Dir(*outputFilePtr)
-			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				err = os.MkdirAll(dir, 0644)
-				if err != nil {
-					log.WithError(err).Errorf("Failed to create the output file directory: '%s'", dir)
-				}
-			}
-		}
 
-		output, err = os.OpenFile(*outputFilePtr, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-		defer output.Close()
+	if inputFilePtr != nil && *inputFilePtr != "" {
+		input, err = frontman.InputFromFile(*inputFilePtr)
+
+		if oneLineOutputModePtr != nil {
+			fm.OneLineOutputMode = true
+		}
 
 		if err != nil {
-			log.WithError(err).Fatalf("Failed to open the output file: '%s'")
+			log.Fatalf("InputFromFile(%s) error: %s", *inputFilePtr, err.Error())
 		}
+
+		if *outputFilePtr != "-" {
+			if _, err := os.Stat(*outputFilePtr); os.IsNotExist(err) {
+				dir := filepath.Dir(*outputFilePtr)
+				if _, err := os.Stat(dir); os.IsNotExist(err) {
+					err = os.MkdirAll(dir, 0644)
+					if err != nil {
+						log.WithError(err).Errorf("Failed to create the output file directory: '%s'", dir)
+					}
+				}
+			}
+
+			mode := os.O_WRONLY | os.O_CREATE
+			if *oneLineOutputModePtr {
+				// in case of one line JSON mode we can append to the file. This will be invalid JSON file, but we can save disk writes while output more frequently
+				mode = mode | os.O_APPEND
+			}
+			output, err = os.OpenFile(*outputFilePtr, mode, 0644)
+			defer output.Close()
+
+			if err != nil {
+				log.WithError(err).Fatalf("Failed to open the output file: '%s'")
+			}
+		} else {
+			log.SetOutput(ioutil.Discard)
+			output = os.Stdout
+		}
+
 	} else {
-		log.SetOutput(ioutil.Discard)
-		output = os.Stdout
+		input, err = frontman.InputFromHub(fm.HubURL, fm.HubUser, fm.HubPassword)
+
+		if err != nil {
+			auth := ""
+			if fm.HubUser != "" {
+				auth = fmt.Sprintf(" HTTP_BASIC(%s, ***)", fm.HubUser)
+			}
+			log.Fatalf("InputFromHub(%s%s) error: %s", fm.HubURL, auth, err.Error())
+		}
 	}
 
 	log.Infof("Running %d service checks...", len(input.ServiceChecks))
@@ -90,10 +125,19 @@ func main() {
 	interruptChan := make(chan struct{})
 	doneChan := make(chan struct{})
 
-	go func() {
-		fm.Run(input, output, interruptChan)
-		doneChan <- struct{}{}
-	}()
+	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
+		log.Error("!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!")
+	}
+
+	if *oneRunOnlyModePtr == true {
+		fm.Once(input, output)
+		return
+	} else {
+		go func() {
+			fm.Run(input, output, interruptChan)
+			doneChan <- struct{}{}
+		}()
+	}
 
 	select {
 	case sig := <-sigc:

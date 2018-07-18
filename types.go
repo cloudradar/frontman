@@ -42,6 +42,10 @@ type MeasurementTCP struct {
 	ConnectTime ValueInUnit `json:"connectTime"`
 }
 
+type Results struct {
+	Results []Result
+}
+
 type Result struct {
 	CheckUUID   string `json:"checkUuid"`
 	Timestamp   int64  `json:"timestamp"`

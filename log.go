@@ -40,7 +40,7 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 		log.WithError(err).Errorf("Failed to create the logs dir: '%s'", dir)
 	}
 
-	plainFormatter := &log.TextFormatter{DisableColors: true}
+	plainFormatter := &log.TextFormatter{FullTimestamp: true, DisableColors: true}
 	logFile, err := os.OpenFile(file, flag, chmod)
 	if err != nil {
 		return fmt.Errorf("Unable to write log file: %s", err.Error())
@@ -48,8 +48,6 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 
 	hook := &logrusFileHook{logFile, flag, chmod, plainFormatter}
 
-	tfmt := log.TextFormatter{FullTimestamp: true}
-	log.SetFormatter(&tfmt)
 	log.AddHook(hook)
 
 	return nil
