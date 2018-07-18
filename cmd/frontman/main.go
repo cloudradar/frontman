@@ -164,7 +164,7 @@ func rerunDetached() error {
 		return err
 	}
 
-	fmt.Printf("Frontman will continue in background...\nPID %d", cmd.Process)
+	fmt.Printf("Frontman will continue in background...\nPID %d", cmd.Process.Pid)
 
 	cmd.Process.Release()
 	return nil
