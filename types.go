@@ -23,9 +23,9 @@ type ServiceCheck struct {
 }
 
 type ServiceCheckData struct {
-	Connect string      `json:",omitempty"`
-	Service string      `json:",omitempty"`
-	Port    json.Number `json:",omitempty"`
+	Connect string      `json:"connect,omitempty"`
+	Service string      `json:"service,omitempty"`
+	Port    json.Number `json:"port,omitempty"`
 }
 
 type MeasurementICMP struct {
@@ -43,7 +43,7 @@ type MeasurementTCP struct {
 }
 
 type Results struct {
-	Results []Result
+	Results []Result `json:"results"`
 }
 
 type Result struct {
