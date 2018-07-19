@@ -30,7 +30,6 @@ var (
 func NewPinger(addr *net.IPAddr) (*Pinger, error) {
 	return &Pinger{
 		ipaddr:  addr,
-		source: "0.0.0.0",
 		Timeout: time.Second * 4,
 		Count:   -1,
 
@@ -313,7 +312,7 @@ func CheckIfRawICMPAvailable() bool {
 }
 
 func CheckIfRootlessICMPAvailable() bool {
-	conn, err := icmp.ListenPacket("udp4", "0.0.0.0")
+	conn, err := icmp.ListenPacket("udp4", "")
 	if err != nil {
 		return false
 	}
