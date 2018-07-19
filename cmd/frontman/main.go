@@ -127,8 +127,6 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 
 	} else {
-		log.Println(outputFilePtr)
-
 		if outputFilePtr != nil && *outputFilePtr != "" {
 			fmt.Println("You can use output(-o) flag only together with input(-i)")
 			return
