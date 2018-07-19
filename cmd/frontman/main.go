@@ -42,26 +42,32 @@ func main() {
 
 	log.SetFormatter(&tfmt)
 
-	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
-		log.Error("!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!")
-	}
-
-	if runtime.GOOS == "linux" && !frontman.CheckIfRootlessICMPAvailable() && !frontman.CheckIfRawICMPAvailable() {
-		fmt.Println(`⚠️ In order to perform rootless ICMP Ping on Linux you need to run this command :\n
-						sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`)
-	}
-
-	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
-		rerunDetached()
-		log.SetOutput(ioutil.Discard)
-		return
-	}
-
 	if cfgPathPtr != nil {
 		err := fm.ReadConfigFromFile(*cfgPathPtr, true)
 		if err != nil {
 			log.Fatalf("Config load error: %s", err.Error())
 		}
+	}
+
+	var osNotice string
+
+	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
+		osNotice = "!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!"
+	}
+
+	if runtime.GOOS == "linux" && !frontman.CheckIfRootlessICMPAvailable() && !frontman.CheckIfRawICMPAvailable() {
+		osNotice = `⚠️ In order to perform rootless ICMP Ping on Linux you need to run this command first:
+sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
+	}
+
+	if osNotice != "" {
+		// print to console without log formatting
+		fmt.Println(osNotice)
+
+		// disable logging to stderr temporarily
+		log.SetOutput(ioutil.Discard)
+		log.Error(osNotice)
+		log.SetOutput(os.Stderr)
 	}
 
 	if *logLevelPtr == string(frontman.LogLevelError) || *logLevelPtr == string(frontman.LogLevelInfo) || *logLevelPtr == string(frontman.LogLevelDebug) {
@@ -126,6 +132,13 @@ func main() {
 			}
 			log.Fatalf("InputFromHub(%s%s) error: %s", fm.HubURL, auth, err.Error())
 		}
+	}
+
+	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
+		rerunDetached()
+		log.SetOutput(ioutil.Discard)
+
+		return
 	}
 
 	log.Infof("Running %d service checks...", len(input.ServiceChecks))
