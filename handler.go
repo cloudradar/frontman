@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -97,7 +96,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	return nil
 }
 
-func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct{}) {
+func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct{}, once bool) {
 
 	var jsonEncoder *json.Encoder
 
@@ -115,7 +114,15 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 		resultsChan := make(chan Result, 100)
 
 		fm.onceChan(input, resultsChan)
-		if outputFile != nil {
+		if outputFile != nil && once {
+			var results []Result
+			for res := range resultsChan {
+				results = append(results, res)
+			}
+
+			jsonEncoder.Encode(results)
+			return
+		} else if outputFile != nil {
 			for res := range resultsChan {
 				outputLock.Lock()
 				jsonEncoder.Encode(res)
@@ -139,6 +146,9 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 					} else {
 						results = []Result{}
 					}
+					if once {
+						return
+					}
 				case <-interrupt:
 					return
 				default:
@@ -155,6 +165,9 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 			} else {
 				results = []Result{}
 			}
+			if once {
+				return
+			}
 		}
 
 		select {
@@ -163,22 +176,9 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 		default:
 			continue
 		}
+
+		time.Sleep(secToDuration(fm.Sleep))
 	}
-}
-
-func (fm *Frontman) Once(input *Input, outputFile io.Writer) {
-	jsonEncoder := json.NewEncoder(outputFile)
-
-	resultsChan := make(chan Result)
-
-	go fm.onceChan(input, resultsChan)
-
-	var results []Result
-	for res := range resultsChan {
-		results = append(results, res)
-	}
-
-	jsonEncoder.Encode(results)
 }
 
 func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
@@ -249,5 +249,4 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 	close(resultsChan)
 
 	log.Infof("%d/%d checks succeed in %.1f sec", succeed, len(input.ServiceChecks), time.Since(startedAt).Seconds())
-	time.Sleep(secToDuration(fm.Sleep))
 }

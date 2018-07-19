@@ -359,7 +359,7 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m MeasurementICMP, finalResult in
 
 	p, err := NewPinger(addr)
 
-	if CheckIfRawICMPAvailable()  || runtime.GOOS == "windows" {
+	if CheckIfRawICMPAvailable() || runtime.GOOS == "windows" {
 		p.SetPrivileged(true)
 	}
 

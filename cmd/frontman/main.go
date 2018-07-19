@@ -157,11 +157,11 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 	doneChan := make(chan struct{})
 
 	if *oneRunOnlyModePtr == true {
-		fm.Once(input, output)
+		fm.Run(input, output, interruptChan, true)
 		return
 	} else {
 		go func() {
-			fm.Run(input, output, interruptChan)
+			fm.Run(input, output, interruptChan, false)
 			doneChan <- struct{}{}
 		}()
 	}
