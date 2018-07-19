@@ -113,7 +113,7 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 		// in case HUB server will hang on response we will need a buffer to continue perform checks
 		resultsChan := make(chan Result, 100)
 
-		fm.onceChan(input, resultsChan)
+		go fm.onceChan(input, resultsChan)
 		if outputFile != nil && once {
 			var results []Result
 			for res := range resultsChan {
