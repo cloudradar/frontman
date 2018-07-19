@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -31,6 +30,7 @@ var (
 func NewPinger(addr *net.IPAddr) (*Pinger, error) {
 	return &Pinger{
 		ipaddr:  addr,
+		source: "0.0.0.0",
 		Timeout: time.Second * 4,
 		Count:   -1,
 
@@ -312,6 +312,16 @@ func CheckIfRawICMPAvailable() bool {
 	return true
 }
 
+func CheckIfRootlessICMPAvailable() bool {
+	conn, err := icmp.ListenPacket("udp4", "0.0.0.0")
+	if err != nil {
+		return false
+	}
+
+	conn.Close()
+	return true
+}
+
 func byteSliceOfSize(n int) []byte {
 	b := make([]byte, n)
 	for i := 0; i < len(b); i++ {
@@ -350,7 +360,7 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m MeasurementICMP, finalResult in
 
 	p, err := NewPinger(addr)
 
-	if os.Getuid() == 0 || runtime.GOOS == "windows" {
+	if CheckIfRawICMPAvailable()  || runtime.GOOS == "windows" {
 		p.SetPrivileged(true)
 	}
 

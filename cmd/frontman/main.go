@@ -42,6 +42,15 @@ func main() {
 
 	log.SetFormatter(&tfmt)
 
+	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
+		log.Error("!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!")
+	}
+
+	if runtime.GOOS == "linux" && !frontman.CheckIfRootlessICMPAvailable() && !frontman.CheckIfRawICMPAvailable() {
+		fmt.Println(`⚠️ In order to perform rootless ICMP Ping on Linux you need to run this command :\n
+						sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`)
+	}
+
 	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
 		rerunDetached()
 		log.SetOutput(ioutil.Discard)
@@ -123,10 +132,6 @@ func main() {
 
 	interruptChan := make(chan struct{})
 	doneChan := make(chan struct{})
-
-	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
-		log.Error("!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!")
-	}
 
 	if *oneRunOnlyModePtr == true {
 		fm.Once(input, output)
