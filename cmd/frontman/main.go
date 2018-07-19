@@ -123,6 +123,10 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 
 	} else {
+		if *outputFilePtr != "-" {
+			fmt.Println("You can use output(-o) flag only together with input(-i)")
+			return
+		}
 		input, err = frontman.InputFromHub(fm.HubURL, fm.HubUser, fm.HubPassword)
 
 		if err != nil {
