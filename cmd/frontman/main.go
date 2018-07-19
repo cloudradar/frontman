@@ -25,7 +25,7 @@ func main() {
 		syscall.SIGTERM)
 
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
-	outputFilePtr := flag.String("o", "./results.out", "file to write the results")
+	outputFilePtr := flag.String("o", "", "file to write the results (default ./results.out)")
 
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
@@ -91,6 +91,10 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 			log.Fatalf("InputFromFile(%s) error: %s", *inputFilePtr, err.Error())
 		}
 
+		if outputFilePtr == nil || *outputFilePtr == "" {
+			*outputFilePtr = "./results.out"
+		}
+
 		if *outputFilePtr != "-" {
 
 			if _, err := os.Stat(*outputFilePtr); os.IsNotExist(err) {
@@ -123,7 +127,9 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 
 	} else {
-		if *outputFilePtr != "-" {
+		log.Println(outputFilePtr)
+
+		if outputFilePtr != nil && *outputFilePtr != "" {
 			fmt.Println("You can use output(-o) flag only together with input(-i)")
 			return
 		}
