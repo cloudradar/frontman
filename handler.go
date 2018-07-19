@@ -190,33 +190,50 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 	for _, check := range input.ServiceChecks {
 		wg.Add(1)
 		go func(check ServiceCheck) {
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				log.Errorf("serviceCheck: missing checkUuid key")
+				return
+			}
+
 			res := Result{
 				CheckType: "serviceCheck",
 				CheckKey:  string(check.Key),
 				CheckUUID: check.UUID,
 				Timestamp: time.Now().Unix(),
 			}
+
 			res.Data.Check = check.Data
 
-			defer wg.Done()
-			ipaddr, err := net.ResolveIPAddr("ip", check.Data.Connect)
-			if err != nil {
-				res.Data.Message = err.Error()
+			if check.Data.Connect == "" {
+				log.Errorf("serviceCheck: missing data.connect key")
+				res.Data.Message = "Missing data.connect key"
 			} else {
 
-				switch check.Key {
-				case CheckTypeICMPPing:
-					res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runPing(ipaddr)
-				case CheckTypeTCP:
-					port, err := check.Data.Port.Int64()
+				defer wg.Done()
+				ipaddr, err := net.ResolveIPAddr("ip", check.Data.Connect)
+				if err != nil {
+					res.Data.Message = err.Error()
+					log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
+				} else {
+					switch check.Key {
+					case CheckTypeICMPPing:
+						res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runPing(ipaddr)
+					case CheckTypeTCP:
+						port, err := check.Data.Port.Int64()
 
-					if err != nil {
-						res.Data.Message = "Unknown port"
-					} else {
-						res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
+						if err != nil {
+							res.Data.Message = "Unknown port"
+						} else {
+							res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
+						}
+					case "":
+						log.Errorf("serviceCheck: missing checkKey")
+						res.Data.Message = "Missing checkKey"
+					default:
+						log.Errorf("serviceCheck: unknown checkKey: '%s'", check.Key)
+						res.Data.Message = "Unknown checkKey"
 					}
-				default:
-					res.Data.Message = "Unknown checkKey"
 				}
 			}
 
