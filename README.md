@@ -1,12 +1,10 @@
-## Requirements
-
-[Golang 1.9 or newer](https://golang.org/dl/)
-
 ## How to install from sources
+[Install Golang 1.9 or newer](https://golang.org/dl/)
 
 ```bash
 go get -u github.com/cloudradar-monitoring/frontman
-go build github.com/cloudradar-monitoring/frontman/cmd/frontman
+go build -o frontman github.com/cloudradar-monitoring/frontman/cmd/frontman
+./frontman
 ```
 
 ## Run the example
@@ -16,8 +14,10 @@ go build github.com/cloudradar-monitoring/frontman/cmd/frontman
 ```
 Use `ctrl-c` to stop it
 
-## Configuration location
-It will be automatically created on the first run. You can open it to check the possible options
+## Configuration
+Check the [example config](https://github.com/cloudradar-monitoring/frontman/blob/master/example.toml)
+
+Default locations:
 * Mac OS: `~/.frontman/frontman.conf`
 * Windows: `./frontman.conf`
 * UNIX: `/etc/frontman/frontman.conf`

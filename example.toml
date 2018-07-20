@@ -1,0 +1,14 @@
+# This is example config
+
+log = "./frontman.log" # log file location, can be overriden with -c flag
+log_level = "info" # "debug", "info", "error" verbose level; can be overriden with -v flag
+icmp_timeout = 0.5 # ICMP ping timeoout in seconds; number must contains decimal point
+net_tcp_timeout = 2.0 # TCP timeout in seconds; number must contains decimal point
+sleep = 5.0 # delay before starting a new round of checks in seconds; number must contains decimal point
+
+io_mode = "http" # "file" or "http" – where frontman gets checks to perform and post results, can be overriden with -i and -o flag
+hub_url = "https://hubserver_address" # requires io_mode to be "http"
+hub_user = "" # requires io_mode to be "http"
+hub_password = "" # requires io_mode to be "http"
+sender_mode = "wait" # "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval; requires io_mode to be "http"
+sender_mode_interval = 0.0 # TCP timeout in seconds # requires sender_mode to be "interval";s number must contains decimal point
