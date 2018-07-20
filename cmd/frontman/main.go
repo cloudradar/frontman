@@ -47,7 +47,7 @@ func main() {
 		err := fm.ReadConfigFromFile(*cfgPathPtr, true)
 		if err != nil {
 			if strings.Contains(err.Error(), "cannot load TOML value of type int64 into a Go float"){
-				log.Fatalf("Config load error: please use numbers with decimal points for numerical values")
+				log.Fatalf("Config load error: please use numbers with a decimal point for numerical values")
 			} else {
 				log.Fatalf("Config load error: %s", err.Error())
 			}
