@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func InputFromFile(filename string) (*Input, error) {
@@ -22,7 +23,6 @@ func InputFromFile(filename string) (*Input, error) {
 
 	var r Input
 	err = json.Unmarshal(b, &r)
-
 	if err != nil {
 		return nil, fmt.Errorf("parseInputFromFile: '%s' JSON unmarshal error: %s", filename, err.Error())
 	}
@@ -245,8 +245,48 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 		}(check)
 	}
 
+	for _, check := range input.WebChecks {
+		wg.Add(1)
+		go func(check WebCheck) {
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				log.Errorf("webCheck: missing checkUuid key")
+				return
+			}
+
+			res := Result{
+				CheckType: "webCheck",
+				CheckKey:  string(check.Key),
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+
+			res.Data.Check = check
+
+			if check.Data.Method == "" {
+				log.Errorf("webCheck: missing data.method key")
+				res.Data.Message = "Missing data.method key"
+			} else if check.Data.URL == "" {
+				log.Errorf("webCheck: missing data.url key")
+				res.Data.Message = "Missing data.url key"
+			} else {
+				defer wg.Done()
+				res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runWebCheck(check.Data)
+				if res.Data.Message != nil {
+					log.Debugf("webCheck: %s: %s", check.UUID, res.Data.Message)
+				}
+			}
+
+			if res.FinalResult == 1 {
+				succeed++
+			}
+
+			resultsChan <- res
+		}(check)
+	}
+
 	wg.Wait()
 	close(resultsChan)
 
-	log.Infof("%d/%d checks succeed in %.1f sec", succeed, len(input.ServiceChecks), time.Since(startedAt).Seconds())
+	log.Infof("%d/%d checks succeed in %.1f sec", succeed, len(input.ServiceChecks)+len(input.WebChecks), time.Since(startedAt).Seconds())
 }

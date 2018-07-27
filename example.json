@@ -1,4 +1,45 @@
 {
+  "webChecks": [{
+    "checkUUID": "web_status_matched",
+    "checkKey": "webcheck",
+    "data": { "url": "https://www.google.com", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_status_not_matched",
+    "checkKey": "webcheck",
+    "data": { "url": "https://www.google.com/gdfgdfgdf", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_follow_redirects_status_matched",
+    "checkKey": "webcheck",
+    "data": { "url": "https://google.com", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_dont_follow_redirects_status_matched",
+    "checkKey": "webcheck",
+    "data": { "url": "https://google.com", "method": "get", "expectedHttpStatus": 301, "dontFollowRedirects": true}
+  },{
+    "checkUUID": "web_too_many_redirections",
+    "checkKey": "webcheck",
+    "data": { "url": "https://httpbin.org/redirect/10", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_read_timeout",
+    "checkKey": "webcheck",
+    "data": { "url": "https://www.google.com", "method": "get", "expectedHttpStatus": 200, "timeout": 0.01}
+  },{
+    "checkUUID": "web_body_read_timeout_but_status_matched",
+    "checkKey": "webcheck",
+    "data": { "url": "http://ovh.net/files/1Mio.dat", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_expected_text_found_1",
+    "checkKey": "webcheck",
+    "data": { "url": "https://en.wikipedia.org/wiki/Mars", "method": "get", "expectedHttpStatus": 200, "expectedPattern":"preserved ancient life"}
+  },{
+    "checkUUID": "web_expected_html_found_2",
+    "checkKey": "webcheck",
+    "data": { "url": "https://en.wikipedia.org/wiki/Saturn", "method": "get", "expectedHttpStatus": 200, "searchHtmlSource": true, "expectedPattern":"<a href=\"//wikimediafoundation.org/wiki/Terms_of_Use\">"}
+  },{
+    "checkUUID": "web_expected_text_not_found",
+    "checkKey": "webcheck",
+    "data": { "url": "https://en.wikipedia.org/wiki/Neptune", "method": "get", "expectedHttpStatus": 200, "expectedPattern":"life"}
+  }],
   "serviceChecks": [{
     "checkUUID": "hostname",
     "checkKey": "icmp.ping",

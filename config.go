@@ -2,12 +2,14 @@ package frontman
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
-	log "github.com/sirupsen/logrus"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/BurntSushi/toml"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -19,19 +21,27 @@ const (
 )
 
 type Frontman struct {
-	LogFile     string   `toml:"log"`
-	LogLevel    LogLevel `toml:"log_level"`
-	ICMPTimeout float64  `toml:"icmp_timeout"`
-	Sleep       float64  `toml:"sleep"`
+	Sleep float64 `toml:"sleep"` // delay before starting a new round of checks in seconds
 
-	IOMode      string `toml:"io_mode"`
+	LogFile  string   `toml:"log"`
+	LogLevel LogLevel `toml:"log_level"`
+
+	IOMode      string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
 	HubURL      string `toml:"hub_url"`
 	HubUser     string `toml:"hub_user"`
 	HubPassword string `toml:"hub_password"`
 
-	NetTCPTimeout      float64 `toml:"net_tcp_timeout"`
-	SenderMode         string  `toml:"sender_mode"`
-	SenderModeInterval float64 `toml:"sender_mode_interval"`
+	ICMPTimeout           float64 `toml:"icmp_timeout"`        // ICMP ping timeout in seconds
+	NetTCPTimeout         float64 `toml:"net_tcp_timeout"`     // TCP timeout in seconds
+	HTTPCheckTimeout      float64 `toml:"http_check_time_out"` // HTTP time in seconds
+	HTTPCheckMaxRedirects int     `toml:"max_redirects"`       // Limit the number of HTTP redirects to follow
+	IgnoreSSLErrors       bool    `toml:"ignore_ssl_errors"`
+
+	SenderMode         string  `toml:"sender_mode"`          // "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval
+	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server
+
+	// internal use
+	httpTransport *http.Transport
 }
 
 var DefaultCfgPath string
@@ -52,14 +62,15 @@ func New() *Frontman {
 	}
 
 	fm := &Frontman{
-		LogFile:     "/tmp/frontman.log",
-		ICMPTimeout: 0.1,
-		Sleep:       5,
-		SenderMode:  SenderModeWait,
+		LogFile:               "/tmp/frontman.log",
+		ICMPTimeout:           0.1,
+		Sleep:                 5,
+		SenderMode:            SenderModeWait,
+		HTTPCheckMaxRedirects: 10,
+		HTTPCheckTimeout:      15,
 	}
 
 	fm.SetLogLevel(LogLevelInfo)
-
 	fm.LogFile = defaultLogPath
 	return fm
 }
@@ -80,26 +91,23 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 			return fmt.Errorf("Config file not exists: %s", configFilePath)
 		}
 		f, err := os.OpenFile(configFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-		defer f.Close()
 
 		if err != nil {
-			log.WithError(err).Errorf("Failed to create the default config file: '%s'", configFilePath)
+			return fmt.Errorf("Failed to create the default config file: '%s'", configFilePath)
 		}
+		defer f.Close()
 		enc := toml.NewEncoder(f)
 		enc.Encode(fm)
-
 	} else {
 		_, err = os.Stat(configFilePath)
 		if err != nil {
 			return err
 		}
 		_, err = toml.DecodeFile(configFilePath, &fm)
-
 		if err != nil {
 			return err
 		}
 	}
-
 	fm.SetLogLevel(fm.LogLevel)
 	return addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 }

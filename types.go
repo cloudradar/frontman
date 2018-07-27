@@ -1,6 +1,8 @@
 package frontman
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type ServiceCheckKey string
 type ServiceName string
@@ -14,6 +16,7 @@ const (
 
 type Input struct {
 	ServiceChecks []ServiceCheck `json:"serviceChecks"`
+	WebChecks     []WebCheck     `json:"webChecks"`
 }
 
 type ServiceCheck struct {
@@ -28,18 +31,20 @@ type ServiceCheckData struct {
 	Port    json.Number `json:"port,omitempty"`
 }
 
-type MeasurementICMP struct {
-	RoundTripTime ValueInUnit `json:"roundTripTime"`
-	PingLoss      ValueInUnit `json:"pingLoss"`
+type WebCheck struct {
+	UUID string       `json:"checkUuid"`
+	Key  string       `json:"checkKey"`
+	Data WebCheckData `json:"data"`
 }
 
-type ValueInUnit struct {
-	Value float64 `json:"value"`
-	Unit  string  `json:"unit"`
-}
-
-type MeasurementTCP struct {
-	ConnectTime ValueInUnit `json:"connectTime"`
+type WebCheckData struct {
+	Method              string  `json:"method"`
+	URL                 string  `json:"url"`
+	ExpectedHTTPStatus  int     `json:"expectedHttpStatus,omitempty"`
+	SearchHTMLSource    bool    `json:"searchHtmlSource"`
+	ExpectedPattern     string  `json:"expectedPattern,omitempty"`
+	DontFollowRedirects bool    `json:"dontFollowRedirects"`
+	Timeout             float64 `json:"timeout"`
 }
 
 type Results struct {
@@ -53,8 +58,36 @@ type Result struct {
 	CheckKey    string `json:"checkKey"`
 	CheckType   string `json:"checkType"`
 	Data        struct {
-		Check        ServiceCheckData `json:"check"`
-		Measurements interface{}      `json:"measurements"`
-		Message      interface{}      `json:"message"`
+		Check        interface{} `json:"check"`
+		Measurements interface{} `json:"measurements"`
+		Message      interface{} `json:"message"`
 	} `json:"data"`
+}
+
+type MeasurementICMP struct {
+	RoundTripTime ValueInUnit `json:"roundTripTime"`
+	PingLoss      ValueInUnit `json:"pingLoss"`
+}
+
+type MeasurementTCP struct {
+	ConnectTime ValueInUnit `json:"connectTime"`
+}
+
+type MeasurementWebcheck struct {
+	TotalTimeSpent ValueInUnit `json:"totalTimeSpent"`
+	HTTPStatusCode struct {
+		Value int `json:"value"`
+	} `json:"httpStatusCode"`
+	BytesReceived       ValueIntInUnit `json:"bytesReceived"`
+	DownloadPerformance ValueIntInUnit `json:"downloadPerformance"`
+}
+
+type ValueInUnit struct {
+	Value float64 `json:"value"`
+	Unit  string  `json:"unit"`
+}
+
+type ValueIntInUnit struct {
+	Value int64  `json:"value"`
+	Unit  string `json:"unit"`
 }
