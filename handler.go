@@ -198,7 +198,6 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 
 			res := Result{
 				CheckType: "serviceCheck",
-				CheckKey:  string(check.Key),
 				CheckUUID: check.UUID,
 				Timestamp: time.Now().Unix(),
 			}
@@ -216,28 +215,36 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 					res.Message = err.Error()
 					log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
 				} else {
-					switch check.Key {
-					case CheckTypeICMPPing:
-						res.Measurements, res.FinalResult, res.Message = fm.runPing(ipaddr)
-					case CheckTypeTCP:
+					switch check.Check.Protocol {
+					case ProtocolICMP:
+						res.Measurements, err = fm.runPing(ipaddr)
+						if err != nil {
+							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+							res.Message = err.Error()
+						}
+					case ProtocolTCP:
 						port, err := check.Check.Port.Int64()
 
 						if err != nil {
 							res.Message = "Unknown port"
 						} else {
-							res.Measurements, res.FinalResult, res.Message = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
+							res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
+							if err != nil {
+								log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+								res.Message = err.Error()
+							}
 						}
 					case "":
-						log.Errorf("serviceCheck: missing checkKey")
+						log.Errorf("serviceCheck: missing check.protocol")
 						res.Message = "Missing checkKey"
 					default:
-						log.Errorf("serviceCheck: unknown checkKey: '%s'", check.Key)
+						log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
 						res.Message = "Unknown checkKey"
 					}
 				}
 			}
 
-			if res.FinalResult == 1 {
+			if success, exists := res.Measurements["success"]; exists && success == 1 {
 				succeed++
 			}
 
@@ -256,7 +263,6 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 
 			res := Result{
 				CheckType: "webCheck",
-				CheckKey:  string(check.Key),
 				CheckUUID: check.UUID,
 				Timestamp: time.Now().Unix(),
 			}
@@ -271,13 +277,15 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				res.Message = "Missing data.url key"
 			} else {
 				defer wg.Done()
-				res.Measurements, res.FinalResult, res.Message = fm.runWebCheck(check.Check)
-				if res.Message != nil {
-					log.Debugf("webCheck: %s: %s", check.UUID, res.Message)
+				var err error
+				res.Measurements, err = fm.runWebCheck(check.Check)
+				if err != nil {
+					log.Debugf("webCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
 				}
 			}
 
-			if res.FinalResult == 1 {
+			if res.Measurements["success"] == 1 {
 				succeed++
 			}
 

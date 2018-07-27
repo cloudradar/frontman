@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 )
 
-type ServiceCheckKey string
 type ServiceName string
 
 const (
-	CheckTypeICMPPing ServiceCheckKey = "icmp.ping"
-	CheckTypeTCP      ServiceCheckKey = "net.tcp"
+	ProtocolICMP = "icmp"
+	ProtocolTCP  = "tcp"
 
-	ServiceTCP ServiceName = "tcp"
+	ServiceICMPPing = "ping"
 )
 
 type Input struct {
@@ -21,19 +20,18 @@ type Input struct {
 
 type ServiceCheck struct {
 	UUID  string           `json:"checkUuid"`
-	Key   ServiceCheckKey  `json:"checkKey"`
 	Check ServiceCheckData `json:"check"`
 }
 
 type ServiceCheckData struct {
-	Connect string      `json:"connect,omitempty"`
-	Service string      `json:"service,omitempty"`
-	Port    json.Number `json:"port,omitempty"`
+	Connect  string      `json:"connect,omitempty"`
+	Service  string      `json:"service,omitempty"`
+	Protocol string      `json:"protocol,omitempty"`
+	Port     json.Number `json:"port,omitempty"`
 }
 
 type WebCheck struct {
 	UUID  string       `json:"checkUuid"`
-	Key   string       `json:"checkKey"`
 	Check WebCheckData `json:"check"`
 }
 
@@ -52,40 +50,10 @@ type Results struct {
 }
 
 type Result struct {
-	CheckUUID   string `json:"checkUuid"`
-	Timestamp   int64  `json:"timestamp"`
-	FinalResult int    `json:"finalResult"`
-	CheckKey    string `json:"checkKey"`
-	CheckType   string `json:"checkType"`
-	Check        interface{} `json:"check"`
-	Measurements interface{} `json:"measurements"`
-	Message      interface{} `json:"message"`
-}
-
-type MeasurementICMP struct {
-	RoundTripTime ValueInUnit `json:"roundTripTime"`
-	PingLoss      ValueInUnit `json:"pingLoss"`
-}
-
-type MeasurementTCP struct {
-	ConnectTime ValueInUnit `json:"connectTime"`
-}
-
-type MeasurementWebcheck struct {
-	TotalTimeSpent ValueInUnit `json:"totalTimeSpent"`
-	HTTPStatusCode struct {
-		Value int `json:"value"`
-	} `json:"httpStatusCode"`
-	BytesReceived       ValueIntInUnit `json:"bytesReceived"`
-	DownloadPerformance ValueIntInUnit `json:"downloadPerformance"`
-}
-
-type ValueInUnit struct {
-	Value float64 `json:"value"`
-	Unit  string  `json:"unit"`
-}
-
-type ValueIntInUnit struct {
-	Value int64  `json:"value"`
-	Unit  string `json:"unit"`
+	CheckUUID    string                 `json:"checkUuid"`
+	Timestamp    int64                  `json:"timestamp"`
+	CheckType    string                 `json:"checkType"`
+	Check        interface{}            `json:"check"`
+	Measurements map[string]interface{} `json:"measurements"`
+	Message      interface{}            `json:"message"`
 }

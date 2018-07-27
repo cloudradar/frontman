@@ -71,7 +71,11 @@ func (fm *Frontman) initHttpTransport() {
 	}
 }
 
-func (fm *Frontman) runWebCheck(data WebCheckData) (m *MeasurementWebcheck, res int, err error) {
+func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, err error) {
+	prefix := fmt.Sprintf("http.%s.", data.Method)
+	m = make(map[string]interface{})
+	m[prefix+"success"] = 0
+
 	if fm.httpTransport == nil {
 		fm.initHttpTransport()
 	}
@@ -99,7 +103,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m *MeasurementWebcheck, res 
 	req, err := http.NewRequest(strings.ToUpper(data.Method), data.URL, nil)
 
 	if err != nil {
-		return nil, 0, err
+		return
 	}
 
 	var startedConnectonAt time.Time
@@ -118,19 +122,20 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m *MeasurementWebcheck, res 
 	resp, err := httpClient.Do(req)
 
 	if tooManyRedirects != nil {
-		return nil, 0, tooManyRedirects
+		err = tooManyRedirects
+		return
 	} else if err != nil {
 		if ctx.Err() != nil && ctx.Err() == context.DeadlineExceeded {
 			err = fmt.Errorf("Got timeout while performing request")
 		} else {
 			err = fmt.Errorf("Got error while performing request: %s", err.Error())
 		}
-		return nil, 0, err
+		return
 	}
 	defer resp.Body.Close()
 
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
-		return m, 0, fmt.Errorf("Bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
+		return m, fmt.Errorf("Bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
 	var totalBytes int
@@ -142,18 +147,18 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m *MeasurementWebcheck, res 
 			totalBytes = int(bodyReaderWithCounter.Count())
 
 			if strings.Contains(text, data.ExpectedPattern) {
-				res = 1
+				m[prefix+"success"] = 1
 			}
 		} else {
 			text, _ := ioutil.ReadAll(resp.Body)
 			totalBytes = len(text)
 
 			if bytes.Contains(text, []byte(data.ExpectedPattern)) {
-				res = 1
+				m[prefix+"success"] = 1
 			}
 		}
 
-		if res == 0 {
+		if m[prefix+"success"] == 0 {
 			where := "in the text"
 			if data.SearchHTMLSource {
 				where = "in the raw HTML"
@@ -181,11 +186,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m *MeasurementWebcheck, res 
 
 	}
 
-	m = &MeasurementWebcheck{}
-	m.BytesReceived = ValueIntInUnit{int64(totalBytes), "bytes"}
-	m.HTTPStatusCode.Value = resp.StatusCode
-	m.TotalTimeSpent = ValueInUnit{time.Since(startedConnectonAt).Seconds(), "s"}
-	m.DownloadPerformance = ValueIntInUnit{int64(float64(totalBytes) / time.Since(wroteRequestAt).Seconds()), "bps"} // Measure download speed since the request sent
+	m[prefix+"bytesReceived"] = totalBytes
+	m[prefix+"httpStatusCode"] = resp.StatusCode
+	m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
+	m[prefix+"downloadPerformance_bps"] = int64(float64(totalBytes) / time.Since(wroteRequestAt).Seconds()) // Measure download speed since the request sent
 
 	return
 }

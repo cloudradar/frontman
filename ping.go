@@ -356,7 +356,9 @@ func timeToBytes(t time.Time) []byte {
 	return b
 }
 
-func (fm *Frontman) runPing(addr *net.IPAddr) (m MeasurementICMP, finalResult int, err error) {
+func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err error) {
+	prefix := "net.icmp.ping."
+	m = make(map[string]interface{})
 
 	p, err := NewPinger(addr)
 
@@ -378,15 +380,15 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m MeasurementICMP, finalResult in
 		total += rtt
 	}
 
-	m.PingLoss = ValueInUnit{float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100, "%"}
+	m[prefix+"packetLoss_percent"] = float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100
+	m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(p.rtts))
 
-	if len(p.rtts) > 0 {
-		m.RoundTripTime = ValueInUnit{total.Seconds() / float64(len(p.rtts)), "s"}
-	}
-
+	success := 0
 	if p.PacketsRecv > 0 {
-		finalResult = 1
+		success = 1
 	}
+
+	m[prefix+"success"] = success
 
 	return
 }

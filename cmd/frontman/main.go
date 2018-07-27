@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/cloudradar-monitoring/frontman"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
+
+	"github.com/cloudradar-monitoring/frontman"
+	log "github.com/sirupsen/logrus"
 
 	"flag"
 	"fmt"
