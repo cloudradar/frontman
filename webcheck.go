@@ -189,7 +189,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	m[prefix+"bytesReceived"] = totalBytes
 	m[prefix+"httpStatusCode"] = resp.StatusCode
 	m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
-	m[prefix+"downloadPerformance_bps"] = int64(float64(totalBytes) / time.Since(wroteRequestAt).Seconds()) // Measure download speed since the request sent
+	seconds := time.Since(wroteRequestAt).Seconds()
+	if seconds > 0 {
+		m[prefix+"downloadPerformance_bps"] = int64(float64(totalBytes) / seconds) // Measure download speed since the request sent
+	}
 
 	return
 }

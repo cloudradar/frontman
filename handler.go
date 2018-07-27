@@ -120,7 +120,10 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 				results = append(results, res)
 			}
 
-			jsonEncoder.Encode(results)
+			err := jsonEncoder.Encode(results)
+			if err != nil {
+				log.Errorf("results JSON encoding error: %s", err.Error())
+			}
 			return
 		} else if outputFile != nil {
 			for res := range resultsChan {
@@ -221,6 +224,8 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 						if err != nil {
 							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 							res.Message = err.Error()
+						} else {
+							succeed++
 						}
 					case ProtocolTCP:
 						port, err := check.Check.Port.Int64()
@@ -228,6 +233,7 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 						if err != nil {
 							res.Message = "Unknown port"
 						} else {
+							succeed++
 							res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
 							if err != nil {
 								log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
@@ -242,10 +248,6 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 						res.Message = "Unknown checkKey"
 					}
 				}
-			}
-
-			if success, exists := res.Measurements["success"]; exists && success == 1 {
-				succeed++
 			}
 
 			resultsChan <- res
@@ -282,6 +284,8 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				if err != nil {
 					log.Debugf("webCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
+				} else {
+					succeed++
 				}
 			}
 

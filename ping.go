@@ -10,6 +10,7 @@ import (
 
 	"runtime"
 
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
@@ -381,11 +382,14 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err err
 	}
 
 	m[prefix+"packetLoss_percent"] = float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100
-	m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(p.rtts))
-
+	if (len(p.rtts)) > 0 {
+		m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(p.rtts))
+	}
 	success := 0
 	if p.PacketsRecv > 0 {
 		success = 1
+	} else {
+		err = errors.New("No packets received")
 	}
 
 	m[prefix+"success"] = success
