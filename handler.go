@@ -203,36 +203,36 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				Timestamp: time.Now().Unix(),
 			}
 
-			res.Data.Check = check.Data
+			res.Check = check.Check
 
-			if check.Data.Connect == "" {
+			if check.Check.Connect == "" {
 				log.Errorf("serviceCheck: missing data.connect key")
-				res.Data.Message = "Missing data.connect key"
+				res.Message = "Missing data.connect key"
 			} else {
 
 				defer wg.Done()
-				ipaddr, err := net.ResolveIPAddr("ip", check.Data.Connect)
+				ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
 				if err != nil {
-					res.Data.Message = err.Error()
+					res.Message = err.Error()
 					log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
 				} else {
 					switch check.Key {
 					case CheckTypeICMPPing:
-						res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runPing(ipaddr)
+						res.Measurements, res.FinalResult, res.Message = fm.runPing(ipaddr)
 					case CheckTypeTCP:
-						port, err := check.Data.Port.Int64()
+						port, err := check.Check.Port.Int64()
 
 						if err != nil {
-							res.Data.Message = "Unknown port"
+							res.Message = "Unknown port"
 						} else {
-							res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
+							res.Measurements, res.FinalResult, res.Message = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
 						}
 					case "":
 						log.Errorf("serviceCheck: missing checkKey")
-						res.Data.Message = "Missing checkKey"
+						res.Message = "Missing checkKey"
 					default:
 						log.Errorf("serviceCheck: unknown checkKey: '%s'", check.Key)
-						res.Data.Message = "Unknown checkKey"
+						res.Message = "Unknown checkKey"
 					}
 				}
 			}
@@ -261,19 +261,19 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				Timestamp: time.Now().Unix(),
 			}
 
-			res.Data.Check = check
+			res.Check = check
 
-			if check.Data.Method == "" {
+			if check.Check.Method == "" {
 				log.Errorf("webCheck: missing data.method key")
-				res.Data.Message = "Missing data.method key"
-			} else if check.Data.URL == "" {
+				res.Message = "Missing data.method key"
+			} else if check.Check.URL == "" {
 				log.Errorf("webCheck: missing data.url key")
-				res.Data.Message = "Missing data.url key"
+				res.Message = "Missing data.url key"
 			} else {
 				defer wg.Done()
-				res.Data.Measurements, res.FinalResult, res.Data.Message = fm.runWebCheck(check.Data)
-				if res.Data.Message != nil {
-					log.Debugf("webCheck: %s: %s", check.UUID, res.Data.Message)
+				res.Measurements, res.FinalResult, res.Message = fm.runWebCheck(check.Check)
+				if res.Message != nil {
+					log.Debugf("webCheck: %s: %s", check.UUID, res.Message)
 				}
 			}
 

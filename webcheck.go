@@ -77,9 +77,9 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m *MeasurementWebcheck, res 
 	}
 
 	httpClient := &http.Client{Transport: fm.httpTransport}
-	timeout := data.Timeout
+	timeout := fm.HTTPCheckTimeout
 
-	if fm.HTTPCheckTimeout > 0 && fm.HTTPCheckTimeout < timeout {
+	if data.Timeout < timeout {
 		timeout = fm.HTTPCheckTimeout
 	}
 

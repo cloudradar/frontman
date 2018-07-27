@@ -20,9 +20,9 @@ type Input struct {
 }
 
 type ServiceCheck struct {
-	UUID string           `json:"checkUuid"`
-	Key  ServiceCheckKey  `json:"checkKey"`
-	Data ServiceCheckData `json:"data"`
+	UUID  string           `json:"checkUuid"`
+	Key   ServiceCheckKey  `json:"checkKey"`
+	Check ServiceCheckData `json:"check"`
 }
 
 type ServiceCheckData struct {
@@ -32,9 +32,9 @@ type ServiceCheckData struct {
 }
 
 type WebCheck struct {
-	UUID string       `json:"checkUuid"`
-	Key  string       `json:"checkKey"`
-	Data WebCheckData `json:"data"`
+	UUID  string       `json:"checkUuid"`
+	Key   string       `json:"checkKey"`
+	Check WebCheckData `json:"check"`
 }
 
 type WebCheckData struct {
@@ -57,11 +57,9 @@ type Result struct {
 	FinalResult int    `json:"finalResult"`
 	CheckKey    string `json:"checkKey"`
 	CheckType   string `json:"checkType"`
-	Data        struct {
-		Check        interface{} `json:"check"`
-		Measurements interface{} `json:"measurements"`
-		Message      interface{} `json:"message"`
-	} `json:"data"`
+	Check        interface{} `json:"check"`
+	Measurements interface{} `json:"measurements"`
+	Message      interface{} `json:"message"`
 }
 
 type MeasurementICMP struct {
