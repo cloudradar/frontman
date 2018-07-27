@@ -1,5 +1,8 @@
 {
   "webChecks": [{
+    "checkUUID": "web_status_head_matched",
+    "check": { "url": "https://www.google.com", "method": "head", "expectedHttpStatus": 200}
+  },{
     "checkUUID": "web_status_matched",
     "check": { "url": "https://www.google.com", "method": "get", "expectedHttpStatus": 200}
   },{

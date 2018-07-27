@@ -138,6 +138,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 		return m, fmt.Errorf("Bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
+	m[prefix+"success"] = 1
+
 	var totalBytes int
 
 	if data.ExpectedPattern != "" {
@@ -146,15 +148,15 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 			text := getTextFromHTML(bodyReaderWithCounter)
 			totalBytes = int(bodyReaderWithCounter.Count())
 
-			if strings.Contains(text, data.ExpectedPattern) {
-				m[prefix+"success"] = 1
+			if !strings.Contains(text, data.ExpectedPattern) {
+				m[prefix+"success"] = 0
 			}
 		} else {
 			text, _ := ioutil.ReadAll(resp.Body)
 			totalBytes = len(text)
 
-			if bytes.Contains(text, []byte(data.ExpectedPattern)) {
-				m[prefix+"success"] = 1
+			if !bytes.Contains(text, []byte(data.ExpectedPattern)) {
+				m[prefix+"success"] = 0
 			}
 		}
 
