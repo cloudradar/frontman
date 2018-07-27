@@ -6,7 +6,6 @@ import (
 )
 
 func (fm *Frontman) runTCPCheck(addr *net.TCPAddr) (m MeasurementTCP, res int, err error) {
-
 	started := time.Now()
 	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))
 	if err != nil {

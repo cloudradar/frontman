@@ -2,9 +2,10 @@ package frontman
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type LogLevel string
@@ -55,7 +56,6 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 
 // Fire event
 func (hook *logrusFileHook) Fire(entry *log.Entry) error {
-
 	plainformat, err := hook.formatter.Format(entry)
 	line := string(plainformat)
 	_, err = hook.file.WriteString(line)

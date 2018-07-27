@@ -8,11 +8,12 @@ import (
 	"syscall"
 	"time"
 
+	"runtime"
+
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
-	"runtime"
 )
 
 const (
