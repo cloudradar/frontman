@@ -120,6 +120,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	req.Header.Add("Accept-Encoding", "deflate") // gzip disabled to simplify download speed measurement
 	req.Header.Add("User-Agent", UserAgent)
 	resp, err := httpClient.Do(req)
+	m[prefix+"httpStatusCode"] = resp.StatusCode
 
 	if tooManyRedirects != nil {
 		err = tooManyRedirects
@@ -135,6 +136,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	defer resp.Body.Close()
 
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
+		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 		return m, fmt.Errorf("Bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
@@ -189,7 +191,6 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	}
 
 	m[prefix+"bytesReceived"] = totalBytes
-	m[prefix+"httpStatusCode"] = resp.StatusCode
 	m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 	seconds := time.Since(wroteRequestAt).Seconds()
 	if seconds > 0 {
