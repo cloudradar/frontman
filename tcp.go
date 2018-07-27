@@ -8,7 +8,7 @@ import (
 
 func (fm *Frontman) runTCPCheck(addr *net.TCPAddr) (m map[string]interface{}, err error) {
 	m = make(map[string]interface{})
-	prefix := fmt.Sprintf("net.tcp.tcp.%s.", addr.Port)
+	prefix := fmt.Sprintf("net.tcp.tcp.%d.", addr.Port)
 
 	started := time.Now()
 
