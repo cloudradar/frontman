@@ -193,6 +193,8 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 	for _, check := range input.ServiceChecks {
 		wg.Add(1)
 		go func(check ServiceCheck) {
+			defer wg.Done()
+
 			if check.UUID == "" {
 				// in case checkUuid is missing we can ignore this item
 				log.Errorf("serviceCheck: missing checkUuid key")
@@ -212,7 +214,6 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				res.Message = "Missing data.connect key"
 			} else {
 
-				defer wg.Done()
 				ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
 				if err != nil {
 					res.Message = err.Error()
@@ -257,6 +258,8 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 	for _, check := range input.WebChecks {
 		wg.Add(1)
 		go func(check WebCheck) {
+			defer wg.Done()
+
 			if check.UUID == "" {
 				// in case checkUuid is missing we can ignore this item
 				log.Errorf("webCheck: missing checkUuid key")
@@ -278,7 +281,6 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				log.Errorf("webCheck: missing data.url key")
 				res.Message = "Missing data.url key"
 			} else {
-				defer wg.Done()
 				var err error
 				res.Measurements, err = fm.runWebCheck(check.Check)
 				if err != nil {
