@@ -177,10 +177,12 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 		case <-interrupt:
 			return
 		default:
+			if fm.Sleep > 0 {
+				log.Debugf("Sleep for %.1fs", fm.Sleep)
+				time.Sleep(secToDuration(fm.Sleep))
+			}
 			continue
 		}
-
-		time.Sleep(secToDuration(fm.Sleep))
 	}
 }
 
