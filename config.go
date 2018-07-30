@@ -64,7 +64,7 @@ func New() *Frontman {
 	fm := &Frontman{
 		LogFile:               "/tmp/frontman.log",
 		ICMPTimeout:           0.1,
-		Sleep:                 5,
+		Sleep:                 30,
 		SenderMode:            SenderModeWait,
 		HTTPCheckMaxRedirects: 10,
 		HTTPCheckTimeout:      15,

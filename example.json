@@ -41,35 +41,57 @@
     "check": { "connect": "google.com", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "icmp_ipv4",
-    "checkKey": "icmp.ping",
     "check": { "connect": "8.8.8.8", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "icmp_ipv6",
-    "checkKey": "icmp.ping",
     "check": { "connect": "2001:4860:4860::8888", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "request_timeout",
-    "checkKey": "icmp.ping",
     "check": { "connect": "233.124.125.244", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "icmp_high_latency",
-    "checkKey": "icmp.ping",
     "check": { "connect": "www.aucklandcouncil.govt.nz", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "icmp_domain_not_exists",
-    "checkKey": "icmp.ping",
     "check": { "connect": "not_exists_domain1234.com", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "tcp_check_ok",
-    "checkKey": "net.tcp",
     "check": { "connect": "google.fr", "port": 443, "protocol": "tcp", "service": "tcp"}
   },{
     "checkUUID": "tcp_check_port_not_open",
-    "checkKey": "net.tcp",
     "check": { "connect": "google.fr", "port": 23124, "protocol": "tcp", "service": "tcp"}
   },{
     "checkUUID": "tcp_check_failed",
-    "checkKey": "net.tcp",
     "check": { "connect": "not_exists_domain3456.com", "port": 443, "protocol": "tcp", "service": "tcp"}
+  },{
+    "checkUUID": "tcp_ftp_check_ok",
+    "check": { "connect": "ftp.dlptest.com", "protocol": "tcp", "service": "ftp"}
+  },{
+    "checkUUID": "tcp_http_check_ok",
+    "check": { "connect": "google.com", "protocol": "tcp", "service": "http"}
+  },{
+    "checkUUID": "tcp_imap_check_ok",
+    "check": { "connect": "mail.o2online.de", "protocol": "tcp", "service": "imap"}
+  },{
+    "checkUUID": "tcp_pop_check_ok",
+    "check": { "connect": "mail.o2online.de", "protocol": "tcp", "service": "pop"}
+  },{
+    "checkUUID": "tcp_smtp_check_ok",
+    "check": { "connect": "mail.o2online.de", "protocol": "tcp", "service": "smtp"}
+  },{
+    "checkUUID": "tcp_ssh_check_ok",
+    "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ssh"}
+  },{
+    "checkUUID": "tcp_ssh_check_invalid",
+    "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ftp"}
+  },{
+    "checkUUID": "tcp_nntp_check_ok",
+    "check": { "connect": "nntp.aioe.org", "protocol": "tcp", "service": "nntp"}
+  },{
+    "checkUUID": "tcp_ldap_check_ok",
+    "check": { "connect": "ldap.forumsys.com", "port":389, "protocol": "tcp", "service": "ldap"}
+  },{
+    "checkUUID": "tcp_ldap_check_ok",
+    "check": { "connect": "google.com", "protocol": "ssl", "service": "https"}
   }]
 }

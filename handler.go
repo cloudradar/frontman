@@ -251,18 +251,16 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 							succeed++
 						}
 					case ProtocolTCP:
-						port, err := check.Check.Port.Int64()
+						port, _ := check.Check.Port.Int64()
 
+						res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
 						if err != nil {
-							res.Message = "Unknown port"
+							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+							res.Message = err.Error()
 						} else {
 							succeed++
-							res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)})
-							if err != nil {
-								log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-								res.Message = err.Error()
-							}
 						}
+
 					case "":
 						log.Errorf("serviceCheck: missing check.protocol")
 						res.Message = "Missing checkKey"
