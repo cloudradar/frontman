@@ -15,13 +15,18 @@ import (
 
 var defaultPortByService = map[string]int{
 	"ftp":   21,
+	"ftps":  990,
 	"http":  80,
 	"https": 443,
 	"imap":  143,
+	"imaps": 993,
 	"ldap":  389,
+	"ldaps": 636,
 	"nntp":  119,
-	"pop":   110,
+	"pop3":  110,
+	"pop3s": 995,
 	"smtp":  25,
+	"smtps": 465,
 	"ssh":   22,
 }
 
@@ -56,14 +61,26 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	case "ftp":
 		err = checkFTP(conn, secToDuration(fm.NetTCPTimeout))
 		break
+	case "ftps":
+		err = checkFTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		break
 	case "imap":
 		err = checkIMAP(conn, secToDuration(fm.NetTCPTimeout))
+		break
+	case "imaps":
+		err = checkIMAPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
 		break
 	case "smtp":
 		err = checkSMTP(conn, secToDuration(fm.NetTCPTimeout))
 		break
-	case "pop":
-		err = checkPOP(conn, secToDuration(fm.NetTCPTimeout))
+	case "smtps":
+		err = checkSMTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		break
+	case "pop3":
+		err = checkPOP3(conn, secToDuration(fm.NetTCPTimeout))
+		break
+	case "pop3s":
+		err = checkPOP3S(conn, hostname, secToDuration(fm.NetTCPTimeout))
 		break
 	case "ssh":
 		err = checkSSH(conn, secToDuration(fm.NetTCPTimeout))
@@ -73,6 +90,9 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		break
 	case "ldap":
 		err = checkLDAP(conn, secToDuration(fm.NetTCPTimeout))
+		break
+	case "ldaps":
+		err = checkLDAPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
 		break
 	case "http":
 		err = checkHTTP(conn, hostname, secToDuration(fm.NetTCPTimeout))
@@ -119,7 +139,7 @@ func checkNNTP(conn net.Conn, timeout time.Duration) error {
 	return err
 }
 
-func checkPOP(conn net.Conn, timeout time.Duration) error {
+func checkPOP3(conn net.Conn, timeout time.Duration) error {
 	conn.SetReadDeadline(time.Now().Add(timeout))
 
 	var b = make([]byte, 64)
@@ -139,6 +159,17 @@ func checkPOP(conn net.Conn, timeout time.Duration) error {
 	_, err = conn.Write([]byte("QUIT\r\n"))
 
 	return err
+}
+
+func checkPOP3S(conn net.Conn, hostname string, timeout time.Duration) error {
+	tlsConn := tls.Client(conn, &tls.Config{ServerName: hostname, InsecureSkipVerify: true, NextProtos: []string{"pop3"}})
+
+	err := tlsConn.Handshake()
+	if err != nil {
+		return err
+	}
+
+	return checkPOP3(tlsConn, timeout)
 }
 
 var sshHelloRegex = regexp.MustCompile(`^SSH-[0-9]+\.[0-9]+-.*?\r?\n?`)
@@ -185,6 +216,17 @@ func checkSMTP(conn net.Conn, timeout time.Duration) error {
 	return err
 }
 
+func checkSMTPS(conn net.Conn, hostname string, timeout time.Duration) error {
+	tlsConn := tls.Client(conn, &tls.Config{ServerName: hostname, InsecureSkipVerify: true, NextProtos: []string{"smtp"}})
+
+	err := tlsConn.Handshake()
+	if err != nil {
+		return err
+	}
+
+	return checkSMTP(tlsConn, timeout)
+}
+
 func checkIMAP(conn net.Conn, timeout time.Duration) error {
 	conn.SetReadDeadline(time.Now().Add(timeout))
 
@@ -207,6 +249,17 @@ func checkIMAP(conn net.Conn, timeout time.Duration) error {
 	return err
 }
 
+func checkIMAPS(conn net.Conn, hostname string, timeout time.Duration) error {
+	tlsConn := tls.Client(conn, &tls.Config{ServerName: hostname, InsecureSkipVerify: true, NextProtos: []string{"imap"}})
+
+	err := tlsConn.Handshake()
+	if err != nil {
+		return err
+	}
+
+	return checkIMAP(tlsConn, timeout)
+}
+
 func checkFTP(conn net.Conn, timeout time.Duration) error {
 	conn.SetReadDeadline(time.Now().Add(timeout))
 
@@ -227,6 +280,17 @@ func checkFTP(conn net.Conn, timeout time.Duration) error {
 	_, err = conn.Write([]byte("QUIT\r\n"))
 
 	return err
+}
+
+func checkFTPS(conn net.Conn, hostname string, timeout time.Duration) error {
+	tlsConn := tls.Client(conn, &tls.Config{ServerName: hostname, InsecureSkipVerify: true, NextProtos: []string{"ftp"}})
+
+	err := tlsConn.Handshake()
+	if err != nil {
+		return err
+	}
+
+	return checkFTP(tlsConn, timeout)
 }
 
 func checkHTTP(conn net.Conn, hostname string, timeout time.Duration) error {
@@ -290,4 +354,15 @@ func checkLDAP(conn net.Conn, timeout time.Duration) error {
 	}
 
 	return nil
+}
+
+func checkLDAPS(conn net.Conn, hostname string, timeout time.Duration) error {
+	tlsConn := tls.Client(conn, &tls.Config{ServerName: hostname, InsecureSkipVerify: true, NextProtos: []string{"ldap"}})
+
+	err := tlsConn.Handshake()
+	if err != nil {
+		return err
+	}
+
+	return checkLDAP(tlsConn, timeout)
 }
