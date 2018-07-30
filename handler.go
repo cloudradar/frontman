@@ -21,18 +21,18 @@ func InputFromFile(filename string) (*Input, error) {
 		return nil, fmt.Errorf("parseInputFromFile: '%s' failed to read the file: %s", filename, err.Error())
 	}
 
-	var r Input
-	err = json.Unmarshal(b, &r)
+	var i Input
+	err = json.Unmarshal(b, &i)
 	if err != nil {
 		return nil, fmt.Errorf("parseInputFromFile: '%s' JSON unmarshal error: %s", filename, err.Error())
 	}
-	return &r, nil
+	return &i, nil
 }
 
-func InputFromHub(hubURL, hubLogin, hubPassword string) (*Input, error) {
-	client := http.Client{Timeout: time.Second * 30}
+var hubHTTPClient = http.Client{Timeout: time.Second * 30}
 
-	var i Input
+func InputFromHub(hubURL, hubLogin, hubPassword string) (*Input, error) {
+	i := Input{}
 	r, err := http.NewRequest("GET", hubURL, nil)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func InputFromHub(hubURL, hubLogin, hubPassword string) (*Input, error) {
 		r.SetBasicAuth(hubLogin, hubPassword)
 	}
 
-	resp, err := client.Do(r)
+	resp, err := hubHTTPClient.Do(r)
 
 	if err != nil {
 		return nil, err
@@ -96,8 +96,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	return nil
 }
 
-func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct{}, once bool) {
-
+func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}, once bool) {
 	var jsonEncoder *json.Encoder
 
 	if outputFile != nil {
@@ -110,10 +109,35 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 
 	var results []Result
 	for true {
+		var input *Input
+		var err error
+		if inputFilePath == nil || *inputFilePath == "" {
+			input, err = InputFromHub(fm.HubURL, fm.HubUser, fm.HubPassword)
+
+			if err != nil {
+				auth := ""
+				if fm.HubUser != "" {
+					auth = fmt.Sprintf(" (%s:***)", fm.HubUser)
+				}
+				log.Errorf("InputFromHub%s: %s", auth, err.Error())
+			}
+		} else {
+			input, err = InputFromFile(*inputFilePath)
+
+			if err != nil {
+				log.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
+			}
+		}
+
 		// in case HUB server will hang on response we will need a buffer to continue perform checks
 		resultsChan := make(chan Result, 100)
 
-		go fm.onceChan(input, resultsChan)
+		if input != nil {
+			go fm.onceChan(input, resultsChan)
+		} else {
+			close(resultsChan)
+		}
+
 		if outputFile != nil && once {
 			var results []Result
 			for res := range resultsChan {
@@ -176,11 +200,7 @@ func (fm *Frontman) Run(input *Input, outputFile *os.File, interrupt chan struct
 		select {
 		case <-interrupt:
 			return
-		default:
-			if fm.Sleep > 0 {
-				log.Debugf("Sleep for %.1fs", fm.Sleep)
-				time.Sleep(secToDuration(fm.Sleep))
-			}
+		case <-time.After(secToDuration(fm.Sleep)):
 			continue
 		}
 	}

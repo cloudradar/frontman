@@ -86,16 +86,10 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		return
 	}
 
-	var input *frontman.Input
 	var err error
 	var output *os.File
 
 	if inputFilePtr != nil && *inputFilePtr != "" {
-		input, err = frontman.InputFromFile(*inputFilePtr)
-
-		if err != nil {
-			log.Fatalf("InputFromFile(%s) error: %s", *inputFilePtr, err.Error())
-		}
 
 		if outputFilePtr == nil || *outputFilePtr == "" {
 			*outputFilePtr = "./results.out"
@@ -137,15 +131,6 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 			fmt.Println("You can use output(-o) flag only together with input(-i)")
 			return
 		}
-		input, err = frontman.InputFromHub(fm.HubURL, fm.HubUser, fm.HubPassword)
-
-		if err != nil {
-			auth := ""
-			if fm.HubUser != "" {
-				auth = fmt.Sprintf(" HTTP_BASIC(%s, ***)", fm.HubUser)
-			}
-			log.Fatalf("InputFromHub(%s%s) error: %s", fm.HubURL, auth, err.Error())
-		}
 	}
 
 	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
@@ -155,17 +140,15 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		return
 	}
 
-	log.Infof("Running %d checks...", len(input.ServiceChecks)+len(input.WebChecks))
-
 	interruptChan := make(chan struct{})
 	doneChan := make(chan struct{})
 
 	if *oneRunOnlyModePtr == true {
-		fm.Run(input, output, interruptChan, true)
+		fm.Run(inputFilePtr, output, interruptChan, true)
 		return
 	} else {
 		go func() {
-			fm.Run(input, output, interruptChan, false)
+			fm.Run(inputFilePtr, output, interruptChan, false)
 			doneChan <- struct{}{}
 		}()
 	}
