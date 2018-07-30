@@ -120,7 +120,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	req.Header.Add("Accept-Encoding", "deflate") // gzip disabled to simplify download speed measurement
 	req.Header.Add("User-Agent", UserAgent)
 	resp, err := httpClient.Do(req)
-	m[prefix+"httpStatusCode"] = resp.StatusCode
+
+	if resp != nil {
+		m[prefix+"httpStatusCode"] = resp.StatusCode
+	}
 
 	if tooManyRedirects != nil {
 		err = tooManyRedirects
