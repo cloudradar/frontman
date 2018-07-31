@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 	"time"
+	"errors"
 )
 
 func certName(cert *x509.Certificate) string {
@@ -35,7 +36,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 	}
 
 	if addr.Port == 0 {
-		err = fmt.Errorf("No default port specified for '%s'", service)
+		err = fmt.Errorf("no default port specified for '%s'", service)
 		return
 	}
 
@@ -45,7 +46,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 	if err != nil {
 		log.Debugf("TLS dial err: %s", err.Error())
 		if strings.HasPrefix(err.Error(), "tls:") {
-			err = fmt.Errorf("Service doesn't support SSL")
+			err = fmt.Errorf("service doesn't support SSL")
 		}
 		return
 	}
@@ -61,15 +62,15 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		}
 
 		if remainingValidity <= 0 {
-			err = fmt.Errorf("Certificate is expired: %s", certName(cert))
+			err = fmt.Errorf("certificate is expired: %s", certName(cert))
 			return
 		} else if remainingValidity <= float64(fm.SSLCertExpiryThreshold) {
-			err = fmt.Errorf("Certificate will expire soon: %s", certName(cert))
+			err = fmt.Errorf("certificate will expire soon: %s", certName(cert))
 			return
 		}
 
 		if cert.NotBefore.After(time.Now()) {
-			err = fmt.Errorf("Certificate is not valid yet: %s", certName(cert))
+			err = fmt.Errorf("certificate is not valid yet: %s", certName(cert))
 			return
 		}
 
@@ -77,7 +78,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 			err = cert.VerifyHostname(hostname)
 			if err != nil {
 				log.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
-				err = fmt.Errorf("Certificate is not valid for host: %s", hostname)
+				err = errors.New(strings.TrimPrefix(err.Error(),"x509: certificate"))
 			}
 		}
 

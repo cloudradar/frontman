@@ -93,7 +93,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 			return http.ErrUseLastResponse
 		} else if fm.HTTPCheckMaxRedirects > 0 {
 			if len(via) > fm.HTTPCheckMaxRedirects {
-				tooManyRedirects = fmt.Errorf("Too many(>%d) redirects", fm.HTTPCheckMaxRedirects)
+				tooManyRedirects = fmt.Errorf("too many(>%d) redirects", fm.HTTPCheckMaxRedirects)
 				return http.ErrUseLastResponse
 			}
 		}
@@ -130,9 +130,9 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 		return
 	} else if err != nil {
 		if ctx.Err() != nil && ctx.Err() == context.DeadlineExceeded {
-			err = fmt.Errorf("Got timeout while performing request")
+			err = fmt.Errorf("got timeout while performing request")
 		} else {
-			err = fmt.Errorf("Got error while performing request: %s", err.Error())
+			err = fmt.Errorf("got error while performing request: %s", err.Error())
 		}
 		return
 	}
@@ -140,7 +140,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
 		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
-		return m, fmt.Errorf("Bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
+		return m, fmt.Errorf("bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
 	m[prefix+"success"] = 1
@@ -172,12 +172,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 			}
 			if ctx.Err() != nil {
 				if ctx.Err() == context.DeadlineExceeded {
-					err = fmt.Errorf("Got timeout while reading response body")
+					err = fmt.Errorf("got timeout while reading response body")
 				} else {
-					err = fmt.Errorf("Got error while reading response body: %s", ctx.Err().Error())
+					err = fmt.Errorf("got error while reading response body: %s", ctx.Err().Error())
 				}
 			} else {
-				err = fmt.Errorf("Pattern '%s' not found %s", data.ExpectedPattern, where)
+				err = fmt.Errorf("pattern '%s' not found %s", data.ExpectedPattern, where)
 			}
 		}
 

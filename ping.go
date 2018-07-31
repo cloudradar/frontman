@@ -218,7 +218,7 @@ func (p *Pinger) processPacket(recv *packet) error {
 	var m *icmp.Message
 	var err error
 	if m, err = icmp.ParseMessage(proto, bytes[:recv.nbytes]); err != nil {
-		return fmt.Errorf("Error parsing icmp message")
+		return fmt.Errorf("error parsing icmp message")
 	}
 
 	if m.Type != ipv4.ICMPTypeEchoReply && m.Type != ipv6.ICMPTypeEchoReply {
@@ -237,7 +237,7 @@ func (p *Pinger) processPacket(recv *packet) error {
 		p.PacketsRecv += 1
 	default:
 		// Very bad, not sure how this can happen
-		return fmt.Errorf("Error, invalid ICMP echo reply. Body type: %T, %s",
+		return fmt.Errorf("error, invalid ICMP echo reply. Body type: %T, %s",
 			pkt, pkt)
 	}
 
@@ -390,7 +390,7 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err err
 	if p.PacketsRecv > 0 {
 		success = 1
 	} else {
-		err = errors.New("No packets received")
+		err = errors.New("no packets received")
 	}
 
 	m[prefix+"success"] = success

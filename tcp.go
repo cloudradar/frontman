@@ -40,7 +40,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		if port, exists := defaultPortByService[service]; exists {
 			addr.Port = port
 		} else {
-			err = fmt.Errorf("No default port specified for '%s'", service)
+			err = fmt.Errorf("no default port specified for '%s'", service)
 			return
 		}
 	}
@@ -104,14 +104,14 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	case "tcp":
 		break
 	default:
-		err = fmt.Errorf("Unknown service '%s'", service)
+		err = fmt.Errorf("unknown service '%s'", service)
 	}
 
 	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
 	if err == nil {
 		m[prefix+"success"] = 1
 	} else {
-		err = fmt.Errorf("Failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
+		err = fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
 
 	return
@@ -131,7 +131,7 @@ func checkNNTP(conn net.Conn, timeout time.Duration) error {
 	expected2 := []byte("201")
 
 	if !bytes.HasPrefix(b, expected) && !bytes.HasPrefix(b, expected2) {
-		return fmt.Errorf("Invalid response: expected to start with '%s' or '%s' but got '%s'", string(expected), string(expected2), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to start with '%s' or '%s' but got '%s'", string(expected), string(expected2), string(b[0:n]))
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -153,7 +153,7 @@ func checkPOP3(conn net.Conn, timeout time.Duration) error {
 	expected := []byte("+OK")
 
 	if !bytes.HasPrefix(b, expected) {
-		return fmt.Errorf("Invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -186,7 +186,7 @@ func checkSSH(conn net.Conn, timeout time.Duration) error {
 	}
 
 	if !sshHelloRegex.Match(b) {
-		return fmt.Errorf("Invalid response: expected to match '%s' but got '%s'", sshHelloRegex.String(), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to match '%s' but got '%s'", sshHelloRegex.String(), string(b[0:n]))
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -208,7 +208,7 @@ func checkSMTP(conn net.Conn, timeout time.Duration) error {
 	expected := []byte("220")
 
 	if !bytes.HasPrefix(b, expected) {
-		return fmt.Errorf("Invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -241,7 +241,7 @@ func checkIMAP(conn net.Conn, timeout time.Duration) error {
 	expected := []byte("* OK")
 
 	if !bytes.HasPrefix(b, expected) {
-		return fmt.Errorf("Invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -274,7 +274,7 @@ func checkFTP(conn net.Conn, timeout time.Duration) error {
 	expected := []byte("220")
 
 	if !bytes.HasPrefix(b, expected) {
-		return fmt.Errorf("Invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -313,7 +313,7 @@ func checkHTTP(conn net.Conn, hostname string, timeout time.Duration) error {
 	expected := []byte("HTTP/1")
 
 	if !bytes.HasPrefix(b, expected) {
-		return fmt.Errorf("Invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
+		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
 	}
 
 	return nil
@@ -351,7 +351,7 @@ func checkLDAP(conn net.Conn, timeout time.Duration) error {
 	}
 
 	if len(sr.Entries) == 0 {
-		return errors.New("No entries found")
+		return errors.New("no entries found")
 	}
 
 	return nil
