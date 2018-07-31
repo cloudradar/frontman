@@ -32,22 +32,23 @@ var defaultPortByService = map[string]int{
 
 var errorFailedToVerifyService = errors.New("Failed to verify service")
 
-func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (m map[string]interface{}, err error) {
-	prefix := fmt.Sprintf("net.tcp.tcp.%d.", addr.Port)
-	m = MeasurementsMap{
-		prefix + "success": 0,
-	}
+func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (m MeasurementsMap, err error) {
+
 	service = strings.ToLower(service)
 
 	if addr.Port <= 0 {
-		if v, exists := defaultPortByService[service]; exists {
-			addr.Port = v
+		if port, exists := defaultPortByService[service]; exists {
+			addr.Port = port
 		} else {
 			err = fmt.Errorf("No default port specified for '%s'", service)
 			return
 		}
 	}
 
+	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, addr.Port)
+	m = MeasurementsMap{
+		prefix + "success": 0,
+	}
 	started := time.Now()
 
 	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))

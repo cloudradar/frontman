@@ -98,12 +98,27 @@
     "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ssh"}
   },{
     "checkUUID": "tcp_ssh_invalid",
-    "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ftp"}
+    "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ssh", "port": 21}
   },{
     "checkUUID": "tcp_nntp_ok",
     "check": { "connect": "nntp.aioe.org", "protocol": "tcp", "service": "nntp"}
   },{
     "checkUUID": "tcp_ldap_ok",
     "check": { "connect": "ldap.forumsys.com", "port":389, "protocol": "tcp", "service": "ldap"}
+  },{
+    "checkUUID": "ssl_cert_ok",
+    "check": { "connect": "google.com", "protocol": "ssl", "service": "https"}
+  },{
+    "checkUUID": "ssl_cert_by_ip",
+    "check": { "connect": "173.194.222.100", "protocol": "ssl", "service": "https"}
+  },{
+    "checkUUID": "ssl_cert_expired",
+    "check": { "connect": "expired.badssl.com", "protocol": "ssl", "service": "https"}
+  },{
+    "checkUUID": "ssl_cert_ssl_not_supported",
+    "check": { "connect": "google.com", "protocol": "ssl", "service": "http"}
+  },{
+    "checkUUID": "ssl_cert_ssl_wrong_host",
+    "check": { "connect": "wrong.host.badssl.com", "protocol": "ssl", "service": "https"}
   }]
 }

@@ -260,7 +260,16 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 						} else {
 							succeed++
 						}
+					case ProtocolSSL:
+						port, _ := check.Check.Port.Int64()
 
+						res.Measurements, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+						if err != nil {
+							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+							res.Message = err.Error()
+						} else {
+							succeed++
+						}
 					case "":
 						log.Errorf("serviceCheck: missing check.protocol")
 						res.Message = "Missing checkKey"

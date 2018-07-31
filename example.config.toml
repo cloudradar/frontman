@@ -16,6 +16,7 @@ net_tcp_timeout = 2.0 # TCP timeout in seconds; number must contains decimal poi
 http_tcp_timeout = 15.0 # HTTP timeout in seconds; number must contains decimal point
 max_redirects = 3 # Max number of HTTP redirects to follow
 ignore_ssl_errors = false # Ignore SSL errors (e.g. self-signed or expired certificate)
+ssl_cert_expiry_threshold = 7 # Min days remain on the SSL cert to pass the check
 
 # Input and results
 io_mode = "http" # "file" or "http" – where frontman gets checks to perform and post results, can be overriden with -i and -o flag

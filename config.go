@@ -31,11 +31,12 @@ type Frontman struct {
 	HubUser     string `toml:"hub_user"`
 	HubPassword string `toml:"hub_password"`
 
-	ICMPTimeout           float64 `toml:"icmp_timeout"`        // ICMP ping timeout in seconds
-	NetTCPTimeout         float64 `toml:"net_tcp_timeout"`     // TCP timeout in seconds
-	HTTPCheckTimeout      float64 `toml:"http_check_time_out"` // HTTP time in seconds
-	HTTPCheckMaxRedirects int     `toml:"max_redirects"`       // Limit the number of HTTP redirects to follow
-	IgnoreSSLErrors       bool    `toml:"ignore_ssl_errors"`
+	ICMPTimeout            float64 `toml:"icmp_timeout"`        // ICMP ping timeout in seconds
+	NetTCPTimeout          float64 `toml:"net_tcp_timeout"`     // TCP timeout in seconds
+	HTTPCheckTimeout       float64 `toml:"http_check_time_out"` // HTTP time in seconds
+	HTTPCheckMaxRedirects  int     `toml:"max_redirects"`       // Limit the number of HTTP redirects to follow
+	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
+	SSLCertExpiryThreshold float64 `toml:"ssl_cert_expiry_threshold"` // Min days remain on the SSL cert to pass the check
 
 	SenderMode         string  `toml:"sender_mode"`          // "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval
 	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server
@@ -62,12 +63,13 @@ func New() *Frontman {
 	}
 
 	fm := &Frontman{
-		LogFile:               "/tmp/frontman.log",
-		ICMPTimeout:           0.1,
-		Sleep:                 30,
-		SenderMode:            SenderModeWait,
-		HTTPCheckMaxRedirects: 10,
-		HTTPCheckTimeout:      15,
+		LogFile:                "/tmp/frontman.log",
+		ICMPTimeout:            0.1,
+		Sleep:                  30,
+		SenderMode:             SenderModeWait,
+		HTTPCheckMaxRedirects:  10,
+		HTTPCheckTimeout:       15,
+		SSLCertExpiryThreshold: 7,
 	}
 
 	fm.SetLogLevel(LogLevelInfo)
