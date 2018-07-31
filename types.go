@@ -57,3 +57,5 @@ type Result struct {
 	Measurements map[string]interface{} `json:"measurements"`
 	Message      interface{}            `json:"message"`
 }
+
+type MeasurementsMap map[string]interface{}
