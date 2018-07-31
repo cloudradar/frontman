@@ -73,10 +73,18 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 			return
 		}
 
+		if !cert.IsCA && hostname != "" {
+			err = cert.VerifyHostname(hostname)
+			if err != nil {
+				log.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
+				err = fmt.Errorf("Certificate is not valid for host: %s", hostname)
+			}
+		}
+
 	}
 
-	if hostname != "" && connection.VerifyHostname(hostname) != nil {
-		err = fmt.Errorf("Certificate is not valid for host: %s", hostname)
+	if err == nil {
+		m[prefix+"success"] = 1
 	}
 
 	return
