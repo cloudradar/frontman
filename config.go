@@ -36,7 +36,7 @@ type Frontman struct {
 	HTTPCheckTimeout       float64 `toml:"http_check_time_out"` // HTTP time in seconds
 	HTTPCheckMaxRedirects  int     `toml:"max_redirects"`       // Limit the number of HTTP redirects to follow
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
-	SSLCertExpiryThreshold float64 `toml:"ssl_cert_expiry_threshold"` // Min days remain on the SSL cert to pass the check
+	SSLCertExpiryThreshold int `toml:"ssl_cert_expiry_threshold"` // Min days remain on the SSL cert to pass the check
 
 	SenderMode         string  `toml:"sender_mode"`          // "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval
 	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server

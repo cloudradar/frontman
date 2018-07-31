@@ -63,7 +63,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		if remainingValidity <= 0 {
 			err = fmt.Errorf("Certificate is expired: %s", certName(cert))
 			return
-		} else if remainingValidity <= fm.SSLCertExpiryThreshold {
+		} else if remainingValidity <= float64(fm.SSLCertExpiryThreshold) {
 			err = fmt.Errorf("Certificate will expire soon: %s", certName(cert))
 			return
 		}
