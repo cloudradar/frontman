@@ -106,7 +106,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 		return
 	}
 
-	var startedConnectonAt time.Time
+	startedConnectonAt := time.Now()
 	var wroteRequestAt time.Time
 
 	trace := &httptrace.ClientTrace{
