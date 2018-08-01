@@ -18,11 +18,7 @@ func certName(cert *x509.Certificate) string {
 
 func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m MeasurementsMap, err error) {
 	service = strings.ToLower(service)
-	prefix := "net.tcp.ssl."
 
-	m = MeasurementsMap{
-		prefix + "success": 0,
-	}
 	if net.ParseIP(hostname) != nil {
 		hostname = ""
 	}
@@ -36,8 +32,14 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 	}
 
 	if addr.Port == 0 {
-		err = fmt.Errorf("no default port specified for '%s'", service)
+		err = fmt.Errorf("failed to auto-determine port for '%s'", service)
 		return
+	}
+
+	prefix := fmt.Sprintf("net.tcp.ssl.%d", addr.Port)
+
+	m = MeasurementsMap{
+		prefix + "success": 0,
 	}
 
 	dialer := net.Dialer{Timeout: secToDuration(fm.NetTCPTimeout)}

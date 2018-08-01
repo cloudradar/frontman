@@ -120,5 +120,11 @@
   },{
     "checkUUID": "ssl_cert_ssl_wrong_host",
     "check": { "connect": "wrong.host.badssl.com", "protocol": "ssl", "service": "https"}
+  },{
+    "checkUUID": "ssl_cert_ssl_self_signed",
+    "check": { "connect": "104.154.89.105", "protocol": "ssl", "service": "https"}
+  },{
+    "checkUUID": "ssl_cert_failed_to_determine_port",
+    "check": { "connect": "google.com", "protocol": "ssl", "service": "unknown"}
   }]
 }
