@@ -10,8 +10,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
-	"strings"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -25,25 +25,24 @@ const (
 type Frontman struct {
 	Sleep float64 `toml:"sleep"` // delay before starting a new round of checks in seconds
 
-	PidFile  string	  `toml:"pid"`
+	PidFile  string   `toml:"pid"`
 	LogFile  string   `toml:"log"`
 	LogLevel LogLevel `toml:"log_level"`
 
-	IOMode      string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
-	HubURL      string `toml:"hub_url"`
-	HubUser     string `toml:"hub_user"`
-	HubPassword string `toml:"hub_password"`
-	HubProxy string `toml:"hub_proxy"`
-	HubProxyUser string `toml:"hub_proxy_user"`
+	IOMode           string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
+	HubURL           string `toml:"hub_url"`
+	HubUser          string `toml:"hub_user"`
+	HubPassword      string `toml:"hub_password"`
+	HubProxy         string `toml:"hub_proxy"`
+	HubProxyUser     string `toml:"hub_proxy_user"`
 	HubProxyPassword string `toml:"hub_proxy_password"`
-
 
 	ICMPTimeout            float64 `toml:"icmp_timeout"`        // ICMP ping timeout in seconds
 	NetTCPTimeout          float64 `toml:"net_tcp_timeout"`     // TCP timeout in seconds
 	HTTPCheckTimeout       float64 `toml:"http_check_time_out"` // HTTP time in seconds
 	HTTPCheckMaxRedirects  int     `toml:"max_redirects"`       // Limit the number of HTTP redirects to follow
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
-	SSLCertExpiryThreshold int `toml:"ssl_cert_expiry_threshold"` // Min days remain on the SSL cert to pass the check
+	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold"` // Min days remain on the SSL cert to pass the check
 
 	SenderMode         string  `toml:"sender_mode"`          // "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval
 	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server
@@ -57,11 +56,16 @@ var DefaultCfgPath string
 
 func New() *Frontman {
 	var defaultLogPath string
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	exPath := filepath.Dir(ex)
 
 	switch runtime.GOOS {
 	case "windows":
-		DefaultCfgPath = "./frontman.conf"
-		defaultLogPath = "./frontman.log"
+		DefaultCfgPath = filepath.Join(exPath, "./frontman.conf")
+		defaultLogPath = filepath.Join(exPath, "./frontman.log")
 	case "darwin":
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
@@ -71,7 +75,7 @@ func New() *Frontman {
 	}
 
 	fm := &Frontman{
-		LogFile:                "/tmp/frontman.log",
+		LogFile:                defaultLogPath,
 		ICMPTimeout:            0.1,
 		Sleep:                  30,
 		SenderMode:             SenderModeWait,
@@ -81,7 +85,6 @@ func New() *Frontman {
 	}
 
 	fm.SetLogLevel(LogLevelInfo)
-	fm.LogFile = defaultLogPath
 	return fm
 }
 
@@ -119,9 +122,8 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 		}
 	}
 
-
 	if fm.HubProxy != "" {
-		if !strings.HasPrefix(fm.HubProxy, "http"){
+		if !strings.HasPrefix(fm.HubProxy, "http") {
 			fm.HubProxy = "http://" + fm.HubProxy
 		}
 		_, err := url.Parse(fm.HubProxy)

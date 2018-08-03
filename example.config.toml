@@ -23,5 +23,9 @@ io_mode = "http" # "file" or "http" – where frontman gets checks to perform an
 hub_url = "https://hubserver_address" # requires io_mode to be "http"
 hub_user = "" # requires io_mode to be "http"
 hub_password = "" # requires io_mode to be "http"
+hub_proxy = "" # HTTP proxy to use with HUB, requires io_mode to be "http"
+hub_proxy_user = "" # requires hub_proxy to be set
+hub_proxy_password = "" # requires hub_proxy_user to be set
+
 sender_mode = "wait" # "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval; requires io_mode to be "http"
 sender_mode_interval = 0.0 # interval in seconds to post results to HUB server  # requires sender_mode to be "interval";s number must contains decimal point

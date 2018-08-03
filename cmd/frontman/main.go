@@ -153,8 +153,11 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		if service.Interactive() {
 			err = s.Install()
 
-			if err != nil {
+			if err != nil && strings.Contains(err.Error(), "already exists") {
 				fmt.Printf("Frontman service(%s) already installed. Starting...\n", systemManager.String())
+			} else if err != nil {
+				fmt.Printf("Frontman service(%s) installing error: %s", systemManager.String(), err.Error())
+				return
 			} else {
 				fmt.Printf("Frontman service(%s) installed. Starting...\n", systemManager.String())
 			}

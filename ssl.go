@@ -3,13 +3,13 @@ package frontman
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"math"
 	"net"
 	"strings"
 	"time"
-	"errors"
 )
 
 func certName(cert *x509.Certificate) string {
@@ -80,7 +80,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 			err = cert.VerifyHostname(hostname)
 			if err != nil {
 				log.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
-				err = errors.New(strings.TrimPrefix(err.Error(),"x509: certificate"))
+				err = errors.New(strings.TrimPrefix(err.Error(), "x509: certificate"))
 			}
 		}
 
