@@ -13,8 +13,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"strings"
+
+	"github.com/kardianos/service"
 )
 
 func main() {
@@ -31,7 +34,8 @@ func main() {
 
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
-
+	systemManager := service.ChosenSystem()
+	serviceModePtr := flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
 
@@ -133,6 +137,58 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 	}
 
+	if *serviceModePtr {
+		prg := &serviceWrapper{Frontman: fm, InputFilePath: inputFilePtr, OutputFile: output}
+
+		_, err := user.Lookup("nobody")
+		if err == nil {
+			svcConfig.UserName = "nobody"
+		}
+
+		s, err := service.New(prg, svcConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if service.Interactive() {
+			err = s.Install()
+
+			if err != nil {
+				fmt.Printf("Frontman service(%s) already installed. Starting...\n", systemManager.String())
+			} else {
+				fmt.Printf("Frontman service(%s) installed. Starting...\n", systemManager.String())
+			}
+
+			err = s.Start()
+
+			if err != nil {
+				fmt.Printf("Already running\n")
+			}
+
+			switch systemManager.String() {
+			case "unix-systemv":
+				fmt.Printf("Run this command to stop/start it:\nservice %s stop\nservice %s start\n\n", svcConfig.Name, svcConfig.Name)
+			case "linux-upstart", "linux-systemd":
+				fmt.Printf("Run this command to stop/start it:\nstop %s\nstart %s\n\n", svcConfig.Name, svcConfig.Name)
+			case "darwin-launchd":
+				fmt.Printf("Run this command to stop/start it:\nlaunchctl unload %s\nlaunchctl load %s\n\n", svcConfig.Name, svcConfig.Name)
+			case "windows-service":
+				fmt.Printf("Use the Windows Service Manager to stop/start it\n\n")
+			}
+
+			fmt.Printf("Logs file located at: %s\n", fm.LogFile)
+			return
+		}
+
+		err = s.Run()
+
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		return
+	}
+
 	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
 		rerunDetached()
 		log.SetOutput(ioutil.Discard)
@@ -183,4 +239,37 @@ func rerunDetached() error {
 
 	cmd.Process.Release()
 	return nil
+}
+
+type serviceWrapper struct {
+	Frontman      *frontman.Frontman
+	InputFilePath *string
+	OutputFile    *os.File
+	InterruptChan chan struct{}
+	DoneChan      chan struct{}
+}
+
+func (sw *serviceWrapper) Start(s service.Service) error {
+	sw.InterruptChan = make(chan struct{})
+	sw.DoneChan = make(chan struct{})
+	go func() {
+		sw.Frontman.Run(sw.InputFilePath, sw.OutputFile, sw.InterruptChan, false)
+		sw.DoneChan <- struct{}{}
+	}()
+
+	return nil
+}
+
+func (sw *serviceWrapper) Stop(s service.Service) error {
+	sw.InterruptChan <- struct{}{}
+	log.Println("Finishing the batch and stop the service...")
+	<-sw.DoneChan
+	return nil
+}
+
+var svcConfig = &service.Config{
+	Name:        "frontman",
+	DisplayName: "Frontman",
+	Description: "Monitoring proxy for agentless monitoring of subnets",
+	Arguments:   []string{"-s"},
 }
