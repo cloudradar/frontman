@@ -10,6 +10,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
+	"strings"
+	"net/url"
 )
 
 const (
@@ -23,6 +25,7 @@ const (
 type Frontman struct {
 	Sleep float64 `toml:"sleep"` // delay before starting a new round of checks in seconds
 
+	PidFile  string	  `toml:"pid"`
 	LogFile  string   `toml:"log"`
 	LogLevel LogLevel `toml:"log_level"`
 
@@ -30,6 +33,10 @@ type Frontman struct {
 	HubURL      string `toml:"hub_url"`
 	HubUser     string `toml:"hub_user"`
 	HubPassword string `toml:"hub_password"`
+	HubProxy string `toml:"hub_proxy"`
+	HubProxyUser string `toml:"hub_proxy_user"`
+	HubProxyPassword string `toml:"hub_proxy_password"`
+
 
 	ICMPTimeout            float64 `toml:"icmp_timeout"`        // ICMP ping timeout in seconds
 	NetTCPTimeout          float64 `toml:"net_tcp_timeout"`     // TCP timeout in seconds
@@ -43,6 +50,7 @@ type Frontman struct {
 
 	// internal use
 	httpTransport *http.Transport
+	hubHttpClient *http.Client
 }
 
 var DefaultCfgPath string
@@ -110,6 +118,19 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 			return err
 		}
 	}
+
+
+	if fm.HubProxy != "" {
+		if !strings.HasPrefix(fm.HubProxy, "http"){
+			fm.HubProxy = "http://" + fm.HubProxy
+		}
+		_, err := url.Parse(fm.HubProxy)
+
+		if err != nil {
+			return fmt.Errorf("Failed to parse 'hub_proxy' URL")
+		}
+	}
+
 	fm.SetLogLevel(fm.LogLevel)
 	return addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 }

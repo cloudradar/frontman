@@ -12,6 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"net/url"
+	"strconv"
+	"strings"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,20 +33,49 @@ func InputFromFile(filename string) (*Input, error) {
 	return &i, nil
 }
 
-var hubHTTPClient = http.Client{Timeout: time.Second * 30}
+func (fm *Frontman) initHubHttpClient() {
+	if fm.hubHttpClient == nil {
+		tr := *(http.DefaultTransport.(*http.Transport))
 
-func InputFromHub(hubURL, hubLogin, hubPassword string) (*Input, error) {
+		if fm.HubProxy != "" {
+			if !strings.HasPrefix(fm.HubProxy, "http://") {
+				fm.HubProxy = "http://" + fm.HubProxy
+			}
+
+			u, err := url.Parse(fm.HubProxy)
+
+			if err != nil {
+				log.Errorf("Failed to parse 'hub_proxy' URL")
+			} else {
+				if fm.HubProxyUser != "" {
+					u.User = url.UserPassword(fm.HubProxyUser, fm.HubProxyPassword)
+				}
+				tr.Proxy = func(_ *http.Request) (*url.URL, error) {
+					return u, nil
+				}
+			}
+		}
+		fm.hubHttpClient = &http.Client{
+			Timeout:   time.Second * 30,
+			Transport: &tr,
+		}
+	}
+}
+
+func (fm *Frontman) InputFromHub() (*Input, error) {
+	fm.initHubHttpClient()
+
 	i := Input{}
-	r, err := http.NewRequest("GET", hubURL, nil)
+	r, err := http.NewRequest("GET", fm.HubURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if hubLogin != "" {
-		r.SetBasicAuth(hubLogin, hubPassword)
+	if fm.HubUser != "" {
+		r.SetBasicAuth(fm.HubUser, fm.HubPassword)
 	}
 
-	resp, err := hubHTTPClient.Do(r)
+	resp, err := fm.hubHttpClient.Do(r)
 
 	if err != nil {
 		return nil, err
@@ -64,7 +97,8 @@ func InputFromHub(hubURL, hubLogin, hubPassword string) (*Input, error) {
 }
 
 func (fm *Frontman) PostResultsToHub(results []Result) error {
-	client := http.Client{Timeout: time.Second * 30}
+	fm.initHubHttpClient()
+
 	b, err := json.Marshal(Results{results})
 	if err != nil {
 		return err
@@ -79,7 +113,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		r.SetBasicAuth(fm.HubUser, fm.HubPassword)
 	}
 
-	resp, err := client.Do(r)
+	resp, err := fm.hubHttpClient.Do(r)
 
 	if err != nil {
 		return err
@@ -98,6 +132,13 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}, once bool) {
 	var jsonEncoder *json.Encoder
+	if fm.PidFile != "" && !once {
+		err := ioutil.WriteFile(fm.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
+
+		if err != nil {
+			log.Errorf("Failed to write pid file at: %s", fm.PidFile)
+		}
+	}
 
 	if outputFile != nil {
 		jsonEncoder = json.NewEncoder(outputFile)
@@ -112,7 +153,7 @@ func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt ch
 		var input *Input
 		var err error
 		if inputFilePath == nil || *inputFilePath == "" {
-			input, err = InputFromHub(fm.HubURL, fm.HubUser, fm.HubPassword)
+			input, err = fm.InputFromHub()
 
 			if err != nil {
 				auth := ""
@@ -272,10 +313,10 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 						}
 					case "":
 						log.Errorf("serviceCheck: missing check.protocol")
-						res.Message = "Missing checkKey"
+						res.Message = "Missing check.protocol"
 					default:
 						log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
-						res.Message = "Unknown checkKey"
+						res.Message = "Unknown check.protocol"
 					}
 				}
 			}
