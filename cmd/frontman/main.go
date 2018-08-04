@@ -13,9 +13,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os/exec"
-	"os/user"
 	"runtime"
 	"strings"
+
+	"os/user"
+	"strconv"
 
 	"github.com/kardianos/service"
 )
@@ -35,9 +37,11 @@ func main() {
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
 	systemManager := service.ChosenSystem()
-	serviceModePtr := flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
+
+	serviceModePtr := flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
+	serviceModeUserPtr := flag.String("u", "", fmt.Sprintf("user to run the system service", systemManager.String()))
 
 	flag.Parse()
 
@@ -140,17 +144,42 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 	if *serviceModePtr {
 		prg := &serviceWrapper{Frontman: fm, InputFilePath: inputFilePtr, OutputFile: output}
 
-		_, err := user.Lookup("nobody")
-		if err == nil {
-			svcConfig.UserName = "nobody"
-		}
-
 		s, err := service.New(prg, svcConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		if service.Interactive() {
+			if runtime.GOOS != "windows" {
+				if serviceModeUserPtr == nil || *serviceModeUserPtr == "" {
+					fmt.Println("You need to specify the user(-u) to run the service")
+					return
+				}
+
+				u, err := user.Lookup(*serviceModeUserPtr)
+				if err != nil {
+					log.Errorf("Failed to find the user '%s'", *serviceModeUserPtr)
+					return
+				} else {
+					svcConfig.UserName = *serviceModeUserPtr
+				}
+				defer func() {
+					uid, err := strconv.Atoi(u.Uid)
+					if err != nil {
+						log.Errorf("Chown files: error converting UID(%s) to int", u.Uid)
+						return
+					}
+
+					gid, err := strconv.Atoi(u.Gid)
+					if err != nil {
+						log.Errorf("Chown files: error converting GID(%s) to int", u.Gid)
+						return
+					}
+					os.Chown(fm.LogFile, uid, gid)
+					os.Chown(*cfgPathPtr, uid, gid)
+				}()
+			}
+
 			err = s.Install()
 
 			if err != nil && strings.Contains(err.Error(), "already exists") {
@@ -186,7 +215,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		err = s.Run()
 
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Error(err.Error())
 		}
 
 		return
