@@ -143,7 +143,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 	if *serviceModePtr {
 		prg := &serviceWrapper{Frontman: fm, InputFilePath: inputFilePtr, OutputFile: output}
-
+		svcConfig.Arguments = flag.Args()
 		s, err := service.New(prg, svcConfig)
 		if err != nil {
 			log.Fatal(err)
@@ -176,7 +176,6 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 						return
 					}
 					os.Chown(fm.LogFile, uid, gid)
-					os.Chown(*cfgPathPtr, uid, gid)
 				}()
 			}
 
