@@ -345,11 +345,11 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 			res.Check = check
 
 			if check.Check.Method == "" {
-				log.Errorf("webCheck: missing data.method key")
-				res.Message = "Missing data.method key"
+				log.Errorf("webCheck: missing check.method key")
+				res.Message = "Missing check.method key"
 			} else if check.Check.URL == "" {
-				log.Errorf("webCheck: missing data.url key")
-				res.Message = "Missing data.url key"
+				log.Errorf("webCheck: missing check.url key")
+				res.Message = "Missing check.url key"
 			} else {
 				var err error
 				res.Measurements, err = fm.runWebCheck(check.Check)
@@ -361,7 +361,7 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				}
 			}
 
-			if res.Measurements["success"] == 1 {
+			if res.Message == nil {
 				succeed++
 			}
 
