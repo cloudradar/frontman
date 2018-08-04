@@ -1,10 +1,7 @@
 ## How to build from sources
 - [Install Golang 1.9 or newer](https://golang.org/dl/)
-- [Install Go Dep](https://golang.github.io/dep/docs/installation.html)
 ```bash
-go get -d github.com/cloudradar-monitoring/frontman
-cd $GOPATH/src/github.com/cloudradar-monitoring/frontman
-dep ensure -vendor-only
+go get -d -u github.com/cloudradar-monitoring/frontman
 go build -o frontman github.com/cloudradar-monitoring/frontman/cmd/frontman
 ```
 
