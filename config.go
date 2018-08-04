@@ -75,12 +75,14 @@ func New() *Frontman {
 	}
 
 	fm := &Frontman{
+		IOMode:                 "http",
 		LogFile:                defaultLogPath,
 		ICMPTimeout:            0.1,
 		Sleep:                  30,
 		SenderMode:             SenderModeWait,
 		HTTPCheckMaxRedirects:  10,
 		HTTPCheckTimeout:       15,
+		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
 	}
 

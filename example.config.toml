@@ -1,6 +1,7 @@
 # This is example config
 
 sleep = 5.0 # delay before starting a new round of checks in seconds; number must contains decimal point
+pid = "" # pid file location
 
 # Logging
 log = "./frontman.log" # log file location, can be overriden with -c flag
