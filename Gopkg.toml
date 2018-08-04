@@ -1,0 +1,27 @@
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  name = "github.com/BurntSushi/toml"
+  version = "0.3.0"
+
+[[constraint]]
+  name = "gopkg.in/ldap.v2"
+  version = "2.5.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kardianos/service"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/miolini/datacounter"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.0.6"
+
+[prune]
+  go-tests = true
+  unused-packages = true

@@ -1,10 +1,11 @@
-## How to install from sources
-[Install Golang 1.9 or newer](https://golang.org/dl/)
-
+## How to build from sources
+- [Install Golang 1.9 or newer](https://golang.org/dl/)
+- [Install Go Dep](https://golang.github.io/dep/docs/installation.html)
 ```bash
-go get -u github.com/cloudradar-monitoring/frontman
+go get -d github.com/cloudradar-monitoring/frontman
+cd $GOPATH/src/github.com/cloudradar-monitoring/frontman
+dep ensure -vendor-only
 go build -o frontman github.com/cloudradar-monitoring/frontman/cmd/frontman
-./frontman
 ```
 
 ## Run the example
@@ -15,7 +16,7 @@ go build -o frontman github.com/cloudradar-monitoring/frontman/cmd/frontman
 Use `ctrl-c` to stop it
 
 ## Configuration
-Check the [example config](https://github.com/cloudradar-monitoring/frontman/blob/master/example.toml)
+Check the [example config](https://github.com/cloudradar-monitoring/frontman/blob/master/example.config.toml)
 
 Default locations:
 * Mac OS: `~/.frontman/frontman.conf`
