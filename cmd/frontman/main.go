@@ -143,7 +143,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 	if *serviceModePtr {
 		prg := &serviceWrapper{Frontman: fm, InputFilePath: inputFilePtr, OutputFile: output}
-		svcConfig.Arguments = flag.Args()
+		svcConfig.Arguments = os.Args[1:]
 		s, err := service.New(prg, svcConfig)
 		if err != nil {
 			log.Fatal(err)
@@ -302,5 +302,4 @@ var svcConfig = &service.Config{
 	Name:        "frontman",
 	DisplayName: "Frontman",
 	Description: "Monitoring proxy for agentless monitoring of subnets",
-	Arguments:   []string{"-s"},
 }
