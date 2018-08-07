@@ -238,7 +238,11 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 				fmt.Printf("Frontman service(%s) already installed\n", systemManager.String())
 
-				if askForConfirmation("Do you want to overwrite it?") {
+				note := ""
+				if runtime.GOOS == "windows" {
+					note = " Windows Services Manager app should not be opened!"
+				}
+				if askForConfirmation("Do you want to overwrite it?" + note) {
 					s.Stop()
 					err := s.Uninstall()
 					if err != nil {
