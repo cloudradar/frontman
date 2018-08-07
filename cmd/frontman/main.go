@@ -19,6 +19,7 @@ import (
 	"os/user"
 	"strconv"
 
+	"bufio"
 	"github.com/kardianos/service"
 )
 
@@ -27,6 +28,27 @@ var (
 	// go build -o frontman -ldflags="-X main.VERSION=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
 	VERSION string
 )
+
+func askForConfirmation(s string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Printf("%s [y/n]: ", s)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+
+		if response == "y" || response == "yes" {
+			return true
+		} else if response == "n" || response == "no" {
+			return false
+		}
+	}
+}
 
 func main() {
 	fm := frontman.New()
@@ -171,6 +193,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 
 		if service.Interactive() {
+
 			if inputFilePtr != nil && *inputFilePtr != "" {
 				fmt.Println("Input file(-i) flag can't be used together with service install(-s) flag")
 				return
@@ -208,10 +231,24 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 				}()
 			}
 
+		install:
 			err = s.Install()
 
 			if err != nil && strings.Contains(err.Error(), "already exists") {
-				fmt.Printf("Frontman service(%s) already installed. Starting...\n", systemManager.String())
+
+				fmt.Printf("Frontman service(%s) already installed\n", systemManager.String())
+
+				if askForConfirmation("Do you want to overwrite it?") {
+					s.Stop()
+					err := s.Uninstall()
+					if err != nil {
+						fmt.Printf("Failed to unistall the service: %s\n", err.Error())
+						return
+					}
+					goto install
+				}
+				s.Uninstall()
+
 			} else if err != nil {
 				fmt.Printf("Frontman service(%s) installing error: %s", systemManager.String(), err.Error())
 				return
