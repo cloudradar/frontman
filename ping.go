@@ -382,7 +382,9 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err err
 		total += rtt
 	}
 
-	m[prefix+"packetLoss_percent"] = float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100
+	if p.PacketsSent > 0 {
+		m[prefix+"packetLoss_percent"] = float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100
+	}
 	if (len(p.rtts)) > 0 {
 		m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(p.rtts))
 	}
