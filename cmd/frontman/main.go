@@ -128,8 +128,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 	if *logLevelPtr == string(frontman.LogLevelError) || *logLevelPtr == string(frontman.LogLevelInfo) || *logLevelPtr == string(frontman.LogLevelDebug) {
 		fm.SetLogLevel(frontman.LogLevel(*logLevelPtr))
 	}
-
-	if (inputFilePtr == nil || *inputFilePtr == "") && fm.HubURL == "" {
+	if (inputFilePtr == nil || *inputFilePtr == "") && fm.HubURL == "" && !*serviceUninstallPtr {
 		fmt.Println("Missing input file flag(-i) or hub_url param in config")
 		flag.PrintDefaults()
 		return
