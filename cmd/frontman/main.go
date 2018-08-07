@@ -202,11 +202,6 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 		if service.Interactive() {
 
-			if serviceInstallUserPtr != nil && *serviceInstallUserPtr == "" {
-				fmt.Println("Please specify the user to install and run the system service:\nfrontman -s username")
-				return
-			}
-
 			if *serviceUninstallPtr {
 				err = s.Stop()
 				if err != nil {
