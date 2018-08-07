@@ -35,6 +35,15 @@
   },{
     "checkUUID": "web_expired_ssl",
     "check": {"url": "https://expired.badssl.com", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_basic_auth_valid",
+    "check": { "url": "https://user:123@httpbin.org/basic-auth/user/123", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_basic_auth_invalid",
+    "check": { "url": "https://user:1234@httpbin.org/basic-auth/user/123", "method": "get", "expectedHttpStatus": 200}
+  },{
+    "checkUUID": "web_post_form",
+    "check": { "url": "https://httpbin.org/anything", "method": "post", "postData":"username=foo&password=12345", "expectedHttpStatus": 200,  "searchHtmlSource": true, "expectedPattern":"  \"form\": {\n    \"password\": \"12345\", \n    \"username\": \"foo\"\n  }"}
   }],
   "serviceChecks": [{
     "checkUUID": "icmp_hostname",

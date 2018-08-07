@@ -39,6 +39,7 @@ type WebCheck struct {
 type WebCheckData struct {
 	Method              string  `json:"method"`
 	URL                 string  `json:"url"`
+	PostData            string  `json:"postData"`
 	ExpectedHTTPStatus  int     `json:"expectedHttpStatus,omitempty"`
 	SearchHTMLSource    bool    `json:"searchHtmlSource"`
 	ExpectedPattern     string  `json:"expectedPattern,omitempty"`

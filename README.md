@@ -2,7 +2,7 @@
 - [Install Golang 1.9 or newer](https://golang.org/dl/)
 ```bash
 go get -d -u github.com/cloudradar-monitoring/frontman
-go build -o frontman github.com/cloudradar-monitoring/frontman/cmd/frontman
+go build -o -ldflags="-X main.VERSION=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" frontman github.com/cloudradar-monitoring/frontman/cmd/frontman
 ```
 
 ## Run the example

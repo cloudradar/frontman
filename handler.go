@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 
+	"compress/gzip"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -55,6 +57,7 @@ func (fm *Frontman) initHubHttpClient() {
 				}
 			}
 		}
+
 		fm.hubHttpClient = &http.Client{
 			Timeout:   time.Second * 30,
 			Transport: &tr,
@@ -70,6 +73,8 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	r.Header.Add("User-Agent", fm.userAgent())
 
 	if fm.HubUser != "" {
 		r.SetBasicAuth(fm.HubUser, fm.HubPassword)
@@ -104,16 +109,30 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		return err
 	}
 
-	r, err := http.NewRequest("POST", fm.HubURL, bytes.NewBuffer(b))
+	var req *http.Request
+
+	if fm.HubGzip {
+		var buffer bytes.Buffer
+		zw := gzip.NewWriter(&buffer)
+		zw.Write(b)
+		zw.Close()
+		req, err = http.NewRequest("POST", fm.HubURL, &buffer)
+		req.Header.Set("Content-Encoding", "gzip")
+	} else {
+		req, err = http.NewRequest("POST", fm.HubURL, bytes.NewBuffer(b))
+	}
+
 	if err != nil {
 		return err
 	}
 
+	req.Header.Add("User-Agent", fm.userAgent())
+
 	if fm.HubUser != "" {
-		r.SetBasicAuth(fm.HubUser, fm.HubPassword)
+		req.SetBasicAuth(fm.HubUser, fm.HubPassword)
 	}
 
-	resp, err := fm.hubHttpClient.Do(r)
+	resp, err := fm.hubHttpClient.Do(req)
 
 	if err != nil {
 		return err

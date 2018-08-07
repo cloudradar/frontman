@@ -22,6 +22,8 @@ const (
 	SenderModeInterval = "interval"
 )
 
+var DefaultCfgPath string
+
 type Frontman struct {
 	Sleep float64 `toml:"sleep"` // delay before starting a new round of checks in seconds
 
@@ -31,6 +33,7 @@ type Frontman struct {
 
 	IOMode           string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
 	HubURL           string `toml:"hub_url"`
+	HubGzip          bool   `toml:"hub_gzip"` // enable gzip when sending results to the HUB
 	HubUser          string `toml:"hub_user"`
 	HubPassword      string `toml:"hub_password"`
 	HubProxy         string `toml:"hub_proxy"`
@@ -50,9 +53,8 @@ type Frontman struct {
 	// internal use
 	httpTransport *http.Transport
 	hubHttpClient *http.Client
+	version		  string
 }
-
-var DefaultCfgPath string
 
 func New() *Frontman {
 	var defaultLogPath string
@@ -92,6 +94,19 @@ func New() *Frontman {
 
 func secToDuration(secs float64) time.Duration {
 	return time.Duration(int64(float64(time.Second) * secs))
+}
+
+func (fm *Frontman) SetVersion(version string) {
+	fm.version = version
+}
+
+func (fm *Frontman) userAgent() string {
+	if fm.version == "" {
+		fm.version = "{undefined}"
+	}
+	parts := strings.Split(fm.version, "-")
+
+	return fmt.Sprintf("Frontman v%s %s %s", parts[0], runtime.GOOS, runtime.GOARCH)
 }
 
 func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists bool) error {

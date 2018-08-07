@@ -17,9 +17,7 @@ import (
 	"io/ioutil"
 
 	"github.com/miolini/datacounter"
-)
-
-var UserAgent = "Frontman"
+	)
 
 func getTextFromHTML(r io.Reader) (text string) {
 	dom := html.NewTokenizer(r)
@@ -100,7 +98,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 		return nil
 	}
 
-	req, err := http.NewRequest(strings.ToUpper(data.Method), data.URL, nil)
+	data.Method = strings.ToUpper(data.Method)
+	req, err := http.NewRequest(data.Method, data.URL, nil)
 
 	if err != nil {
 		return
@@ -117,8 +116,15 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	ctx, _ := context.WithTimeout(req.Context(), secToDuration(timeout))
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
-	req.Header.Add("Accept-Encoding", "deflate") // gzip disabled to simplify download speed measurement
-	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Set("Accept-Encoding", "deflate") // gzip disabled to simplify download speed measurement
+	req.Header.Set("User-Agent", fm.userAgent())
+
+	if data.Method == "POST" && data.PostData != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(data.PostData))
+		req.Body.Close()
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+
 	resp, err := httpClient.Do(req)
 
 	if resp != nil {

@@ -22,9 +22,20 @@ import (
 	"github.com/kardianos/service"
 )
 
+var (
+	// set on build:
+	// go build -o frontman -ldflags="-X main.VERSION=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
+	VERSION string
+)
+
 func main() {
 	fm := frontman.New()
+	fm.SetVersion(VERSION)
 
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", VERSION)
+		return
+	}
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc,
 		syscall.SIGHUP,
