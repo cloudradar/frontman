@@ -136,20 +136,38 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 	} else {
 		if outputFilePtr != nil && *outputFilePtr != "" {
-			fmt.Println("You can use output(-o) flag only together with input(-i)")
+			fmt.Println("Output(-o) flag can be only used together with input(-i)")
 			return
 		}
 	}
 
-	if *serviceModePtr {
-		prg := &serviceWrapper{Frontman: fm, InputFilePath: inputFilePtr, OutputFile: output}
-		svcConfig.Arguments = os.Args[1:]
+	if *serviceModePtr || !service.Interactive() {
+		prg := &serviceWrapper{Frontman: fm}
+		if cfgPathPtr != nil && *cfgPathPtr != frontman.DefaultCfgPath {
+			path := *cfgPathPtr
+			if !filepath.IsAbs(path) {
+				path, err = filepath.Abs(path)
+				if err != nil {
+					log.Fatalf("Failed to get absolute path to config at '%s': %s", path, err)
+				}
+			}
+			svcConfig.Arguments = []string{"-c", path}
+		}
+
 		s, err := service.New(prg, svcConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		if service.Interactive() {
+			if inputFilePtr != nil && *inputFilePtr != "" {
+				fmt.Println("Input file(-i) flag can't be used together with service install(-s) flag")
+				return
+			}
+			if outputFilePtr != nil && *outputFilePtr != "" {
+				fmt.Println("Output file(-o) flag can't be used together with service install(-s) flag")
+				return
+			}
 			if runtime.GOOS != "windows" {
 				if serviceModeUserPtr == nil || *serviceModeUserPtr == "" {
 					fmt.Println("You need to specify the user(-u) to run the service")
@@ -274,8 +292,6 @@ func rerunDetached() error {
 
 type serviceWrapper struct {
 	Frontman      *frontman.Frontman
-	InputFilePath *string
-	OutputFile    *os.File
 	InterruptChan chan struct{}
 	DoneChan      chan struct{}
 }
@@ -284,7 +300,8 @@ func (sw *serviceWrapper) Start(s service.Service) error {
 	sw.InterruptChan = make(chan struct{})
 	sw.DoneChan = make(chan struct{})
 	go func() {
-		sw.Frontman.Run(sw.InputFilePath, sw.OutputFile, sw.InterruptChan, false)
+		s := ""
+		sw.Frontman.Run(&s, nil, sw.InterruptChan, false)
 		sw.DoneChan <- struct{}{}
 	}()
 
