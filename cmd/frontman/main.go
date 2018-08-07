@@ -54,16 +54,14 @@ func main() {
 	fm := frontman.New()
 	fm.SetVersion(VERSION)
 
-	if len(os.Args) > 1 && os.Args[1] == "version" {
-		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", VERSION)
-		return
-	}
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc,
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM)
 
+	var serviceInstallUserPtr *string
+	var serviceInstallPtr *bool
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
 	outputFilePtr := flag.String("o", "", "file to write the results (default ./results.out)")
 
@@ -73,11 +71,21 @@ func main() {
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
 
-	serviceModePtr := flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
-	serviceModeUserPtr := flag.String("u", "", fmt.Sprintf("user to run the system service", systemManager.String()))
+	if runtime.GOOS == "windows" {
+		serviceInstallPtr = flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
+	} else {
+		serviceInstallUserPtr = flag.String("s", "", fmt.Sprintf("username to install and start the system service(%s)", systemManager.String()))
+	}
+
+	serviceUninstallPtr := flag.Bool("u", false, fmt.Sprintf("stop and uninstall the system service(%s)", systemManager.String()))
+	versionPtr := flag.Bool("version", false, "show the frontman version")
 
 	flag.Parse()
 
+	if *versionPtr {
+		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", VERSION)
+		return
+	}
 	tfmt := log.TextFormatter{FullTimestamp: true}
 	if runtime.GOOS == "windows" {
 		tfmt.DisableColors = true
@@ -174,7 +182,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 	}
 
-	if *serviceModePtr || !service.Interactive() {
+	if serviceInstallPtr != nil && *serviceInstallPtr || serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" || *serviceUninstallPtr || !service.Interactive() {
 		prg := &serviceWrapper{Frontman: fm}
 		if cfgPathPtr != nil && *cfgPathPtr != frontman.DefaultCfgPath {
 			path := *cfgPathPtr
@@ -194,6 +202,25 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 		if service.Interactive() {
 
+			if serviceInstallUserPtr != nil && *serviceInstallUserPtr == "" {
+				fmt.Println("Please specify the user to install and run the system service:\nfrontman -s username")
+				return
+			}
+
+			if *serviceUninstallPtr {
+				err = s.Stop()
+				if err != nil {
+					fmt.Println("Failed to stop the service: ", err.Error())
+				}
+
+				err = s.Uninstall()
+
+				if err != nil {
+					fmt.Println("Failed to uninstall the service: ", err.Error())
+				}
+				return
+			}
+
 			if inputFilePtr != nil && *inputFilePtr != "" {
 				fmt.Println("Input file(-i) flag can't be used together with service install(-s) flag")
 				return
@@ -203,17 +230,13 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 				return
 			}
 			if runtime.GOOS != "windows" {
-				if serviceModeUserPtr == nil || *serviceModeUserPtr == "" {
-					fmt.Println("You need to specify the user(-u) to run the service")
-					return
-				}
 
-				u, err := user.Lookup(*serviceModeUserPtr)
+				u, err := user.Lookup(*serviceInstallUserPtr)
 				if err != nil {
-					log.Errorf("Failed to find the user '%s'", *serviceModeUserPtr)
+					log.Errorf("Failed to find the user '%s'", *serviceInstallUserPtr)
 					return
 				} else {
-					svcConfig.UserName = *serviceModeUserPtr
+					svcConfig.UserName = *serviceInstallUserPtr
 				}
 				defer func() {
 					uid, err := strconv.Atoi(u.Uid)
@@ -236,7 +259,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 
 			if err != nil && strings.Contains(err.Error(), "already exists") {
 
-				fmt.Printf("Frontman service(%s) already installed\n", systemManager.String())
+				fmt.Printf("Frontman service(%s) already installed: %s\n", systemManager.String(), err.Error())
 
 				note := ""
 				if runtime.GOOS == "windows" {
