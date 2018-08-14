@@ -1,10 +1,10 @@
 # This is example config
 
 sleep = 5.0 # delay before starting a new round of checks in seconds; number must contains decimal point
-pid = "" # pid file location
+pid = "/tmp/frontman.pid" # pid file location
 
 # Logging
-log = "./frontman.log" # log file location, can be overriden with -c flag
+log = "/var/log/frontman/frontman.log" # log file location
 log_level = "info" # "debug", "info", "error" verbose level; can be overriden with -v flag
 
 # ICMP pings

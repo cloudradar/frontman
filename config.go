@@ -73,7 +73,7 @@ func New() *Frontman {
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
 	default:
 		DefaultCfgPath = "/etc/frontman/frontman.conf"
-		defaultLogPath = "/tmp/frontman.log"
+		defaultLogPath = "/var/log/frontman/frontman.log"
 	}
 
 	fm := &Frontman{

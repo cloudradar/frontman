@@ -25,3 +25,7 @@ Default locations:
 * Windows: `./frontman.log`
 * UNIX: `/etc/frontman/frontman.conf`
 
+## Build binaries and deb/rpm packages
+```bash
+FRONTMAN_VERSION=$(git describe --always --long --dirty --tag) goreleaser --snapshot
+```

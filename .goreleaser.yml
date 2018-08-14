@@ -1,0 +1,96 @@
+builds:
+  -
+    main: cmd/frontman/main.go
+    binary: frontman
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - 386
+      - amd64
+    ldflags:
+      - -X "main.VERSION={{.Env.FRONTMAN_VERSION}}"
+    env:
+      - CGO_ENABLED=0
+archive:
+  files:
+      - README.md
+      - example.json
+      - example.config.toml
+  replacements:
+    darwin: Darwin
+    linux: Linux
+    windows: Windows
+    386: i386
+    amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+nfpm:
+  # You can change the name of the package.
+  # Default: `{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}`
+  name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+  # Replacements for GOOS and GOARCH in the package name.
+  # Values are the respective replacements.
+  replacements:
+    amd64: 64-bit
+    386: 32-bit
+    darwin: macOS
+
+  vendor: Cloudradar GmbH
+  homepage: https://cloudradar.io
+  description: Monitoring proxy for agentless monitoring of subnets
+
+  # Your app's license.
+  # Default is empty.
+  license: MIT
+
+  # Formats to be generated.
+  formats:
+  - deb
+  - rpm
+
+  # Packages your package depends on.
+  dependencies:
+  - ca-certificates
+
+  # Override default /usr/local/bin destination for binaries
+  bindir: /usr/bin
+
+  # Empty folders that should be created and managed by the packager
+  # implementation.
+  empty_folders:
+  - /var/log/frontman
+  - /etc/frontman
+  - /usr/share/frontman
+
+  # Files or directories to add to your package (beyond the binary).
+  # Keys are source paths/globs to get the files from.
+  # Values are the destination locations of the files in the package.
+  files:
+    "example.json": "/usr/share/doc/frontman"
+
+  # Config files to add to your package. They are about the same as
+  # the files keyword, except package managers treat them differently (while
+  # uninstalling, mostly).
+  # Keys are source paths/globs to get the files from.
+  # Values are the destination locations of the files in the package.
+  config_files:
+    "example.config.toml": "/etc/frontman/frontman.conf"
+
+  # Scripts to execute during the installation of the package.
+  # Keys are the possible targets during the installation process
+  # Values are the paths to the scripts which will be executed
+  scripts:
+    preinstall: "pkg-scripts/preinstall.sh"
+    postinstall: "pkg-scripts/postinstall.sh"
+    preremove: "pkg-scripts/preremove.sh"
