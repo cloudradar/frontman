@@ -20,6 +20,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"runtime"
+	"crypto/tls"
 )
 
 func InputFromFile(filename string) (*Input, error) {
@@ -39,7 +40,9 @@ func InputFromFile(filename string) (*Input, error) {
 func (fm *Frontman) initHubHttpClient() {
 	if fm.hubHttpClient == nil {
 		tr := *(http.DefaultTransport.(*http.Transport))
-
+		if fm.rootCAs != nil {
+			tr.TLSClientConfig = &tls.Config{RootCAs: fm.rootCAs}
+		}
 		if fm.HubProxy != "" {
 			if !strings.HasPrefix(fm.HubProxy, "http://") {
 				fm.HubProxy = "http://" + fm.HubProxy

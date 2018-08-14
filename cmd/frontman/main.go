@@ -129,9 +129,13 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		fm.SetLogLevel(frontman.LogLevel(*logLevelPtr))
 	}
 	if (inputFilePtr == nil || *inputFilePtr == "") && fm.HubURL == "" && !*serviceUninstallPtr {
-		fmt.Println("Missing input file flag(-i) or hub_url param in config")
-		flag.PrintDefaults()
-		return
+		if serviceInstallPtr != nil && *serviceInstallPtr || serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" {
+			fmt.Println(" ****** Before start you need to set 'hub_url' config param at ", *cfgPathPtr)
+		} else {
+			fmt.Println("Missing input file flag(-i) or hub_url param in config")
+			flag.PrintDefaults()
+			return
+		}
 	}
 
 	var err error

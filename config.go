@@ -12,6 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/url"
 	"strings"
+	"crypto/x509"
+	"io/ioutil"
 )
 
 const (
@@ -53,11 +55,15 @@ type Frontman struct {
 	// internal use
 	httpTransport *http.Transport
 	hubHttpClient *http.Client
+
+	rootCAs  	  *x509.CertPool
 	version		  string
 }
 
 func New() *Frontman {
 	var defaultLogPath string
+	var rootCertsPath  string
+
 	ex, err := os.Executable()
 	if err != nil {
 		panic(err)
@@ -72,9 +78,11 @@ func New() *Frontman {
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
 	default:
+		rootCertsPath  = "/etc/frontman/cacert.pem"
 		DefaultCfgPath = "/etc/frontman/frontman.conf"
 		defaultLogPath = "/var/log/frontman/frontman.log"
 	}
+
 
 	fm := &Frontman{
 		IOMode:                 "http",
@@ -87,6 +95,23 @@ func New() *Frontman {
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
 	}
+
+	if rootCertsPath != "" {
+		if _, err := os.Stat(rootCertsPath); err == nil {
+			certPool := x509.NewCertPool()
+
+			b, err := ioutil.ReadFile(rootCertsPath)
+			if err != nil {
+				log.Error("Failed to read cacert.pem: ", err.Error())
+			} else {
+				ok := certPool.AppendCertsFromPEM(b)
+				if ok {
+					fm.rootCAs = certPool
+				}
+			}
+		}
+	}
+
 
 	fm.SetLogLevel(LogLevelInfo)
 	return fm

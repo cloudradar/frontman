@@ -65,7 +65,7 @@ func (fm *Frontman) initHttpTransport() {
 	}
 
 	if fm.IgnoreSSLErrors {
-		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
 	}
 }
 

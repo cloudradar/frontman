@@ -21,7 +21,7 @@ ssl_cert_expiry_threshold = 7 # Min days remain on the SSL cert to pass the chec
 
 # Input and results
 io_mode = "http" # "file" or "http" – where frontman gets checks to perform and post results, can be overriden with -i and -o flag
-hub_url = "https://hubserver_address" # requires io_mode to be "http"
+hub_url = "" # requires io_mode to be "http"
 hub_user = "" # requires io_mode to be "http"
 hub_password = "" # requires io_mode to be "http"
 hub_proxy = "" # HTTP proxy to use with HUB, requires io_mode to be "http"

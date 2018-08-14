@@ -1,23 +1,22 @@
 builds:
-  -
-    main: cmd/frontman/main.go
-    binary: frontman
-    goos:
-      - windows
-      - darwin
-      - linux
-    goarch:
-      - 386
-      - amd64
-    ldflags:
-      - -X "main.VERSION={{.Env.FRONTMAN_VERSION}}"
-    env:
-      - CGO_ENABLED=0
+- main: cmd/frontman/main.go
+  binary: frontman
+  goos:
+  - windows
+  - darwin
+  - linux
+  goarch:
+  - 386
+  - amd64
+  ldflags:
+  - -X "main.VERSION={{.Env.FRONTMAN_VERSION}}"
+  env:
+  - CGO_ENABLED=0
 archive:
   files:
-      - README.md
-      - example.json
-      - example.config.toml
+  - README.md
+  - example.json
+  - example.config.toml
   replacements:
     darwin: Darwin
     linux: Linux
@@ -71,6 +70,8 @@ nfpm:
   # Put example.json
   files:
     "example.json": "/usr/share/doc/frontman/example.json"
+    "cacert.pem": "/etc/frontman/cacert.pem"
+
 
   config_files:
     "example.config.toml": "/etc/frontman/frontman.conf"
