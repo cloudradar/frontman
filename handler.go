@@ -19,6 +19,7 @@ import (
 	"compress/gzip"
 
 	log "github.com/sirupsen/logrus"
+	"runtime"
 )
 
 func InputFromFile(filename string) (*Input, error) {
@@ -151,7 +152,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}, once bool) {
 	var jsonEncoder *json.Encoder
-	if fm.PidFile != "" && !once {
+	if fm.PidFile != "" && !once && runtime.GOOS != "windows" {
 		err := ioutil.WriteFile(fm.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
 
 		if err != nil {
