@@ -54,6 +54,16 @@ func main() {
 	fm := frontman.New()
 	fm.SetVersion(VERSION)
 
+	defer func(){
+		if runtime.GOOS == "windows" {
+			_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
+			if err != nil {
+				log.Errorf("Seems frontman(%s) doesn't have admin rights: %s", runtime.GOARCH, err.Error())
+			}else {
+				log.Infof("Seems frontman(%s) have admin rights!",runtime.GOARCH, )
+			}
+		}
+	}()
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc,
 		syscall.SIGHUP,

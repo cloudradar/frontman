@@ -26,6 +26,14 @@ Default locations:
 * UNIX: `/etc/frontman/frontman.conf`
 
 ## Build binaries and deb/rpm packages
+– Install [goreleaser](https://goreleaser.com/introduction/)
 ```bash
 FRONTMAN_VERSION=$(git describe --always --long --dirty --tag) goreleaser --snapshot
 ```
+
+## Build MSI package
+– Should be done on Windows machine
+– Open command prompt(cmd.exe)
+– Go to frontman directory `cd path_to_directory`
+– Run `goreleaser --snapshot` to build binaries
+– Run `build-win.bat`
