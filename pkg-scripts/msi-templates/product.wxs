@@ -35,6 +35,10 @@
                <Component Id="ApplicationFiles" Guid="{{.Files.GUID}}">
                   {{range $i, $e := .Files.Items}}
                     <File Id="ApplicationFile{{$i}}" Source="{{$e}}"/>
+                     {{if eq $i 0}}
+                         <ServiceInstall Id="ServiceInstaller" Name="Frontman" Type="ownProcess" Vital="yes" DisplayName="Frontman" Description="Frontman" Start="auto" Account="LocalSystem" ErrorControl="normal" Arguments=" /start frontman" Interactive="no" />
+                         <ServiceControl Id="StartService" Name="Frontman" Stop="both" Start="install" Remove="uninstall" Wait="yes" />
+                    {{end}}
                   {{end}}
                </Component>
                {{end}}
@@ -46,19 +50,15 @@
             </Directory>
          </Directory>
 
-         {{if gt (.Env.Vars | len) 0}}
-         <Component Id="ENVS" Guid="{{.Env.GUID}}">
-          {{range $i, $e := .Env.Vars}}
-          <Environment Id="ENV{{$i}}"
-            Name="{{$e.Name}}"
-            Value="{{$e.Value}}"
-            Permanent="{{$e.Permanent}}"
-            Part="{{$e.Part}}"
-            Action="{{$e.Action}}"
-            System="{{$e.System}}" />
-          {{end}}
-        </Component>
-        {{end}}
+          <Component Id="ENVS" Guid="{{.Env.GUID}}">
+                      <Environment Id="ENV_HUB"
+                      Name="FRONTMAN_HUB_URL"
+                      Value="[HUB_URL]"
+                      Permanent="no"
+                      Part="all"
+                      Action="set"
+                      System="yes" />
+           </Component>
 
          {{if gt (.Shortcuts.Items | len) 0}}
          <Directory Id="ProgramMenuFolder">
@@ -110,9 +110,7 @@
       </InstallExecuteSequence>
 
       <Feature Id="DefaultFeature" Level="1">
-         {{if gt (.Env.Vars | len) 0}}
          <ComponentRef Id="ENVS"/>
-         {{end}}
          {{if gt (.Files.Items | len) 0}}
          <ComponentRef Id="ApplicationFiles"/>
          {{end}}
@@ -128,7 +126,7 @@
          <!-- Define the installer UI -->
          <UIRef Id="WixUI_HK" />
       </UI>
-
+      <Property Id="HUB_URL" Secure="yes"/>
       <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
       <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
       <!-- this should help to propagate env var changes -->

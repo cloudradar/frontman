@@ -112,6 +112,9 @@ func New() *Frontman {
 		}
 	}
 
+	if fm.HubURL == "" && os.Getenv("FRONTMAN_HUB_URL") != "" {
+		fm.HubURL = os.Getenv("FRONTMAN_HUB_URL")
+	}
 
 	fm.SetLogLevel(LogLevelInfo)
 	return fm

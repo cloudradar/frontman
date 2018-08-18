@@ -7,49 +7,18 @@
     "guid": "174d5f1a-04ae-4d99-8807-9e9ced201957",
     "items": [
       "frontman.exe",
-      "frontman.conf",
+      "example.config.toml",
       "example.json"
     ]
   },
   "env": {
     "guid": "dbb726d1-1e32-4509-8a7e-7cec9e00335c",
     "vars": [
-      {
-        "name": "some",
-        "value": "value",
-        "permanent": "no",
-        "system": "no",
-        "action": "set",
-        "part": "last"
-      }
-    ]
-  },
-  "shortcuts": {
-    "guid": "c1c407bf-7f0d-4545-a91e-425eeb0f8831",
-    "items": [
-      {
-        "name": "frontman",
-        "description": "Monitoring proxy for agentless monitoring of subnets",
-        "target": "[INSTALLDIR]\\frontman.exe",
-        "wdir": "INSTALLDIR",
-        "arguments": "",
-        "icon": ""
-      }
     ]
   },
   "choco": {
     "description": "Monitoring proxy for agentless monitoring of subnets",
     "project-url": "https://github.com/cloudradar-monitoring/frontman",
     "license-url": "https://github.com/cloudradar-monitoring/frontman/blob/master/LICENSE"
-  },
-  "hooks": [
-    {
-      "when": "install",
-      "command": "sc.exe create frontman binPath=\"[INSTALLDIR]frontman.exe\" type=own start=auto DisplayName=\"Frontman\""
-    },
-    {
-      "when": "uninstall",
-      "command": "sc.exe delete frontman"
-    }
-  ]
+  }
 }
