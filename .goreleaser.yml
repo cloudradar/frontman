@@ -80,3 +80,10 @@ nfpm:
     preinstall: "pkg-scripts/preinstall.sh"
     postinstall: "pkg-scripts/postinstall.sh"
     preremove: "pkg-scripts/preremove.sh"
+  overrides:
+    deb:
+      dependencies:
+      - procps
+    rpm:
+      dependencies:
+      - procps-ng
