@@ -379,8 +379,6 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				if err != nil {
 					log.Debugf("webCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
-				} else {
-					succeed++
 				}
 			}
 
