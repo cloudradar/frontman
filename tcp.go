@@ -47,6 +47,10 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 
 	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, addr.Port)
 
+	m = MeasurementsMap{
+		prefix + "success": 0,
+	}
+
 	started := time.Now()
 	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))
 	if err != nil {
@@ -103,10 +107,6 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	default:
 		err = fmt.Errorf("unknown service '%s'", service)
 		return
-	}
-
-	m = MeasurementsMap{
-		prefix + "success": 0,
 	}
 
 	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
