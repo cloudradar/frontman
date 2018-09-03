@@ -36,7 +36,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		return
 	}
 
-	prefix := fmt.Sprintf("net.tcp.ssl.%d", addr.Port)
+	prefix := fmt.Sprintf("net.tcp.ssl.%d.", addr.Port)
 
 	m = MeasurementsMap{
 		prefix + "success": 0,
