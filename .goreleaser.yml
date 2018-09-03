@@ -53,7 +53,8 @@ nfpm:
   # Default: `{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}`
   name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
-  vendor: CloudRadar UG
+  vendor: cloudradar GmbH
+  maintainer: Roman Khafizianov <frontman@cloudradar.io>
   homepage: https://cloudradar.io
   description: Monitoring proxy for agentless monitoring of subnets
   license: MIT
