@@ -111,9 +111,17 @@ func New() *Frontman {
 			}
 		}
 	}
-
-	if fm.HubURL == "" && os.Getenv("FRONTMAN_HUB_URL") != "" {
+	
+	if fm.HubURL == ""  {
 		fm.HubURL = os.Getenv("FRONTMAN_HUB_URL")
+	}
+
+	if fm.HubUser == "" {
+		fm.HubUser = os.Getenv("FRONTMAN_HUB_USER")
+	}
+
+	if fm.HubPassword == "" {
+		fm.HubPassword = os.Getenv("FRONTMAN_HUB_PASSWORD")
 	}
 
 	fm.SetLogLevel(LogLevelInfo)
