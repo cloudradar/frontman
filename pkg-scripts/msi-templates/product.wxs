@@ -68,7 +68,7 @@
                       System="yes" />
 
                       <Environment Id="ENV_HUB_PASSWORD"
-                      Name="FRONTMAN_HUB_USER"
+                      Name="FRONTMAN_HUB_PASSWORD"
                       Value="[HUB_PASSWORD]"
                       Permanent="no"
                       Part="all"
