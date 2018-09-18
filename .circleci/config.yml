@@ -3,7 +3,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: soupdiver/fmb:0.0.3
+      - image: cloudradario/frontman-build:0.0.1
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - checkout
@@ -11,7 +11,7 @@ jobs:
   
   gorelease:
     docker:
-      - image: soupdiver/fmb:0.0.3
+      - image: cloudradario/frontman-build:0.0.1
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - checkout
