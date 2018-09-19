@@ -17,7 +17,7 @@ import (
 	"io/ioutil"
 
 	"github.com/miolini/datacounter"
-	)
+)
 
 func getTextFromHTML(r io.Reader) (text string) {
 	dom := html.NewTokenizer(r)

@@ -1,26 +1,24 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"path/filepath"
-	"syscall"
-
-	"github.com/cloudradar-monitoring/frontman"
-	log "github.com/sirupsen/logrus"
-
+	"bufio"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
-	"runtime"
-	"strings"
-
+	"os/signal"
 	"os/user"
+	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
+	"syscall"
 
-	"bufio"
 	"github.com/kardianos/service"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/cloudradar-monitoring/frontman"
 )
 
 var (
@@ -54,13 +52,13 @@ func main() {
 	fm := frontman.New()
 	fm.SetVersion(VERSION)
 
-	defer func(){
+	defer func() {
 		if runtime.GOOS == "windows" {
 			_, err := os.Open("\\\\.\\PHYSICALDRIVE0")
 			if err != nil {
 				log.Errorf("Seems frontman(%s) doesn't have admin rights: %s", runtime.GOARCH, err.Error())
-			}else {
-				log.Infof("Seems frontman(%s) have admin rights!",runtime.GOARCH, )
+			} else {
+				log.Infof("Seems frontman(%s) have admin rights!", runtime.GOARCH)
 			}
 		}
 	}()
@@ -181,7 +179,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 			defer output.Close()
 
 			if err != nil {
-				log.WithError(err).Fatalf("Failed to open the output file: '%s'")
+				log.WithError(err).Fatalf("Failed to open the output file: '%s'", *outputFilePtr)
 			}
 		} else {
 			log.SetOutput(ioutil.Discard)
