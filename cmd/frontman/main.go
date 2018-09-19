@@ -23,8 +23,8 @@ import (
 
 var (
 	// set on build:
-	// go build -o frontman -ldflags="-X main.VERSION=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
-	VERSION string
+	// go build -o frontman -ldflags="-X main.version=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
+	version string
 )
 
 func askForConfirmation(s string) bool {
@@ -50,7 +50,7 @@ func askForConfirmation(s string) bool {
 
 func main() {
 	fm := frontman.New()
-	fm.SetVersion(VERSION)
+	fm.SetVersion(version)
 
 	defer func() {
 		if runtime.GOOS == "windows" {
@@ -91,7 +91,7 @@ func main() {
 	flag.Parse()
 
 	if *versionPtr {
-		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", VERSION)
+		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", version)
 		return
 	}
 	tfmt := log.TextFormatter{FullTimestamp: true}
