@@ -93,3 +93,9 @@ nfpm:
     rpm:
       dependencies:
       - procps-ng
+
+release:
+  github:
+    owner: cloudradar-monitoring
+    name: frontman
+  draft: false
