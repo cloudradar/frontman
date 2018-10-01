@@ -295,13 +295,16 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 				fmt.Printf("Already running\n")
 			}
 
+
 			switch systemManager.String() {
 			case "unix-systemv":
-				fmt.Printf("Run this command to stop/start it:\nservice %s stop\nservice %s start\n\n", svcConfig.Name, svcConfig.Name)
-			case "linux-upstart", "linux-systemd":
-				fmt.Printf("Run this command to stop/start it:\nstop %s\nstart %s\n\n", svcConfig.Name, svcConfig.Name)
+				fmt.Printf("Run this command to stop/start it:\nsudo service %s stop\nsudo service %s start\n\n", svcConfig.Name, svcConfig.Name)
+			case "linux-upstart":
+				fmt.Printf("Run this command to stop/start it:\nsudo initctl stop %s\nsudo initctl start %s\n\n", svcConfig.Name, svcConfig.Name)
+			case "linux-systemd":
+				fmt.Printf("Run this command to stop/start it:\nsudo systemctl stop %s.service\nsudo systemctl start %s.service\n\n", svcConfig.Name, svcConfig.Name)
 			case "darwin-launchd":
-				fmt.Printf("Run this command to stop/start it:\nlaunchctl unload %s\nlaunchctl load %s\n\n", svcConfig.Name, svcConfig.Name)
+				fmt.Printf("Run this command to stop/start it:\nsudo launchctl unload %s\nsudo launchctl load /Library/LaunchDaemons/%s.plist\n\n", svcConfig.Name, svcConfig.Name)
 			case "windows-service":
 				fmt.Printf("Use the Windows Service Manager to stop/start it\n\n")
 			}
