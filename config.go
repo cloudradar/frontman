@@ -1,19 +1,19 @@
 package frontman
 
 import (
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
-	"net/url"
-	"strings"
-	"crypto/x509"
-	"io/ioutil"
 )
 
 const (
@@ -52,17 +52,20 @@ type Frontman struct {
 	SenderMode         string  `toml:"sender_mode"`          // "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval
 	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server
 
+	// Will be sent to hub as HostInfo
+	SystemFields []string
+
 	// internal use
 	httpTransport *http.Transport
 	hubHttpClient *http.Client
 
-	rootCAs  	  *x509.CertPool
-	version		  string
+	rootCAs *x509.CertPool
+	version string
 }
 
 func New() *Frontman {
 	var defaultLogPath string
-	var rootCertsPath  string
+	var rootCertsPath string
 
 	ex, err := os.Executable()
 	if err != nil {
@@ -78,11 +81,10 @@ func New() *Frontman {
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
 	default:
-		rootCertsPath  = "/etc/frontman/cacert.pem"
+		rootCertsPath = "/etc/frontman/cacert.pem"
 		DefaultCfgPath = "/etc/frontman/frontman.conf"
 		defaultLogPath = "/var/log/frontman/frontman.log"
 	}
-
 
 	fm := &Frontman{
 		IOMode:                 "http",
@@ -94,6 +96,8 @@ func New() *Frontman {
 		HTTPCheckTimeout:       15,
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
+		//TODO: Do we need this configurable?
+		SystemFields: []string{"unname", "os_kernel", "os_family", "os_arch", "cpu_model", "fqdn", "memory_total_B"},
 	}
 
 	if rootCertsPath != "" {
@@ -111,8 +115,8 @@ func New() *Frontman {
 			}
 		}
 	}
-	
-	if fm.HubURL == ""  {
+
+	if fm.HubURL == "" {
 		fm.HubURL = os.Getenv("FRONTMAN_HUB_URL")
 	}
 
