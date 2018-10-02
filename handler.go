@@ -365,7 +365,7 @@ func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
 				Timestamp: time.Now().Unix(),
 			}
 
-			res.Check = check
+			res.Check = check.Check
 
 			if check.Check.Method == "" {
 				log.Errorf("webCheck: missing check.method key")
