@@ -115,6 +115,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	// TODO: Do we need special handling in error case? Send a special error object to the hub?
 	if err != nil {
 		log.Warnf("Failed to fetch HostInfo: %s", err)
+		hostInfo = map[string]interface{}{"error": err.Error()}
 	}
 
 	// Bundle hostInfo and results
@@ -418,10 +419,11 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 
 	if len(fm.SystemFields) == 0 {
 		log.Warnf("[SYSTEM] HostInfoResults called but no SystemFields are defined.")
-		return nil, nil
+		return nil, fmt.Errorf("No system_fields defined")
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 	info, err := host.InfoWithContext(ctx)
 	errs := []string{}
 
