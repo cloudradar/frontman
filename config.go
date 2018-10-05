@@ -53,7 +53,7 @@ type Frontman struct {
 	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server
 
 	// Will be sent to hub as HostInfo
-	SystemFields []string
+	SystemFields []string `toml:"system_fields"`
 
 	// internal use
 	httpTransport *http.Transport
@@ -96,8 +96,7 @@ func New() *Frontman {
 		HTTPCheckTimeout:       15,
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
-		//TODO: Do we need this configurable?
-		SystemFields: []string{"uname", "os_kernel", "os_family", "os_arch", "cpu_model", "fqdn", "memory_total_B"},
+		SystemFields:           []string{},
 	}
 
 	if rootCertsPath != "" {
