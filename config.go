@@ -97,7 +97,7 @@ func New() *Frontman {
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
 		//TODO: Do we need this configurable?
-		SystemFields: []string{"unname", "os_kernel", "os_family", "os_arch", "cpu_model", "fqdn", "memory_total_B"},
+		SystemFields: []string{"uname", "os_kernel", "os_family", "os_arch", "cpu_model", "fqdn", "memory_total_B"},
 	}
 
 	if rootCertsPath != "" {
