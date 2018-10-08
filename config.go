@@ -58,6 +58,7 @@ type Frontman struct {
 	// internal use
 	httpTransport *http.Transport
 	hubHttpClient *http.Client
+	hostInfoSent  bool
 
 	rootCAs *x509.CertPool
 	version string
@@ -97,6 +98,7 @@ func New() *Frontman {
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
 		SystemFields:           []string{},
+		hostInfoSent:           false,
 	}
 
 	if rootCertsPath != "" {

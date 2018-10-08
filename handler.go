@@ -110,12 +110,17 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.initHubHttpClient()
 
-	// Fetch hostInfo
-	hostInfo, err := fm.HostInfoResults()
-	// TODO: Do we need special handling in error case? Send a special error object to the hub?
-	if err != nil {
-		log.Warnf("Failed to fetch HostInfo: %s", err)
-		hostInfo = map[string]interface{}{"error": err.Error()}
+	var err error
+	var hostInfo MeasurementsMap
+
+	if !fm.hostInfoSent {
+		// Fetch hostInfo
+		hostInfo, err = fm.HostInfoResults()
+		// TODO: Do we need special handling in error case? Send a special error object to the hub?
+		if err != nil {
+			log.Warnf("Failed to fetch HostInfo: %s", err)
+			hostInfo["error"] = err.Error()
+		}
 	}
 
 	// Bundle hostInfo and results
@@ -141,7 +146,6 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	} else {
 		req, err = http.NewRequest("POST", fm.HubURL, bytes.NewBuffer(b))
 	}
-
 	if err != nil {
 		return err
 	}
@@ -153,17 +157,22 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	}
 
 	resp, err := fm.hubHttpClient.Do(req)
-
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	log.Debugf("Sent to HUB.. Status %d", resp.StatusCode)
 
-	defer resp.Body.Close()
-
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.New(resp.Status)
+	}
+
+	// We assume the hostInfo was successfully sent because the responnse code
+	// was ok and hostInfo will only be sent if the flag was flase before.
+	if !fm.hostInfoSent {
+		fm.hostInfoSent = true
+		log.Debugf("hostInfoSent was set to true")
 	}
 
 	return nil
@@ -424,6 +433,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
+
 	info, err := host.InfoWithContext(ctx)
 	errs := []string{}
 
