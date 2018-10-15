@@ -142,7 +142,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		return err
 	}
 
-	log.Debugf("Sent to HUB.. Status %d", resp.StatusCode)
+	log.Debugf("Sent %d results to HUB.. Status %d", len(results), resp.StatusCode)
 
 	defer resp.Body.Close()
 
