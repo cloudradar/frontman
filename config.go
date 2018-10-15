@@ -1,20 +1,19 @@
 package frontman
 
 import (
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
-
-	"crypto/x509"
-	"io/ioutil"
-	"net/url"
-	"strings"
 )
 
 const (
@@ -54,9 +53,13 @@ type Frontman struct {
 	SenderMode         string  `toml:"sender_mode"`          // "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval
 	SenderModeInterval float64 `toml:"sender_mode_interval"` // interval in seconds to post results to HUB server
 
+	// Will be sent to hub as HostInfo
+	SystemFields []string `toml:"system_fields"`
+
 	// internal use
 	httpTransport *http.Transport
 	hubHttpClient *http.Client
+	hostInfoSent  bool
 
 	rootCAs *x509.CertPool
 	version string
@@ -95,6 +98,8 @@ func New() *Frontman {
 		HTTPCheckTimeout:       15,
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
+		SystemFields:           []string{},
+		hostInfoSent:           false,
 	}
 
 	if rootCertsPath != "" {

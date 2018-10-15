@@ -48,7 +48,8 @@ type WebCheckData struct {
 }
 
 type Results struct {
-	Results []Result `json:"results"`
+	Results  []Result               `json:"results"`
+	HostInfo map[string]interface{} `json:"hostInfo"`
 }
 
 type Result struct {
