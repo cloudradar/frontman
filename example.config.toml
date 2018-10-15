@@ -5,6 +5,7 @@ pid = "/tmp/frontman.pid" # pid file location
 
 # Logging
 log = "/var/log/frontman/frontman.log" # log file location
+log_syslog = "" # ""(don't use syslog), "local"(use local unix socket) or "udp://localhost:554
 log_level = "info" # "debug", "info", "error" verbose level; can be overriden with -v flag
 
 # ICMP pings

@@ -162,7 +162,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	}
 	defer resp.Body.Close()
 
-	log.Debugf("Sent to HUB.. Status %d", resp.StatusCode)
+	log.Debugf("Sent %d results to HUB.. Status %d", len(results), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.New(resp.Status)

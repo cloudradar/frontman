@@ -29,9 +29,10 @@ var DefaultCfgPath string
 type Frontman struct {
 	Sleep float64 `toml:"sleep"` // delay before starting a new round of checks in seconds
 
-	PidFile  string   `toml:"pid"`
-	LogFile  string   `toml:"log"`
-	LogLevel LogLevel `toml:"log_level"`
+	PidFile   string   `toml:"pid"`
+	LogFile   string   `toml:"log"`
+	LogSyslog string   `toml:"log_syslog"` // "local" for local unix socket or URL e.g. "udp://localhost:514" for remote syslog server
+	LogLevel  LogLevel `toml:"log_level"`
 
 	IOMode           string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
 	HubURL           string `toml:"hub_url"`
@@ -192,5 +193,18 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 	}
 
 	fm.SetLogLevel(fm.LogLevel)
-	return addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if fm.LogFile != "" {
+		err := addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+		if err != nil {
+			log.Error("Can't write logs to file: ", err.Error())
+		}
+	}
+
+	if fm.LogSyslog != "" {
+		err := addSyslogHook(fm.LogSyslog)
+		if err != nil {
+			log.Error("Can't set up syslog: ", err.Error())
+		}
+	}
+	return nil
 }

@@ -76,9 +76,12 @@
   revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
-  digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
+  digest = "1:606e395bc6f4011ae992e7ae0c613839d20ea097b8a9468e1683b22cefd8fd77"
   name = "github.com/sirupsen/logrus"
-  packages = ["."]
+  packages = [
+    ".",
+    "hooks/syslog",
+  ]
   pruneopts = "UT"
   revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
   version = "v1.0.6"
@@ -150,6 +153,7 @@
     "github.com/shirou/gopsutil/host",
     "github.com/shirou/gopsutil/mem",
     "github.com/sirupsen/logrus",
+    "github.com/sirupsen/logrus/hooks/syslog",
     "golang.org/x/net/html",
     "golang.org/x/net/icmp",
     "golang.org/x/net/ipv4",
