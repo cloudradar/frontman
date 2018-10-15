@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
+	"log/syslog"
+	"net/url"
 )
 
 type LogLevel string
@@ -48,6 +51,34 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	}
 
 	hook := &logrusFileHook{logFile, flag, chmod, plainFormatter}
+
+	log.AddHook(hook)
+
+	return nil
+}
+
+func addSyslogHook(syslogURL string) error {
+
+	var network, raddr string
+
+	if syslogURL != "local" {
+		u, err := url.Parse(syslogURL)
+		if err != nil {
+			return fmt.Errorf("Wrong format of syslogURL: ", err.Error())
+		}
+		network = u.Scheme
+		raddr = u.Host
+
+		if u.Port() == "" {
+			raddr += ":;514"
+		}
+	}
+
+	hook, err := lSyslog.NewSyslogHook(network, raddr, syslog.LOG_DEBUG, "frontman")
+
+	if err != nil {
+		return err
+	}
 
 	log.AddHook(hook)
 

@@ -10,10 +10,11 @@ import (
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
-	"net/url"
-	"strings"
+
 	"crypto/x509"
 	"io/ioutil"
+	"net/url"
+	"strings"
 )
 
 const (
@@ -29,9 +30,10 @@ var DefaultCfgPath string
 type Frontman struct {
 	Sleep float64 `toml:"sleep"` // delay before starting a new round of checks in seconds
 
-	PidFile  string   `toml:"pid"`
-	LogFile  string   `toml:"log"`
-	LogLevel LogLevel `toml:"log_level"`
+	PidFile   string   `toml:"pid"`
+	LogFile   string   `toml:"log"`
+	LogSyslog string   `toml:"log_syslog"` // "local" for local unix socket or URL e.g. "udp://localhost:514" for remote syslog server
+	LogLevel  LogLevel `toml:"log_level"`
 
 	IOMode           string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
 	HubURL           string `toml:"hub_url"`
@@ -56,13 +58,13 @@ type Frontman struct {
 	httpTransport *http.Transport
 	hubHttpClient *http.Client
 
-	rootCAs  	  *x509.CertPool
-	version		  string
+	rootCAs *x509.CertPool
+	version string
 }
 
 func New() *Frontman {
 	var defaultLogPath string
-	var rootCertsPath  string
+	var rootCertsPath string
 
 	ex, err := os.Executable()
 	if err != nil {
@@ -78,11 +80,10 @@ func New() *Frontman {
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
 	default:
-		rootCertsPath  = "/etc/frontman/cacert.pem"
+		rootCertsPath = "/etc/frontman/cacert.pem"
 		DefaultCfgPath = "/etc/frontman/frontman.conf"
 		defaultLogPath = "/var/log/frontman/frontman.log"
 	}
-
 
 	fm := &Frontman{
 		IOMode:                 "http",
@@ -111,8 +112,8 @@ func New() *Frontman {
 			}
 		}
 	}
-	
-	if fm.HubURL == ""  {
+
+	if fm.HubURL == "" {
 		fm.HubURL = os.Getenv("FRONTMAN_HUB_URL")
 	}
 
@@ -187,5 +188,18 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 	}
 
 	fm.SetLogLevel(fm.LogLevel)
-	return addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if fm.LogFile != "" {
+		err := addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+		if err != nil {
+			log.Error("Can't write logs to file: ", err.Error())
+		}
+	}
+
+	if fm.LogSyslog != "" {
+		err := addSyslogHook(fm.LogSyslog)
+		if err != nil {
+			log.Error("Can't write logs to file: ", err.Error())
+		}
+	}
+	return nil
 }
