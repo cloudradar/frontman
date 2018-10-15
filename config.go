@@ -198,7 +198,7 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 	if fm.LogSyslog != "" {
 		err := addSyslogHook(fm.LogSyslog)
 		if err != nil {
-			log.Error("Can't write logs to file: ", err.Error())
+			log.Error("Can't set up syslog: ", err.Error())
 		}
 	}
 	return nil
