@@ -123,15 +123,26 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		}
 	}
 
+	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	// Bundle hostInfo and results
-	resultsToSend := Results{
+	b, err := json.Marshal(Results{
+		Results: fm.offlineResultsBuffer,
 		HostInfo: hostInfo,
-		Results:  results,
-	}
+	})
 
-	b, err := json.Marshal(resultsToSend)
 	if err != nil {
 		return err
+	}
+
+	// in case buffer + results exceed HubMaxOfflineBufferBytes, reset buffer
+	if len(b) > fm.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
+		log.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...", fm.HubMaxOfflineBufferBytes, len(results))
+
+		fm.offlineResultsBuffer = []Result{}
+		b, err = json.Marshal(Results{Results: results, HostInfo: hostInfo})
+		if err != nil {
+			return err
+		}
 	}
 
 	var req *http.Request
@@ -160,6 +171,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	log.Debugf("Sent %d results to HUB.. Status %d", len(results), resp.StatusCode)
@@ -174,6 +186,9 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		fm.hostInfoSent = true
 		log.Debugf("hostInfoSent was set to true")
 	}
+
+	// in case of successful POST reset the offline buffer
+	fm.offlineResultsBuffer = []Result{}
 
 	return nil
 }
@@ -196,8 +211,8 @@ func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt ch
 
 	outputLock := sync.Mutex{}
 
-	var results []Result
 	for true {
+		var results []Result
 		var input *Input
 		var err error
 		if inputFilePath == nil || *inputFilePath == "" {
@@ -228,7 +243,6 @@ func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt ch
 		}
 
 		if outputFile != nil && once {
-			var results []Result
 			for res := range resultsChan {
 				results = append(results, res)
 			}
