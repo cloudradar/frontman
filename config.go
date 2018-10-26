@@ -34,14 +34,15 @@ type Frontman struct {
 	LogSyslog string   `toml:"log_syslog"` // "local" for local unix socket or URL e.g. "udp://localhost:514" for remote syslog server
 	LogLevel  LogLevel `toml:"log_level"`
 
-	IOMode           string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
-	HubURL           string `toml:"hub_url"`
-	HubGzip          bool   `toml:"hub_gzip"` // enable gzip when sending results to the HUB
-	HubUser          string `toml:"hub_user"`
-	HubPassword      string `toml:"hub_password"`
-	HubProxy         string `toml:"hub_proxy"`
-	HubProxyUser     string `toml:"hub_proxy_user"`
-	HubProxyPassword string `toml:"hub_proxy_password"`
+	IOMode                   string `toml:"io_mode"` // "file" or "http" – where frontman gets checks to perform and post results
+	HubURL                   string `toml:"hub_url"`
+	HubGzip                  bool   `toml:"hub_gzip"` // enable gzip when sending results to the HUB
+	HubUser                  string `toml:"hub_user"`
+	HubPassword              string `toml:"hub_password"`
+	HubProxy                 string `toml:"hub_proxy"`
+	HubProxyUser             string `toml:"hub_proxy_user"`
+	HubProxyPassword         string `toml:"hub_proxy_password"`
+	HubMaxOfflineBufferBytes int    `toml:"hub_max_offline_buffer_bytes"`
 
 	ICMPTimeout            float64 `toml:"icmp_timeout"`        // ICMP ping timeout in seconds
 	NetTCPTimeout          float64 `toml:"net_tcp_timeout"`     // TCP timeout in seconds
@@ -61,8 +62,10 @@ type Frontman struct {
 	hubHttpClient *http.Client
 	hostInfoSent  bool
 
-	rootCAs *x509.CertPool
-	version string
+	offlineResultsBuffer []Result
+
+	rootCAs              *x509.CertPool
+	version              string
 }
 
 func New() *Frontman {
