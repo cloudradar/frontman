@@ -21,10 +21,12 @@
       <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
 
       <Upgrade Id="{{.UpgradeCode}}">
-         <UpgradeVersion Minimum="{{.VersionOk}}" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
-         <UpgradeVersion Minimum="0.0.0" Maximum="{{.VersionOk}}" IncludeMinimum="yes" IncludeMaximum="no"
+         <UpgradeVersion Minimum="0.0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="ANYVERSIONDETECTED"/>
+         <UpgradeVersion Minimum="{{.VersionOk}}" IncludeMinimum="no" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
+         <UpgradeVersion Minimum="0.0.0.0" Maximum="{{.VersionOk}}" IncludeMinimum="yes" IncludeMaximum="no"
                          Property="OLDERVERSIONBEINGUPGRADED"/>
       </Upgrade>
+
       <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>
 
       <Directory Id="TARGETDIR" Name="SourceDir">
@@ -34,12 +36,12 @@
                {{if gt (.Files.Items | len) 0}}
                <Component Id="ApplicationFiles" Guid="{{.Files.GUID}}">
                   {{range $i, $e := .Files.Items}}
-                    <File Id="ApplicationFile{{$i}}" Source="{{$e}}"/>
                      {{if eq $i 0}}
                          <ServiceInstall Id="ServiceInstaller" Name="Frontman" Type="ownProcess" Vital="yes" DisplayName="Frontman" Description="Frontman" Start="auto" Account="LocalSystem" ErrorControl="normal" Arguments=" /start frontman" Interactive="no" />
                          <ServiceControl Id="StartService" Name="Frontman" Stop="both" Start="install" Remove="uninstall" Wait="yes" />
-                    {{end}}
-                  {{end}}
+                     {{end}}
+               	 <File Id="ApplicationFile{{$i}}" Source="{{$e}}"/>  
+		{{end}}
                </Component>
                {{end}}
                {{if gt (.Directories | len) 0}}
@@ -137,6 +139,9 @@
          {{range $i, $e := .Directories}}
          <ComponentGroupRef Id="AppFiles{{$i}}" />
          {{end}}
+         <Feature Id="Uninstall">
+             <ComponentRef Id="UninstallFolder" Primary="yes"/>
+         </Feature>
       </Feature>
 
       <UI>
@@ -146,6 +151,7 @@
       <Property Id="HUB_URL" Secure="yes"/>
       <Property Id="HUB_USER" Secure="yes"/>
       <Property Id="HUB_PASSWORD" Secure="yes"/>
+      <Property Id="WIXUI_OLDERVERSIONBEINGUPGRADED" Value="OLDERVERSIONBEINGUPGRADED"/>
 
       <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
       <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
