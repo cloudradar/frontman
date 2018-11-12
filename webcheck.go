@@ -161,9 +161,9 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 				m[prefix+"success"] = 0
 			}
 		} else {
-			text, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				err = fmt.Errorf("got error while reading response body: %s", err.Error())
+			text, readErr := ioutil.ReadAll(resp.Body)
+			if readErr != nil {
+				err = fmt.Errorf("got error while reading response body: %s", readErr.Error())
 			}
 
 			if !bytes.Contains(text, []byte(data.ExpectedPattern)) {
