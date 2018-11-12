@@ -12,9 +12,9 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"compress/gzip"
 	"golang.org/x/net/html"
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
+	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
 )
 
 func getTextFromHTML(r io.Reader) (text string) {
@@ -142,10 +142,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	}
 	defer resp.Body.Close()
 
+	// wrap ReadCloser with the ReadCloserCounter
 	bodyReaderWithCounter := datacounters.NewReadCloserCounter(resp.Body)
+	resp.Body = bodyReaderWithCounter
 
 	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip"){
-		resp.Body = &gzipReader{body: bodyReaderWithCounter}
+		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
 	}
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
 		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
@@ -161,12 +163,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 				m[prefix+"success"] = 0
 			}
 		} else {
+			// read and search in raw file
 			text, readErr := ioutil.ReadAll(resp.Body)
 			if readErr != nil {
 				err = fmt.Errorf("got error while reading response body: %s", readErr.Error())
-			}
-
-			if !bytes.Contains(text, []byte(data.ExpectedPattern)) {
+				m[prefix+"success"] = 0
+			} else if !bytes.Contains(text, []byte(data.ExpectedPattern)) {
 				m[prefix+"success"] = 0
 			}
 		}
@@ -204,33 +206,4 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	}
 
 	return
-}
-
-// gzipReader wraps a response body so it can lazily
-// call gzip.NewReader on the first call to Read
-type gzipReader struct {
-	body io.ReadCloser // underlying HTTP/1 response body framing
-	zr   *gzip.Reader   // lazily-initialized gzip reader
-	zerr error          // any error from gzip.NewReader; sticky
-}
-
-func (gz *gzipReader) Read(p []byte) (n int, err error) {
-	if gz.zr == nil {
-		if gz.zerr == nil {
-			gz.zr, gz.zerr = gzip.NewReader(gz.body)
-		}
-		if gz.zerr != nil {
-			return 0, gz.zerr
-		}
-	}
-
-
-	if err != nil {
-		return 0, err
-	}
-	return gz.zr.Read(p)
-}
-
-func (gz *gzipReader) Close() error {
-	return gz.body.Close()
 }
