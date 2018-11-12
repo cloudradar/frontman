@@ -116,7 +116,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	ctx, _ := context.WithTimeout(req.Context(), secToDuration(timeout))
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
-	req.Header.Set("Accept-Encoding", "deflate") // gzip disabled to simplify download speed measurement
+	req.Header.Set("Accept-Encoding", "identity; q=1.0, *;q=0") // compression disabled to simplify download speed measurement
 	req.Header.Set("User-Agent", fm.userAgent())
 
 	if data.Method == "POST" && data.PostData != "" {
