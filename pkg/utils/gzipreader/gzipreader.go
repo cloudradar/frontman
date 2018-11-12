@@ -8,9 +8,9 @@ import (
 // GzipReader wraps a ReadCloser
 // call gzip.NewReader on the first call to Read
 type GzipReader struct {
-	Reader io.ReadCloser
-	zreader   *gzip.Reader
-	zerr error
+	Reader  io.ReadCloser
+	zreader *gzip.Reader
+	zerr    error
 }
 
 func (gz *GzipReader) Read(p []byte) (n int, err error) {
@@ -22,7 +22,6 @@ func (gz *GzipReader) Read(p []byte) (n int, err error) {
 			return 0, gz.zerr
 		}
 	}
-
 
 	if err != nil {
 		return 0, err
