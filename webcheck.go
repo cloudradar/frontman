@@ -8,15 +8,13 @@ import (
 	"net/http/httptrace"
 	"strings"
 	"time"
-
-	"golang.org/x/net/html"
-
 	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
-
-	"github.com/miolini/datacounter"
+	"compress/gzip"
+	"golang.org/x/net/html"
+	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
 )
 
 func getTextFromHTML(r io.Reader) (text string) {
@@ -116,7 +114,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	ctx, _ := context.WithTimeout(req.Context(), secToDuration(timeout))
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
-	req.Header.Set("Accept-Encoding", "identity; q=1.0, *;q=0") // compression disabled to simplify download speed measurement
+	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())
 
 	if data.Method == "POST" && data.PostData != "" {
@@ -144,6 +142,11 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 	}
 	defer resp.Body.Close()
 
+	bodyReaderWithCounter := datacounters.NewReadCloserCounter(resp.Body)
+
+	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip"){
+		resp.Body = &gzipReader{body: bodyReaderWithCounter}
+	}
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
 		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 		return m, fmt.Errorf("bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
@@ -151,20 +154,17 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	m[prefix+"success"] = 1
 
-	var totalBytes int
-
 	if data.ExpectedPattern != "" {
 		if !data.SearchHTMLSource {
-			bodyReaderWithCounter := datacounter.NewReaderCounter(resp.Body)
-			text := getTextFromHTML(bodyReaderWithCounter)
-			totalBytes = int(bodyReaderWithCounter.Count())
-
+			text := getTextFromHTML(resp.Body)
 			if !strings.Contains(text, data.ExpectedPattern) {
 				m[prefix+"success"] = 0
 			}
 		} else {
-			text, _ := ioutil.ReadAll(resp.Body)
-			totalBytes = len(text)
+			text, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				err = fmt.Errorf("got error while reading response body: %s", err.Error())
+			}
 
 			if !bytes.Contains(text, []byte(data.ExpectedPattern)) {
 				m[prefix+"success"] = 0
@@ -188,23 +188,49 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 		}
 
 	} else {
-		b := make([]byte, 512)
-		for true {
-			n, err := resp.Body.Read(b)
-			totalBytes += n
-			if err != nil {
-				break
-			}
+		_, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = fmt.Errorf("got error while reading response body: %s", err.Error())
 		}
-
 	}
 
-	m[prefix+"bytesReceived"] = totalBytes
+	bytesReceived := bodyReaderWithCounter.Count()
+
+	m[prefix+"bytesReceived"] = bytesReceived
 	m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 	seconds := time.Since(wroteRequestAt).Seconds()
 	if seconds > 0 {
-		m[prefix+"downloadPerformance_bps"] = int64(float64(totalBytes) / seconds) // Measure download speed since the request sent
+		m[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / seconds) // Measure download speed since the request sent
 	}
 
 	return
+}
+
+// gzipReader wraps a response body so it can lazily
+// call gzip.NewReader on the first call to Read
+type gzipReader struct {
+	body io.ReadCloser // underlying HTTP/1 response body framing
+	zr   *gzip.Reader   // lazily-initialized gzip reader
+	zerr error          // any error from gzip.NewReader; sticky
+}
+
+func (gz *gzipReader) Read(p []byte) (n int, err error) {
+	if gz.zr == nil {
+		if gz.zerr == nil {
+			gz.zr, gz.zerr = gzip.NewReader(gz.body)
+		}
+		if gz.zerr != nil {
+			return 0, gz.zerr
+		}
+	}
+
+
+	if err != nil {
+		return 0, err
+	}
+	return gz.zr.Read(p)
+}
+
+func (gz *gzipReader) Close() error {
+	return gz.body.Close()
 }
