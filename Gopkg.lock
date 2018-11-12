@@ -45,14 +45,6 @@
   revision = "615a14ed75099c9eaac6949e22ac2341bf9d3197"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b3ebd4ba2a5477edc701819833416a68c54fcb62c95e354b19362a2924eea7a8"
-  name = "github.com/miolini/datacounter"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "fd4e42a1d5e0d2714f16caf92f9c64215bf957ce"
-
-[[projects]]
   digest = "1:7395b855a6078ad2e6c40311402a057a91125fb9f32cf228e1b32cdc57c33538"
   name = "github.com/shirou/gopsutil"
   packages = [
@@ -148,7 +140,6 @@
   input-imports = [
     "github.com/BurntSushi/toml",
     "github.com/kardianos/service",
-    "github.com/miolini/datacounter",
     "github.com/shirou/gopsutil/cpu",
     "github.com/shirou/gopsutil/host",
     "github.com/shirou/gopsutil/mem",
