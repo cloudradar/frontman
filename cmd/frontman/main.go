@@ -21,6 +21,8 @@ import (
 	"github.com/cloudradar-monitoring/frontman"
 )
 
+const defaultLogLevel = "error"
+
 var (
 	// set on build:
 	// go build -o frontman -ldflags="-X main.version=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
@@ -74,7 +76,7 @@ func main() {
 	outputFilePtr := flag.String("o", "", "file to write the results (default ./results.out)")
 
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
-	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
+	logLevelPtr := flag.String("v", defaultLogLevel, "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
 	systemManager := service.ChosenSystem()
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
@@ -133,9 +135,14 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		log.SetOutput(os.Stderr)
 	}
 
+	// Check loglevel and if needed warn user and set to default
 	if *logLevelPtr == string(frontman.LogLevelError) || *logLevelPtr == string(frontman.LogLevelInfo) || *logLevelPtr == string(frontman.LogLevelDebug) {
 		fm.SetLogLevel(frontman.LogLevel(*logLevelPtr))
+	} else {
+		log.Warnf("LogLevel was set to an invalid value: \"%s\". Set to default: \"%s\"", *logLevelPtr, defaultLogLevel)
+		fm.SetLogLevel(frontman.LogLevel(defaultLogLevel))
 	}
+
 	if (inputFilePtr == nil || *inputFilePtr == "") && fm.HubURL == "" && !*serviceUninstallPtr {
 		if serviceInstallPtr != nil && *serviceInstallPtr || serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" {
 			fmt.Println(" ****** Before start you need to set 'hub_url' config param at ", *cfgPathPtr)
@@ -294,7 +301,6 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 			if err != nil {
 				fmt.Printf("Already running\n")
 			}
-
 
 			switch systemManager.String() {
 			case "unix-systemv":
