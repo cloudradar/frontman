@@ -64,8 +64,8 @@ type Frontman struct {
 
 	offlineResultsBuffer []Result
 
-	rootCAs              *x509.CertPool
-	version              string
+	rootCAs *x509.CertPool
+	version string
 }
 
 func New() *Frontman {
@@ -133,7 +133,6 @@ func New() *Frontman {
 		fm.HubPassword = os.Getenv("FRONTMAN_HUB_PASSWORD")
 	}
 
-	fm.SetLogLevel(LogLevelInfo)
 	return fm
 }
 
