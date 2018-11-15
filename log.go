@@ -78,7 +78,7 @@ func (hook *logrusFileHook) Levels() []log.Level {
 	}
 }
 
-// Sets Log level and corresponding logrus level
+// SetLogLevel sets Log level and corresponding logrus level
 func (fm *Frontman) SetLogLevel(lvl LogLevel) {
 	fm.LogLevel = lvl
 	log.SetLevel(lvl.LogrusLevel())
