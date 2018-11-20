@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -134,8 +133,8 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		return err
 	}
 
-	// in case buffer + results exceed HubMaxOfflineBufferBytes, reset buffer
-	if len(b) > fm.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
+	// in case we have HubMaxOfflineBufferBytes set(>0) and buffer + results exceed HubMaxOfflineBufferBytes -> reset buffer
+	if fm.HubMaxOfflineBufferBytes > 0 && len(b) > fm.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
 		log.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...", fm.HubMaxOfflineBufferBytes, len(results))
 
 		fm.offlineResultsBuffer = []Result{}
@@ -193,112 +192,139 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	return nil
 }
 
-func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}, once bool) {
-	var jsonEncoder *json.Encoder
-	if fm.PidFile != "" && !once && runtime.GOOS != "windows" {
-		err := ioutil.WriteFile(fm.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
+func (fm *Frontman) sendResultsChanToFileContinuously(resultsChan chan Result, outputFile *os.File) error {
+	var outputLock sync.Mutex
+	var errs []string
+	var jsonEncoder = json.NewEncoder(outputFile)
+
+	// encode and add results to the file as we get it from the chan
+	for res := range resultsChan {
+		outputLock.Lock()
+		err := jsonEncoder.Encode(res)
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+		outputLock.Unlock()
+	}
+
+	if errs != nil {
+		return fmt.Errorf("JSON encoding errors: %s", strings.Join(errs, "; "))
+	}
+
+	return nil
+}
+
+func (fm *Frontman) sendResultsChanToFile(resultsChan chan Result, outputFile *os.File) error {
+	var results []Result
+	var jsonEncoder = json.NewEncoder(outputFile)
+	for res := range resultsChan {
+		results = append(results, res)
+	}
+
+	return jsonEncoder.Encode(results)
+}
+
+func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
+	var results []Result
+	for res := range resultsChan {
+		results = append(results, res)
+	}
+	err := fm.PostResultsToHub(results)
+	if err != nil {
+		return fmt.Errorf("PostResultsToHub: %s", err.Error())
+	}
+
+	fm.offlineResultsBuffer = []Result{}
+	return nil
+}
+
+func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) error {
+	var results []Result
+	sendResultsTicker := time.Tick(secToDuration(fm.SenderModeInterval))
+	shouldReturn := false
+
+	for {
+		select {
+		case res, ok := <-resultsChan:
+			if !ok {
+				// chan was closed
+				// no more results left
+				shouldReturn = true
+				break
+			}
+
+			results = append(results, res)
+			// skip PostResultsToHub
+			continue
+		case <-sendResultsTicker:
+			break
+		}
+
+		log.Debugf("SenderModeInterval: send %d results", len(results))
+		err := fm.PostResultsToHub(results)
+		if err != nil {
+			err = fmt.Errorf("PostResultsToHub error: %s", err.Error())
+		}
+
+		if shouldReturn {
+			return err
+		}
 
 		if err != nil {
-			log.Errorf("Failed to write pid file at: %s", fm.PidFile)
+			log.Error(err)
+		}
+	}
+}
+
+func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
+	var input *Input
+	var err error
+
+	if inputFilePath == nil || *inputFilePath == "" {
+		input, err = fm.InputFromHub()
+		if err != nil {
+			auth := ""
+			if fm.HubUser != "" {
+				auth = fmt.Sprintf(" (%s:***)", fm.HubUser)
+			}
+			return fmt.Errorf("InputFromHub%s: %s", auth, err.Error())
+		}
+	} else {
+		input, err = InputFromFile(*inputFilePath)
+		if err != nil {
+			return fmt.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
 		}
 	}
 
-	if outputFile != nil {
-		jsonEncoder = json.NewEncoder(outputFile)
+	// in case HUB server will hang on response we will need a buffer to continue perform checks
+	resultsChan := make(chan Result, 100)
+
+	if input != nil {
+		go fm.processInput(input, resultsChan)
+	} else {
+		close(resultsChan)
 	}
 
-	sendResultsTicker := time.Tick(secToDuration(fm.SenderModeInterval))
+	if outputFile != nil && writeResultsChanToFileContinously {
+		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
+	} else if outputFile != nil {
+		err = fm.sendResultsChanToFile(resultsChan, outputFile)
+	} else if fm.SenderMode == SenderModeInterval {
+		err = fm.sendResultsChanToHubWithInterval(resultsChan)
+	} else if fm.SenderMode == SenderModeWait {
+		err = fm.sendResultsChanToHub(resultsChan)
+	}
 
-	outputLock := sync.Mutex{}
+	if err != nil {
+		return fmt.Errorf("Failed to process results: %s", err.Error())
+	}
 
+	return nil
+}
+
+func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}) {
 	for true {
-		var results []Result
-		var input *Input
-		var err error
-		if inputFilePath == nil || *inputFilePath == "" {
-			input, err = fm.InputFromHub()
-
-			if err != nil {
-				auth := ""
-				if fm.HubUser != "" {
-					auth = fmt.Sprintf(" (%s:***)", fm.HubUser)
-				}
-				log.Errorf("InputFromHub%s: %s", auth, err.Error())
-			}
-		} else {
-			input, err = InputFromFile(*inputFilePath)
-
-			if err != nil {
-				log.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
-			}
-		}
-
-		// in case HUB server will hang on response we will need a buffer to continue perform checks
-		resultsChan := make(chan Result, 100)
-
-		if input != nil {
-			go fm.onceChan(input, resultsChan)
-		} else {
-			close(resultsChan)
-		}
-
-		if outputFile != nil && once {
-			for res := range resultsChan {
-				results = append(results, res)
-			}
-
-			err := jsonEncoder.Encode(results)
-			if err != nil {
-				log.Errorf("results JSON encoding error: %s", err.Error())
-			}
-			return
-		} else if outputFile != nil {
-			for res := range resultsChan {
-				outputLock.Lock()
-				jsonEncoder.Encode(res)
-				outputLock.Unlock()
-			}
-		} else if fm.SenderMode == SenderModeInterval {
-		modeIntervalLoop:
-			for {
-				select {
-				case res, ok := <-resultsChan:
-					if !ok {
-						// chan was closed
-						break modeIntervalLoop
-					}
-					results = append(results, res)
-				case <-sendResultsTicker:
-					log.Debugf("SenderModeInterval: send %d results", len(results))
-					err := fm.PostResultsToHub(results)
-					if err != nil {
-						log.Errorf("PostResultsToHub: %s", err.Error())
-					} else {
-						results = []Result{}
-					}
-					if once {
-						return
-					}
-				case <-interrupt:
-					return
-				default:
-					continue
-				}
-			}
-		} else if fm.SenderMode == SenderModeWait {
-			for res := range resultsChan {
-				results = append(results, res)
-			}
-			err := fm.PostResultsToHub(results)
-			if err != nil {
-				log.Errorf("PostResultsToHub: %s", err.Error())
-			} else {
-				results = []Result{}
-			}
-			if once {
-				return
-			}
-		}
+		fm.RunOnce(inputFilePath, outputFile, interrupt, false)
 
 		select {
 		case <-interrupt:
@@ -309,7 +335,7 @@ func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt ch
 	}
 }
 
-func (fm *Frontman) onceChan(input *Input, resultsChan chan<- Result) {
+func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 
 	startedAt := time.Now()
