@@ -122,7 +122,8 @@ func (fm *Frontman) executeCheck(conn net.Conn, service, hostname string) error 
 		err = checkHTTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
 		break
 	case "tcp":
-		// TODO: Nothing to do in tcp case or report an error? If nothing why?
+		// In the previous call to net.Dial the test basically already happened while establishing the connection
+		// so we don't have to do anything additional here.
 		break
 	default:
 		err = fmt.Errorf("unknown service '%s'", service)
