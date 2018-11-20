@@ -188,13 +188,11 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 			fm.HubProxy = "http://" + fm.HubProxy
 		}
 		_, err := url.Parse(fm.HubProxy)
-
 		if err != nil {
 			return fmt.Errorf("Failed to parse 'hub_proxy' URL")
 		}
 	}
 
-	fm.SetLogLevel(fm.LogLevel)
 	if fm.LogFile != "" {
 		err := addLogFileHook(fm.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
