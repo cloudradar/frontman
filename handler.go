@@ -442,7 +442,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 
 	if len(fm.SystemFields) == 0 {
 		log.Warnf("[SYSTEM] HostInfoResults called but no SystemFields are defined.")
-		return nil, fmt.Errorf("No system_fields defined")
+		return res, fmt.Errorf("No system_fields defined")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
