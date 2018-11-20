@@ -111,7 +111,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.initHubHttpClient()
 
 	var err error
-	hostInfo := make(MeasurementsMap)
+	var hostInfo MeasurementsMap
 
 	if !fm.hostInfoSent {
 		// Fetch hostInfo

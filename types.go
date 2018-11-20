@@ -49,7 +49,7 @@ type WebCheckData struct {
 
 type Results struct {
 	Results  []Result               `json:"results"`
-	HostInfo map[string]interface{} `json:"hostInfo"`
+	HostInfo map[string]interface{} `json:"hostInfo,omitempty"`
 }
 
 type Result struct {
