@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"bytes"
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
@@ -151,6 +152,19 @@ func (fm *Frontman) userAgent() string {
 	parts := strings.Split(fm.version, "-")
 
 	return fmt.Sprintf("Frontman v%s %s %s", parts[0], runtime.GOOS, runtime.GOARCH)
+}
+
+func (fm *Frontman) DumpConfigToml() string {
+	buff := &bytes.Buffer{}
+	enc := toml.NewEncoder(buff)
+	err := enc.Encode(fm)
+
+	if err != nil {
+		log.Errorf("DumpConfigToml error: %s", err.Error())
+		return ""
+	}
+
+	return buff.String()
 }
 
 func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists bool) error {
