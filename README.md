@@ -1,16 +1,6 @@
-## How to build from sources
-- [Install Golang 1.9 or newer](https://golang.org/dl/)
-```bash
-go get -d -u github.com/cloudradar-monitoring/frontman
-go build -o frontman -ldflags="-X main.version=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
-```
-
-## Run the example
-
-```bash
-./frontman -i src/github.com/cloudradar-monitoring/frontman/example.json -o result.out
-```
-Use `ctrl-c` to stop it
+## Frontman - at a glance
+Frontman is a general purpose monitoring proxy which performs checks on foreign hosts. 
+The main goal is to check services and performs other checks, where no logon-rights are needed for.
 
 ## What kind of checks frontman can perform
 * [ICMP ping](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L53)
@@ -29,6 +19,14 @@ Use `ctrl-c` to stop it
      * [Check status](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L4)
      * [Match raw HTML pattern](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L31)
      * [Match extracted text patter](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L28)
+     
+## Run the example
+
+```bash
+./frontman -i src/github.com/cloudradar-monitoring/frontman/example.json -o result.out
+```
+Use `ctrl-c` to stop it    
+
 ## Command line Usage
 ```
 Usage of frontman:
@@ -60,6 +58,13 @@ Also you may want to check the [example config](https://github.com/cloudradar-mo
 * Mac OS: `~/.frontman/frontman.log`
 * Windows: `./frontman.log`
 * UNIX: `/etc/frontman/frontman.conf`
+
+## How to build from sources
+- [Install Golang 1.9 or newer](https://golang.org/dl/)
+```bash
+go get -d -u github.com/cloudradar-monitoring/frontman
+go build -o frontman -ldflags="-X main.version=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
+```
 
 ## Build binaries and deb/rpm packages
 – Install [goreleaser](https://goreleaser.com/introduction/)
