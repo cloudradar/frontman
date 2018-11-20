@@ -111,7 +111,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.initHubHttpClient()
 
 	var err error
-	var hostInfo MeasurementsMap
+	hostInfo := make(MeasurementsMap)
 
 	if !fm.hostInfoSent {
 		// Fetch hostInfo
@@ -126,7 +126,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	// Bundle hostInfo and results
 	b, err := json.Marshal(Results{
-		Results: fm.offlineResultsBuffer,
+		Results:  fm.offlineResultsBuffer,
 		HostInfo: hostInfo,
 	})
 
