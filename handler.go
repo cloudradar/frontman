@@ -324,8 +324,10 @@ func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrup
 
 func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}) {
 	for true {
-		fm.RunOnce(inputFilePath, outputFile, interrupt, false)
-
+		err := fm.RunOnce(inputFilePath, outputFile, interrupt, false)
+		if err != nil {
+			log.Error(err)
+		}
 		select {
 		case <-interrupt:
 			return

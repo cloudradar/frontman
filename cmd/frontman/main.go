@@ -346,7 +346,10 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 	}
 
 	if *oneRunOnlyModePtr == true {
-		fm.RunOnce(inputFilePtr, output, interruptChan, false)
+		err := fm.RunOnce(inputFilePtr, output, interruptChan, false)
+		if err != nil {
+			log.Error(err)
+		}
 		return
 	} else {
 		go func() {
