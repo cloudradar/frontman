@@ -239,8 +239,10 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 }
 
 func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) error {
+	sendResultsTicker := time.NewTicker(secToDuration(fm.SenderModeInterval))
+	defer sendResultsTicker.Stop()
+
 	var results []Result
-	sendResultsTicker := time.Tick(secToDuration(fm.SenderModeInterval))
 	shouldReturn := false
 
 	for {
@@ -256,7 +258,7 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 			results = append(results, res)
 			// skip PostResultsToHub
 			continue
-		case <-sendResultsTicker:
+		case <-sendResultsTicker.C:
 			break
 		}
 
@@ -323,7 +325,7 @@ func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrup
 }
 
 func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}) {
-	for true {
+	for {
 		err := fm.RunOnce(inputFilePath, outputFile, interrupt, false)
 		if err != nil {
 			log.Error(err)
