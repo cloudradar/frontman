@@ -32,33 +32,52 @@ var defaultPortByService = map[string]int{
 
 var errorFailedToVerifyService = errors.New("Failed to verify service")
 
-func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (m MeasurementsMap, err error) {
-
+func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (MeasurementsMap, error) {
 	service = strings.ToLower(service)
 
+	// Check if we have to autodetect port by service name
 	if addr.Port <= 0 {
-		if port, exists := defaultPortByService[service]; exists {
-			addr.Port = port
-		} else {
-			err = fmt.Errorf("failed to auto-determine port for '%s'", service)
-			return
+		// Lookup service by default port
+		port, exists := defaultPortByService[service]
+		if !exists {
+			return nil, fmt.Errorf("failed to auto-determine port for '%s'", service)
 		}
+		addr.Port = port
 	}
 
 	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, addr.Port)
 
-	m = MeasurementsMap{
+	// Initialise MeasurementsMap
+	m := MeasurementsMap{
 		prefix + "success": 0,
 	}
 
+	// Start measuring execution time
 	started := time.Now()
+
+	// Open connection to the specified addr
 	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))
 	if err != nil {
-		return
+		return nil, err
 	}
-
 	defer conn.Close()
 
+	// Execute the check
+	err = fm.executeCheck(conn, service, hostname)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
+	}
+
+	// Stop measuring execution time
+	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
+	m[prefix+"success"] = 1
+
+	return m, nil
+}
+
+// executeCheck executes the check based on the passed service name
+func (fm *Frontman) executeCheck(conn net.Conn, service, hostname string) error {
+	var err error
 	switch service {
 	case "ftp":
 		err = checkFTP(conn, secToDuration(fm.NetTCPTimeout))
@@ -103,20 +122,13 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		err = checkHTTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
 		break
 	case "tcp":
+		// TODO: Nothing to do in tcp case or report an error? If nothing why?
 		break
 	default:
 		err = fmt.Errorf("unknown service '%s'", service)
-		return
 	}
 
-	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
-	if err == nil {
-		m[prefix+"success"] = 1
-	} else {
-		err = fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
-	}
-
-	return
+	return err
 }
 
 func checkNNTP(conn net.Conn, timeout time.Duration) error {
