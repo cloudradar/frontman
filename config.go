@@ -161,6 +161,7 @@ func (fm *Frontman) DumpConfigToml() string {
 
 	if err != nil {
 		log.Errorf("DumpConfigToml error: %s", err.Error())
+		return ""
 	}
 
 	return buff.String()
