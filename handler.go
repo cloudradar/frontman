@@ -283,9 +283,12 @@ func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrup
 	var err error
 
 	if inputFilePath == nil || *inputFilePath == "" {
+		// input file is not specified
+		// lets try to request the HUB
 		input, err = fm.InputFromHub()
 		if err != nil {
 			if fm.HubUser != "" {
+				// include Basic Auth login for the context if available
 				return fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
 			}
 			
