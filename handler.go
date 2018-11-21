@@ -278,28 +278,8 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 	}
 }
 
-func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
-	var input *Input
+func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
 	var err error
-
-	if inputFilePath == nil || *inputFilePath == "" {
-		// input file is not specified
-		// lets try to request the HUB
-		input, err = fm.InputFromHub()
-		if err != nil {
-			if fm.HubUser != "" {
-				// include Basic Auth login for the context if available
-				return fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
-			}
-			
-			return fmt.Errorf("InputFromHub: %s", err.Error())
-		}
-	} else {
-		input, err = InputFromFile(*inputFilePath)
-		if err != nil {
-			return fmt.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
-		}
-	}
 
 	// in case HUB server will hang on response we will need a buffer to continue perform checks
 	resultsChan := make(chan Result, 100)
@@ -327,12 +307,44 @@ func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrup
 	return nil
 }
 
-func (fm *Frontman) Run(inputFilePath *string, outputFile *os.File, interrupt chan struct{}) {
+func (fm *Frontman) FetchInput(inputFilePath *string) (*Input, error) {
+	var input *Input
+	var err error
+
+	if inputFilePath == nil || *inputFilePath == "" {
+		// input file is not specified
+		// lets try to request the HUB
+		input, err = fm.InputFromHub()
+		if err != nil {
+			if fm.HubUser != "" {
+				// include Basic Auth login for the context if available
+				return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
+			}
+
+			return nil, fmt.Errorf("InputFromHub: %s", err.Error())
+		}
+	}
+
+	input, err = InputFromFile(*inputFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
+	}
+
+	return input, nil
+}
+
+func (fm *Frontman) Run(inputFilePtr *string, outputFile *os.File, interrupt chan struct{}) {
 	for {
-		err := fm.RunOnce(inputFilePath, outputFile, interrupt, false)
+		input, err := fm.FetchInput(inputFilePtr)
 		if err != nil {
 			log.Error(err)
+		} else {
+			err := fm.RunOnce(input, outputFile, interrupt, false)
+			if err != nil {
+				log.Error(err)
+			}
 		}
+
 		select {
 		case <-interrupt:
 			return
