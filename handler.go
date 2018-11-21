@@ -323,6 +323,7 @@ func (fm *Frontman) FetchInput(inputFilePath *string) (*Input, error) {
 
 			return nil, fmt.Errorf("InputFromHub: %s", err.Error())
 		}
+		return input, nil
 	}
 
 	input, err = InputFromFile(*inputFilePath)
