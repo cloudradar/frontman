@@ -115,6 +115,11 @@ func main() {
 		}
 	}
 
+	err := fm.Initialize()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if *printConfigPtr {
 		fmt.Println(fm.DumpConfigToml())
 		return
@@ -159,7 +164,6 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 		}
 	}
 
-	var err error
 	var output *os.File
 
 	if inputFilePtr != nil && *inputFilePtr != "" {

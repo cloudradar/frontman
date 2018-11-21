@@ -186,17 +186,18 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 		defer f.Close()
 		enc := toml.NewEncoder(f)
 		enc.Encode(fm)
-	} else {
-		_, err = os.Stat(configFilePath)
-		if err != nil {
-			return err
-		}
-		_, err = toml.DecodeFile(configFilePath, &fm)
-		if err != nil {
-			return err
-		}
 	}
 
+	_, err = os.Stat(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	_, err = toml.DecodeFile(configFilePath, &fm)
+	return err
+}
+
+func (fm *Frontman) Initialize() error {
 	if fm.HubProxy != "" {
 		if !strings.HasPrefix(fm.HubProxy, "http") {
 			fm.HubProxy = "http://" + fm.HubProxy
@@ -220,5 +221,6 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 			log.Error("Can't set up syslog: ", err.Error())
 		}
 	}
+
 	return nil
 }
