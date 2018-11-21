@@ -311,26 +311,24 @@ func (fm *Frontman) FetchInput(inputFilePath *string) (*Input, error) {
 	var input *Input
 	var err error
 
-	if inputFilePath == nil || *inputFilePath == "" {
-		// input file is not specified
-		// lets try to request the HUB
-		input, err = fm.InputFromHub()
+	if inputFilePath != nil && *inputFilePath != "" {
+		input, err = InputFromFile(*inputFilePath)
 		if err != nil {
-			if fm.HubUser != "" {
-				// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
-				// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
-
-				return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
-			}
-
-			return nil, fmt.Errorf("InputFromHub: %s", err.Error())
+			return nil, fmt.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
 		}
 		return input, nil
 	}
 
-	input, err = InputFromFile(*inputFilePath)
+	// in case input file not specified this means we should request HUB instead
+	input, err = fm.InputFromHub()
 	if err != nil {
-		return nil, fmt.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
+		if fm.HubUser != "" {
+			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
+			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
+			return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
+		}
+
+		return nil, fmt.Errorf("InputFromHub: %s", err.Error())
 	}
 
 	return input, nil
