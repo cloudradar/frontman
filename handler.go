@@ -285,11 +285,11 @@ func (fm *Frontman) RunOnce(inputFilePath *string, outputFile *os.File, interrup
 	if inputFilePath == nil || *inputFilePath == "" {
 		input, err = fm.InputFromHub()
 		if err != nil {
-			auth := ""
 			if fm.HubUser != "" {
-				auth = fmt.Sprintf(" (%s:***)", fm.HubUser)
+				return fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
 			}
-			return fmt.Errorf("InputFromHub%s: %s", auth, err.Error())
+			
+			return fmt.Errorf("InputFromHub: %s", err.Error())
 		}
 	} else {
 		input, err = InputFromFile(*inputFilePath)
