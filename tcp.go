@@ -54,22 +54,25 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 
 	// Start measuring execution time
 	started := time.Now()
+	// Calculate execution time in the end
+	defer func() {
+		m[prefix+"connectTime_s"] = time.Since(started).Seconds()
+	}()
 
 	// Open connection to the specified addr
 	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 	defer conn.Close()
 
 	// Execute the check
 	err = fm.executeCheck(conn, service, hostname)
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
+		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
 
-	// Stop measuring execution time
-	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
+	// Mark check as successfull
 	m[prefix+"success"] = 1
 
 	return m, nil
