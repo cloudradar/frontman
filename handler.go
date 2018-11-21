@@ -317,7 +317,9 @@ func (fm *Frontman) FetchInput(inputFilePath *string) (*Input, error) {
 		input, err = fm.InputFromHub()
 		if err != nil {
 			if fm.HubUser != "" {
-				// include Basic Auth login for the context if available
+				// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
+				// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
+
 				return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
 			}
 
