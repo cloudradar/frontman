@@ -344,12 +344,29 @@ sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
 	interruptChan := make(chan struct{})
 	doneChan := make(chan struct{})
 
+	if fm.PidFile != "" && *oneRunOnlyModePtr && runtime.GOOS != "windows" {
+		err := ioutil.WriteFile(fm.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
+		if err != nil {
+			log.Errorf("Failed to write pid file at: %s", fm.PidFile)
+		}
+	}
+
 	if *oneRunOnlyModePtr == true {
-		fm.Run(inputFilePtr, output, interruptChan, true)
+		input, err := fm.FetchInput(inputFilePtr)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		err = fm.RunOnce(input, output, interruptChan, false)
+		if err != nil {
+			log.Error(err)
+			return
+		}
 		return
 	} else {
 		go func() {
-			fm.Run(inputFilePtr, output, interruptChan, false)
+			fm.Run(inputFilePtr, output, interruptChan)
 			doneChan <- struct{}{}
 		}()
 	}
@@ -397,7 +414,7 @@ func (sw *serviceWrapper) Start(s service.Service) error {
 	sw.DoneChan = make(chan struct{})
 	go func() {
 		s := ""
-		sw.Frontman.Run(&s, nil, sw.InterruptChan, false)
+		sw.Frontman.Run(&s, nil, sw.InterruptChan)
 		sw.DoneChan <- struct{}{}
 	}()
 
