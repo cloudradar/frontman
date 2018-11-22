@@ -32,91 +32,107 @@ var defaultPortByService = map[string]int{
 
 var errorFailedToVerifyService = errors.New("Failed to verify service")
 
-func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (m MeasurementsMap, err error) {
-
+func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (MeasurementsMap, error) {
 	service = strings.ToLower(service)
 
+	// Check if we have to autodetect port by service name
 	if addr.Port <= 0 {
-		if port, exists := defaultPortByService[service]; exists {
-			addr.Port = port
-		} else {
-			err = fmt.Errorf("failed to auto-determine port for '%s'", service)
-			return
+		// Lookup service by default port
+		port, exists := defaultPortByService[service]
+		if !exists {
+			return nil, fmt.Errorf("failed to auto-determine port for '%s'", service)
 		}
+		addr.Port = port
 	}
 
 	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, addr.Port)
 
-	m = MeasurementsMap{
+	// Initialise MeasurementsMap
+	m := MeasurementsMap{
 		prefix + "success": 0,
 	}
 
+	// Start measuring execution time
 	started := time.Now()
+	// Calculate execution time in the end
+	defer func() {
+		m[prefix+"connectTime_s"] = time.Since(started).Seconds()
+	}()
+
+	// Open connection to the specified addr
 	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))
 	if err != nil {
-		return
+		return m, err
 	}
-
 	defer conn.Close()
 
+	// Execute the check
+	err = executeServiceCheck(conn, fm.NetTCPTimeout, service, hostname)
+	if err != nil {
+		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
+	}
+
+	// Mark check as successfull
+	m[prefix+"success"] = 1
+
+	return m, nil
+}
+
+// executeServiceCheck executes a check based on the passed protocol name on the given connection
+func executeServiceCheck(conn net.Conn, tcpTimeout float64, service, hostname string) error {
+	var err error
 	switch service {
 	case "ftp":
-		err = checkFTP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkFTP(conn, secToDuration(tcpTimeout))
 		break
 	case "ftps":
-		err = checkFTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkFTPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "imap":
-		err = checkIMAP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkIMAP(conn, secToDuration(tcpTimeout))
 		break
 	case "imaps":
-		err = checkIMAPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkIMAPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "smtp":
-		err = checkSMTP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkSMTP(conn, secToDuration(tcpTimeout))
 		break
 	case "smtps":
-		err = checkSMTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkSMTPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "pop3":
-		err = checkPOP3(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkPOP3(conn, secToDuration(tcpTimeout))
 		break
 	case "pop3s":
-		err = checkPOP3S(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkPOP3S(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "ssh":
-		err = checkSSH(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkSSH(conn, secToDuration(tcpTimeout))
 		break
 	case "nntp":
-		err = checkNNTP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkNNTP(conn, secToDuration(tcpTimeout))
 		break
 	case "ldap":
-		err = checkLDAP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkLDAP(conn, secToDuration(tcpTimeout))
 		break
 	case "ldaps":
-		err = checkLDAPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkLDAPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "http":
-		err = checkHTTP(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkHTTP(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "https":
-		err = checkHTTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkHTTPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "tcp":
+		// In the previous call to net.Dial the test basically already happened while establishing the connection
+		// so we don't have to do anything additional here.
 		break
 	default:
 		err = fmt.Errorf("unknown service '%s'", service)
-		return
 	}
 
-	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
-	if err == nil {
-		m[prefix+"success"] = 1
-	} else {
-		err = fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
-	}
-
-	return
+	return err
 }
 
 func checkNNTP(conn net.Conn, timeout time.Duration) error {
