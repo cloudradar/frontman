@@ -168,13 +168,7 @@ func (fm *Frontman) DumpConfigToml() string {
 }
 
 func (fm *Frontman) ReadConfigFromFile(configFilePath string) error {
-	dir := filepath.Dir(configFilePath)
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.WithError(err).Errorf("Failed to create the config dir: '%s'", dir)
-	}
-
-	_, err = os.Stat(configFilePath)
+	_, err := os.Stat(configFilePath)
 	if err != nil {
 		return err
 	}
@@ -186,6 +180,12 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string) error {
 func (fm *Frontman) CreateDefaultConfigFile(configFilePath string) error {
 	if _, err := os.Stat(configFilePath); os.IsExist(err) {
 		return fmt.Errorf("Config already exists at path: %s", configFilePath)
+	}
+
+	dir := filepath.Dir(configFilePath)
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		log.WithError(err).Errorf("Failed to create the config dir: '%s'", dir)
 	}
 
 	f, err := os.OpenFile(configFilePath, os.O_WRONLY|os.O_CREATE, 0644)
