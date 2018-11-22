@@ -67,7 +67,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	defer conn.Close()
 
 	// Execute the check
-	err = executeCheck(conn, fm.NetTCPTimeout, service, hostname)
+	err = executeServiceCheck(conn, fm.NetTCPTimeout, service, hostname)
 	if err != nil {
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
@@ -78,8 +78,8 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	return m, nil
 }
 
-// executeCheck executes the check based on the passed service name on the given connection
-func executeCheck(conn net.Conn, tcpTimeout float64, service, hostname string) error {
+// executeServiceCheck executes a check based on the passed protocol name on the given connection
+func executeServiceCheck(conn net.Conn, tcpTimeout float64, service, hostname string) error {
 	var err error
 	switch service {
 	case "ftp":
