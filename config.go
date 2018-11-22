@@ -167,36 +167,38 @@ func (fm *Frontman) DumpConfigToml() string {
 	return buff.String()
 }
 
-func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists bool) error {
+func (fm *Frontman) ReadConfigFromFile(configFilePath string) error {
+	_, err := os.Stat(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	_, err = toml.DecodeFile(configFilePath, &fm)
+	return err
+}
+
+func (fm *Frontman) CreateDefaultConfigFile(configFilePath string) error {
+	if _, err := os.Stat(configFilePath); os.IsExist(err) {
+		return fmt.Errorf("Config already exists at path: %s", configFilePath)
+	}
+
 	dir := filepath.Dir(configFilePath)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to create the config dir: '%s'", dir)
 	}
 
-	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-		if !createIfNotExists {
-			return fmt.Errorf("Config file not exists: %s", configFilePath)
-		}
-		f, err := os.OpenFile(configFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-
-		if err != nil {
-			return fmt.Errorf("Failed to create the default config file: '%s'", configFilePath)
-		}
-		defer f.Close()
-		enc := toml.NewEncoder(f)
-		enc.Encode(fm)
-	} else {
-		_, err = os.Stat(configFilePath)
-		if err != nil {
-			return err
-		}
-		_, err = toml.DecodeFile(configFilePath, &fm)
-		if err != nil {
-			return err
-		}
+	f, err := os.OpenFile(configFilePath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("Failed to create the default config file: '%s'", configFilePath)
 	}
+	defer f.Close()
 
+	enc := toml.NewEncoder(f)
+	return enc.Encode(fm)
+}
+
+func (fm *Frontman) Initialize() error {
 	if fm.HubProxy != "" {
 		if !strings.HasPrefix(fm.HubProxy, "http") {
 			fm.HubProxy = "http://" + fm.HubProxy
@@ -220,5 +222,6 @@ func (fm *Frontman) ReadConfigFromFile(configFilePath string, createIfNotExists 
 			log.Error("Can't set up syslog: ", err.Error())
 		}
 	}
+
 	return nil
 }
