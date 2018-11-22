@@ -67,7 +67,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	defer conn.Close()
 
 	// Execute the check
-	err = fm.executeCheck(conn, service, hostname)
+	err = executeCheck(conn, fm.NetTCPTimeout, service, hostname)
 	if err != nil {
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
@@ -78,51 +78,51 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	return m, nil
 }
 
-// executeCheck executes the check based on the passed service name
-func (fm *Frontman) executeCheck(conn net.Conn, service, hostname string) error {
+// executeCheck executes the check based on the passed service name on the given connection
+func executeCheck(conn net.Conn, tcpTimeout float64, service, hostname string) error {
 	var err error
 	switch service {
 	case "ftp":
-		err = checkFTP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkFTP(conn, secToDuration(tcpTimeout))
 		break
 	case "ftps":
-		err = checkFTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkFTPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "imap":
-		err = checkIMAP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkIMAP(conn, secToDuration(tcpTimeout))
 		break
 	case "imaps":
-		err = checkIMAPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkIMAPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "smtp":
-		err = checkSMTP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkSMTP(conn, secToDuration(tcpTimeout))
 		break
 	case "smtps":
-		err = checkSMTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkSMTPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "pop3":
-		err = checkPOP3(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkPOP3(conn, secToDuration(tcpTimeout))
 		break
 	case "pop3s":
-		err = checkPOP3S(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkPOP3S(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "ssh":
-		err = checkSSH(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkSSH(conn, secToDuration(tcpTimeout))
 		break
 	case "nntp":
-		err = checkNNTP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkNNTP(conn, secToDuration(tcpTimeout))
 		break
 	case "ldap":
-		err = checkLDAP(conn, secToDuration(fm.NetTCPTimeout))
+		err = checkLDAP(conn, secToDuration(tcpTimeout))
 		break
 	case "ldaps":
-		err = checkLDAPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkLDAPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "http":
-		err = checkHTTP(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkHTTP(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "https":
-		err = checkHTTPS(conn, hostname, secToDuration(fm.NetTCPTimeout))
+		err = checkHTTPS(conn, hostname, secToDuration(tcpTimeout))
 		break
 	case "tcp":
 		// In the previous call to net.Dial the test basically already happened while establishing the connection
