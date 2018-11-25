@@ -1,21 +1,21 @@
 package frontman
 
 import (
+	"bytes"
+	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
 	"strings"
 	"time"
-	"bytes"
-	"context"
-	"fmt"
-	"io/ioutil"
-	
-	"golang.org/x/net/html"
+
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
+	"golang.org/x/net/html"
 )
 
 func getTextFromHTML(r io.Reader) (text string) {
@@ -71,8 +71,10 @@ func (fm *Frontman) initHttpTransport() {
 func isBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
 	var text []byte
 
+	var whereSuffix string
 	if extractTextFromHTML {
 		text = []byte(getTextFromHTML(reader))
+		whereSuffix = "in the raw HTML"
 	} else {
 		var err error
 		// read and search in raw file
@@ -80,14 +82,16 @@ func isBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFro
 		if err != nil {
 			return fmt.Errorf("got error while reading response body: %s", err.Error())
 		}
+		whereSuffix = "in the extracted text"
 	}
 
 	if !bytes.Contains(text, []byte(pattern)) {
-		return fmt.Errorf("pattern '%s' not found %s", pattern)
+		return fmt.Errorf("pattern '%s' not found %s", pattern, whereSuffix)
 	}
 
 	return nil
 }
+
 func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, error) {
 	prefix := fmt.Sprintf("http.%s.", data.Method)
 	m := make(map[string]interface{})
