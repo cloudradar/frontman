@@ -97,28 +97,11 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
-	if fm.httpTransport == nil {
-		fm.initHttpTransport()
-	}
-
-	httpClient := &http.Client{Transport: fm.httpTransport}
+	httpClientWithMaxRedirection := fm.newHTTPClientWithCustomMaxRedirectionsLimit(fm.HTTPCheckMaxRedirects)
 	timeout := fm.HTTPCheckTimeout
 
 	if data.Timeout < timeout {
 		timeout = fm.HTTPCheckTimeout
-	}
-
-	var tooManyRedirects error
-	httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if data.DontFollowRedirects {
-			return http.ErrUseLastResponse
-		} else if fm.HTTPCheckMaxRedirects > 0 {
-			if len(via) > fm.HTTPCheckMaxRedirects {
-				tooManyRedirects = fmt.Errorf("too many(>%d) redirects", fm.HTTPCheckMaxRedirects)
-				return http.ErrUseLastResponse
-			}
-		}
-		return nil
 	}
 
 	data.Method = strings.ToUpper(data.Method)
@@ -151,9 +134,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	resp, err := httpClient.Do(req)
-	if tooManyRedirects != nil {
-		return m, tooManyRedirects
+	resp, err := httpClientWithMaxRedirection.Do(req)
+	if httpClientWithMaxRedirection.Err != nil {
+		// we exceed max redirection number
+		return m, httpClientWithMaxRedirection.Err
 	} else if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
 	} else if err != nil {
@@ -202,4 +186,29 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 
 	m[prefix+"success"] = 1
 	return m, nil
+}
+
+type httpClientAndError struct {
+	*http.Client
+	Err error
+}
+
+func (fm *Frontman) newHTTPClientWithCustomMaxRedirectionsLimit(maxRedirects int) *httpClientAndError {
+	if fm.httpTransport == nil {
+		fm.initHttpTransport()
+	}
+
+	client := &httpClientAndError{&http.Client{Transport: fm.httpTransport}, nil}
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if maxRedirects <= 0 {
+			return http.ErrUseLastResponse
+		} else if fm.HTTPCheckMaxRedirects > 0 {
+			if len(via) > fm.HTTPCheckMaxRedirects {
+				client.Err = fmt.Errorf("too many(>%d) redirects", fm.HTTPCheckMaxRedirects)
+				return http.ErrUseLastResponse
+			}
+		}
+		return nil
+	}
+	return client
 }
