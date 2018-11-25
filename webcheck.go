@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	
 	"golang.org/x/net/html"
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
@@ -67,9 +68,29 @@ func (fm *Frontman) initHttpTransport() {
 	}
 }
 
-func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, err error) {
+func isBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
+	var text []byte
+
+	if extractTextFromHTML {
+		text = []byte(getTextFromHTML(reader))
+	} else {
+		var err error
+		// read and search in raw file
+		text, err = ioutil.ReadAll(reader)
+		if err != nil {
+			return fmt.Errorf("got error while reading response body: %s", err.Error())
+		}
+	}
+
+	if !bytes.Contains(text, []byte(pattern)) {
+		return fmt.Errorf("pattern '%s' not found %s", pattern)
+	}
+
+	return nil
+}
+func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, error) {
 	prefix := fmt.Sprintf("http.%s.", data.Method)
-	m = make(map[string]interface{})
+	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
 	if fm.httpTransport == nil {
@@ -98,12 +119,14 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	data.Method = strings.ToUpper(data.Method)
 	req, err := http.NewRequest(data.Method, data.URL, nil)
-
 	if err != nil {
-		return
+		return m, err
 	}
 
 	startedConnectonAt := time.Now()
+	defer func() {
+		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
+	}()
 	var wroteRequestAt time.Time
 
 	trace := &httptrace.ClientTrace{
@@ -119,91 +142,60 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (m map[string]interface{}, er
 
 	if data.Method == "POST" && data.PostData != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(data.PostData))
-		req.Body.Close()
+		// close noop closer to bypass lint warnings
+		_ = req.Body.Close()
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
 	resp, err := httpClient.Do(req)
-
-	if resp != nil {
-		m[prefix+"httpStatusCode"] = resp.StatusCode
-	}
-
 	if tooManyRedirects != nil {
-		err = tooManyRedirects
-		return
+		return m, tooManyRedirects
+	} else if ctx.Err() == context.DeadlineExceeded {
+		return m, fmt.Errorf("got timeout while performing request")
 	} else if err != nil {
-		if ctx.Err() != nil && ctx.Err() == context.DeadlineExceeded {
-			err = fmt.Errorf("got timeout while performing request")
-		} else {
-			err = fmt.Errorf("got error while performing request: %s", err.Error())
-		}
-		return
+		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
-	defer resp.Body.Close()
 
-	// wrap ReadCloser with the ReadCloserCounter
-	bodyReaderWithCounter := datacounters.NewReadCloserCounter(resp.Body)
-	resp.Body = bodyReaderWithCounter
-
-	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip"){
-		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
-	}
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
-		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 		return m, fmt.Errorf("bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
-	m[prefix+"success"] = 1
+	// wrap body reader with the ReadCloserCounter
+	bodyReaderWithCounter := datacounters.NewReadCloserCounter(resp.Body)
+	resp.Body = bodyReaderWithCounter
+
+	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip") {
+		// wrap body reader with gzip reader
+		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
+	}
+	defer func() {
+		// don't care about body close error
+		// because it doesn't affects any kind of checks we have
+		_ = resp.Body.Close()
+	}()
 
 	if data.ExpectedPattern != "" {
-		if !data.SearchHTMLSource {
-			text := getTextFromHTML(resp.Body)
-			if !strings.Contains(text, data.ExpectedPattern) {
-				m[prefix+"success"] = 0
-			}
-		} else {
-			// read and search in raw file
-			text, readErr := ioutil.ReadAll(resp.Body)
-			if readErr != nil {
-				err = fmt.Errorf("got error while reading response body: %s", readErr.Error())
-				m[prefix+"success"] = 0
-			} else if !bytes.Contains(text, []byte(data.ExpectedPattern)) {
-				m[prefix+"success"] = 0
-			}
-		}
-
-		if m[prefix+"success"] == 0 {
-			where := "in the text"
-			if data.SearchHTMLSource {
-				where = "in the raw HTML"
-			}
-			if ctx.Err() != nil {
-				if ctx.Err() == context.DeadlineExceeded {
-					err = fmt.Errorf("got timeout while reading response body")
-				} else {
-					err = fmt.Errorf("got error while reading response body: %s", ctx.Err().Error())
-				}
-			} else {
-				err = fmt.Errorf("pattern '%s' not found %s", data.ExpectedPattern, where)
-			}
-		}
-
+		err = isBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, !data.SearchHTMLSource)
 	} else {
+		// we don't need the content itself
+		// just read the reader, so bodyReaderWithCounter will be able to count bytes
 		_, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = fmt.Errorf("got error while reading response body: %s", err.Error())
-		}
 	}
 
 	bytesReceived := bodyReaderWithCounter.Count()
-
 	m[prefix+"bytesReceived"] = bytesReceived
-	m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
-	seconds := time.Since(wroteRequestAt).Seconds()
-	if seconds > 0 {
-		m[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / seconds) // Measure download speed since the request sent
+
+	secondsSinceRequestWasSent := time.Since(wroteRequestAt).Seconds()
+	if secondsSinceRequestWasSent > 0 {
+		m[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / secondsSinceRequestWasSent) // Measure download speed since the request sent
 	}
 
-	return
+	if ctx.Err() == context.DeadlineExceeded {
+		return m, fmt.Errorf("got timeout while reading response body")
+	} else if err != nil {
+		return m, err
+	}
+
+	m[prefix+"success"] = 1
+	return m, nil
 }
