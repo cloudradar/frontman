@@ -14,5 +14,5 @@ COPY dist\frontman_64.exe frontman.exe
 go-msi make --src pkg-scripts\msi-templates --msi dist/frontman_64.msi --version %frontman_version% --arch amd64
 DEL frontman.exe
 
-signtool sign /t http://timestamp.digicert.com /f "C:\Users\hero\frontman_ci/build_msi/cloudradar.io.p12" /p %cert_pass% dist/frontman_32.msi
-signtool sign /t http://timestamp.digicert.com /f "C:\Users\hero\frontman_ci/build_msi/cloudradar.io.p12" /p %cert_pass% dist/frontman_64.msi
+signtool sign /debug /t http://timestamp.digicert.com /f "C:\Users\hero\frontman_ci/build_msi/cloudradar.io.p12" /p %cert_pass% dist/frontman_32.msi
+signtool sign /debug /t http://timestamp.digicert.com /f "C:\Users\hero\frontman_ci/build_msi/cloudradar.io.p12" /p %cert_pass% dist/frontman_64.msi
