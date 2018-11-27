@@ -15,13 +15,12 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cloudradar-monitoring/frontman"
 	"github.com/kardianos/service"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/cloudradar-monitoring/frontman"
 )
 
-const defaultLogLevel = "error"
+const defaultLogLevel = frontman.LogLevelError
 
 var (
 	// set on build:
@@ -51,7 +50,7 @@ func askForConfirmation(s string) bool {
 }
 
 func main() {
-	fm := frontman.New()
+	fm := frontman.New(defaultLogLevel)
 	fm.SetVersion(version)
 
 	defer func() {
@@ -76,7 +75,7 @@ func main() {
 	outputFilePtr := flag.String("o", "", "file to write the results (default ./results.out)")
 
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
-	logLevelPtr := flag.String("v", defaultLogLevel, "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
+	logLevelPtr := flag.String("v", string(defaultLogLevel), "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
 	systemManager := service.ChosenSystem()
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")

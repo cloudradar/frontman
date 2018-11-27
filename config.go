@@ -1,6 +1,7 @@
 package frontman
 
 import (
+	"bytes"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"bytes"
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
@@ -69,7 +69,7 @@ type Frontman struct {
 	version string
 }
 
-func New() *Frontman {
+func New(logLevel LogLevel) *Frontman {
 	var defaultLogPath string
 	var rootCertsPath string
 
@@ -105,6 +105,10 @@ func New() *Frontman {
 		SystemFields:           []string{},
 		hostInfoSent:           false,
 	}
+
+	// This is the default log level set
+	// Can be overwritten later by config file or flags
+	fm.SetLogLevel(logLevel)
 
 	if rootCertsPath != "" {
 		if _, err := os.Stat(rootCertsPath); err == nil {
