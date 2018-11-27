@@ -96,14 +96,13 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
-	httpClientWithMaxRedirection := fm.newHTTPClientWithCustomMaxRedirectionsLimit(fm.HTTPCheckMaxRedirects)
+	httpClientWithMaxRedirects := fm.newHTTPClientWithCustomMaxRedirectsLimit(fm.HTTPCheckMaxRedirects)
 	timeout := fm.HTTPCheckTimeout
 
 	// set individual timeout in case it is less than in this check
 	if data.Timeout > 0 && data.Timeout < timeout {
 		timeout = data.Timeout
 	}
-	fmt.Printf("timeout: %.5f\n", timeout)
 
 	data.Method = strings.ToUpper(data.Method)
 	req, err := http.NewRequest(data.Method, data.URL, nil)
@@ -135,10 +134,15 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	resp, err := httpClientWithMaxRedirection.Do(req)
-	if httpClientWithMaxRedirection.Err != nil {
-		// we exceed max redirection number
-		return m, httpClientWithMaxRedirection.Err
+	resp, err := httpClientWithMaxRedirects.Do(req)
+
+	if !data.DontFollowRedirects && httpClientWithMaxRedirects.Err != nil {
+		// if request exceed the number of globally allowed redirects
+		// we need to stop and return the error
+		//
+		// But in case we have DontFollowRedirects mode we don't need to return here
+		// because user may want to check the HTTP code or content of 30x page
+		return m, httpClientWithMaxRedirects.Err
 	} else if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
 	} else if err != nil {
@@ -193,7 +197,7 @@ type httpClientAndError struct {
 	Err error
 }
 
-func (fm *Frontman) newHTTPClientWithCustomMaxRedirectionsLimit(maxRedirects int) *httpClientAndError {
+func (fm *Frontman) newHTTPClientWithCustomMaxRedirectsLimit(maxRedirects int) *httpClientAndError {
 	if fm.httpTransport == nil {
 		fm.initHttpTransport()
 	}
@@ -208,11 +212,9 @@ func (fm *Frontman) newHTTPClientWithCustomMaxRedirectionsLimit(maxRedirects int
 		if maxRedirects <= 0 {
 			client.Err = fmt.Errorf("redirects are not allowed")
 			return http.ErrUseLastResponse
-		} else if fm.HTTPCheckMaxRedirects > 0 {
-			if len(via) > fm.HTTPCheckMaxRedirects {
-				client.Err = fmt.Errorf("too many(>%d) redirects", fm.HTTPCheckMaxRedirects)
-				return http.ErrUseLastResponse
-			}
+		} else if len(via) > maxRedirects {
+			client.Err = fmt.Errorf("too many(>%d) redirects", maxRedirects)
+			return http.ErrUseLastResponse
 		}
 		return nil
 	}
