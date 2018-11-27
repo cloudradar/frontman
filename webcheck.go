@@ -200,7 +200,10 @@ func (fm *Frontman) newHTTPClientWithCustomMaxRedirectionsLimit(maxRedirects int
 
 	// httpClientAndError used to set the error related to the httpClient from the within CheckRedirect function
 	// we can't return it inside CheckRedirect, because it will prevent the HTTP client to provide the intermediate response with headers&body
-	client := &httpClientAndError{&http.Client{Transport: fm.httpTransport}, nil}
+	client := &httpClientAndError{
+		&http.Client{Transport: fm.httpTransport},
+		nil,
+	}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if maxRedirects <= 0 {
 			client.Err = fmt.Errorf("redirects are not allowed")
