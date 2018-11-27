@@ -68,21 +68,20 @@ func (fm *Frontman) initHttpTransport() {
 	}
 }
 
-func isBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
+func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
 	var text []byte
 
 	var whereSuffix string
 	if extractTextFromHTML {
 		text = []byte(getTextFromHTML(reader))
-		whereSuffix = "in the raw HTML"
+		whereSuffix = "in the extracted text"
 	} else {
 		var err error
-		// read and search in raw file
 		text, err = ioutil.ReadAll(reader)
 		if err != nil {
 			return fmt.Errorf("got error while reading response body: %s", err.Error())
 		}
-		whereSuffix = "in the extracted text"
+		whereSuffix = "in the raw HTML"
 	}
 
 	if !bytes.Contains(text, []byte(pattern)) {
@@ -100,9 +99,11 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	httpClientWithMaxRedirection := fm.newHTTPClientWithCustomMaxRedirectionsLimit(fm.HTTPCheckMaxRedirects)
 	timeout := fm.HTTPCheckTimeout
 
-	if data.Timeout < timeout {
-		timeout = fm.HTTPCheckTimeout
+	// set individual timeout in case it is less than in this check
+	if data.Timeout > 0 && data.Timeout < timeout {
+		timeout = data.Timeout
 	}
+	fmt.Printf("timeout: %.5f\n", timeout)
 
 	data.Method = strings.ToUpper(data.Method)
 	req, err := http.NewRequest(data.Method, data.URL, nil)
@@ -163,9 +164,9 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	}()
 
 	if data.ExpectedPattern != "" {
-		err = isBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, !data.SearchHTMLSource)
+		err = checkBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, !data.SearchHTMLSource)
 	} else {
-		// we don't need the content itself
+		// we don't need the content itself because we don't need to check any pattern
 		// just read the reader, so bodyReaderWithCounter will be able to count bytes
 		_, err = ioutil.ReadAll(resp.Body)
 	}
@@ -175,12 +176,11 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 
 	secondsSinceRequestWasSent := time.Since(wroteRequestAt).Seconds()
 	if secondsSinceRequestWasSent > 0 {
-		m[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / secondsSinceRequestWasSent) // Measure download speed since the request sent
+		// Measure download speed since the request sent
+		m[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / secondsSinceRequestWasSent)
 	}
 
-	if ctx.Err() == context.DeadlineExceeded {
-		return m, fmt.Errorf("got timeout while reading response body")
-	} else if err != nil {
+	if err != nil {
 		return m, err
 	}
 
@@ -198,9 +198,12 @@ func (fm *Frontman) newHTTPClientWithCustomMaxRedirectionsLimit(maxRedirects int
 		fm.initHttpTransport()
 	}
 
+	// httpClientAndError used to set the error related to the httpClient from the within CheckRedirect function
+	// we can't return it inside CheckRedirect, because it will prevent the HTTP client to provide the intermediate response with headers&body
 	client := &httpClientAndError{&http.Client{Transport: fm.httpTransport}, nil}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if maxRedirects <= 0 {
+			client.Err = fmt.Errorf("redirects are not allowed")
 			return http.ErrUseLastResponse
 		} else if fm.HTTPCheckMaxRedirects > 0 {
 			if len(via) > fm.HTTPCheckMaxRedirects {
