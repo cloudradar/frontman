@@ -2,9 +2,9 @@
   "product": "frontman",
   "company": "cloudradar",
   "license": "LICENSE",
-  "upgrade-code": "84a40b4d-57e5-4187-9928-8359a79758c4",
+  "upgrade-code": "72fad937-0991-4c67-996c-397aae55d475",
   "files": {
-    "guid": "174d5f1a-04ae-4d99-8807-9e9ced201957",
+    "guid": "fb1d0c2a-f807-4f46-8c58-08f68847d889",
     "items": [
       "frontman.exe",
       "example.config.toml",
@@ -12,7 +12,7 @@
     ]
   },
   "env": {
-    "guid": "dbb726d1-1e32-4509-8a7e-7cec9e00335c",
+    "guid": "43e89972-ea2f-4b01-b4c6-87d6929d5015",
     "vars": [
     ]
   },
