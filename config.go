@@ -1,6 +1,7 @@
 package frontman
 
 import (
+	"bytes"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"bytes"
 
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
@@ -69,7 +69,8 @@ type Frontman struct {
 	version string
 }
 
-func New() *Frontman {
+// New returns an intialiased instance of Frontman
+func New(version string) *Frontman {
 	var defaultLogPath string
 	var rootCertsPath string
 
@@ -93,6 +94,7 @@ func New() *Frontman {
 	}
 
 	fm := &Frontman{
+		version:                version,
 		IOMode:                 "http",
 		LogFile:                defaultLogPath,
 		ICMPTimeout:            0.1,
@@ -139,10 +141,6 @@ func New() *Frontman {
 
 func secToDuration(secs float64) time.Duration {
 	return time.Duration(int64(float64(time.Second) * secs))
-}
-
-func (fm *Frontman) SetVersion(version string) {
-	fm.version = version
 }
 
 func (fm *Frontman) userAgent() string {

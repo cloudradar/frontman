@@ -15,10 +15,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cloudradar-monitoring/frontman"
 	"github.com/kardianos/service"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/cloudradar-monitoring/frontman"
 )
 
 const defaultLogLevel = "error"
@@ -51,8 +50,7 @@ func askForConfirmation(s string) bool {
 }
 
 func main() {
-	fm := frontman.New()
-	fm.SetVersion(version)
+	fm := frontman.New(version)
 
 	defer func() {
 		if runtime.GOOS == "windows" {
