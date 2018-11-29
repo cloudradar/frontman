@@ -40,7 +40,10 @@ jobs:
       - run: scp -i /tmp/id_win_ssh -P 24481 -oStrictHostKeyChecking=no /go/src/github.com/cloudradar-monitoring/frontman/wix.json hero@144.76.9.139:/cygdrive/c/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/wix.json
       # Trigger msi creating
       - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 /cygdrive/c/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/build-win.bat ${CIRCLE_BUILD_NUM} ${CIRCLE_TAG} ${SIGN_CERT_PASS}
-      # Trigger signing
+      # Fix permissions
+      - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod 0644 /cygdrive/c/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_32.msi
+      - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod 0644 /cygdrive/c/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_64.msi
+      # Trigger signing 
       - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl http://localhost:8080/?file=frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_32.msi
       - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl http://localhost:8080/?file=frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_64.msi
       # Copy msi files back to build machine
