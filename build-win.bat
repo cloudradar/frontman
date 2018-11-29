@@ -1,4 +1,4 @@
-SET build_dir=C:\Users\hero\frontman_ci\build_msi\%1
+SET build_dir=C:\Users\hero\ci\frontman_ci\build_msi\%1
 SET frontman_version=%2
 SET cert_pass=%3
 
@@ -7,12 +7,12 @@ CD %build_dir%
 
 
 COPY dist\frontman_386.exe frontman.exe
-go-msi make --src pkg-scripts\msi-templates --msi dist/frontman_32.msi --version %frontman_version% --arch 386
+go-msi make --src pkg-scripts\msi-templates --msi dist/_frontman_32.msi --version %frontman_version% --arch 386
 DEL frontman.exe
 
 COPY dist\frontman_64.exe frontman.exe
-go-msi make --src pkg-scripts\msi-templates --msi dist/frontman_64.msi --version %frontman_version% --arch amd64
+go-msi make --src pkg-scripts\msi-templates --msi dist/_frontman_64.msi --version %frontman_version% --arch amd64
 DEL frontman.exe
 
-signtool sign /t http://timestamp.comodoca.com /f "C:\Users\hero\frontman_ci\build_msi\cloudradar.io.p12" /p %cert_pass% dist/frontman_32.msi
-signtool sign /t http://timestamp.comodoca.com /f "C:\Users\hero\frontman_ci\build_msi\cloudradar.io.p12" /p %cert_pass% dist/frontman_64.msi
+COPY dist\_frontman_32.msi C:\Users\hero\ci\frontman_32.msi
+COPY dist\_frontman_64.msi C:\Users\hero\ci\frontman_64.msi
