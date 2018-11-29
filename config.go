@@ -228,10 +228,11 @@ func CreateDefaultConfigFile(configFilePath string) error {
 		return fmt.Errorf("failed to write headline to config file")
 	}
 
-	var cfg MinValuableConfig
+	cfg := MinValuableConfig {
+		IOMode: "http",
+	}
 
 	cfg.ApplyEnv()
-	cfg.IOMode = "http"
 
 	err = toml.NewEncoder(f).Encode(&cfg)
 	if err != nil {
@@ -240,7 +241,7 @@ func CreateDefaultConfigFile(configFilePath string) error {
 
 	log.Infof("generated minimum valuable config to %s", configFilePath)
 
-	return err
+	return nil
 }
 
 func (fm *Frontman) Initialize() error {
