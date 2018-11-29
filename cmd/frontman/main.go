@@ -104,24 +104,12 @@ func main() {
 
 	log.SetFormatter(&tfmt)
 
-	if cfgPathPtr != nil {
-		err := fm.ReadConfigFromFile(*cfgPathPtr)
-		if os.IsNotExist(err) {
-			// this is ok
-			err = fm.CreateDefaultConfigFile(*cfgPathPtr)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else if err != nil {
-			if strings.Contains(err.Error(), "cannot load TOML value of type int64 into a Go float") {
-				log.Fatalf("Config load error: please use numbers with a decimal point for numerical values")
-			} else {
-				log.Fatalf("Config load error: %s", err.Error())
-			}
-		}
+	err := frontman.HandleConfig(fm, *cfgPathPtr)
+	if err != nil {
+		return
 	}
 
-	err := fm.Initialize()
+	err = fm.Initialize()
 	if err != nil {
 		log.Fatal(err)
 	}
