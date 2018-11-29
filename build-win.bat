@@ -1,4 +1,4 @@
-SET build_dir=C:\Users\hero\frontman_ci\build_msi\%1
+SET build_dir=C:\Users\hero\ci\frontman_ci\build_msi\%1
 SET frontman_version=%2
 SET cert_pass=%3
 
