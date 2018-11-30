@@ -289,13 +289,12 @@ func HandleConfig(fm *Frontman, configFilePath string) error {
 		}
 	} else if err != nil {
 		if strings.Contains(err.Error(), "cannot load TOML value of type int64 into a Go float") {
-			log.Fatalf("Config load error: please use numbers with a decimal point for numerical values")
-		} else {
-			log.Fatalf("Config load error: %s", err.Error())
+			return fmt.Errorf("Config load error: please use numbers with a decimal point for numerical values")
 		}
+
+		return fmt.Errorf("Config load error: %s", err.Error())
 	}
 
 	fm.ApplyEnv()
-
-	return err
+	return nil
 }

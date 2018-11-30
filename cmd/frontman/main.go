@@ -52,7 +52,6 @@ func runUnderOsServiceManager(fm *frontman.Frontman) {
 }
 
 func main() {
-	fm := frontman.New(version)
 	setDefaultLogFormatter()
 	systemManager := service.ChosenSystem()
 
@@ -65,70 +64,27 @@ func main() {
 	var serviceInstallUserPtr *string
 	var serviceInstallPtr *bool
 
+	// Setup flag pointers
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
 	outputFilePtr := flag.String("o", "", "file to write the results (default ./results.out)")
-
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
+	serviceUninstallPtr := flag.Bool("u", false, fmt.Sprintf("stop and uninstall the system service(%s)", systemManager.String()))
+	printConfigPtr := flag.Bool("p", false, "print the active config")
+	versionPtr := flag.Bool("version", false, "show the frontman version")
 
+	// some OS specific flags
 	if runtime.GOOS == "windows" {
 		serviceInstallPtr = flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
 	} else {
 		serviceInstallUserPtr = flag.String("s", "", fmt.Sprintf("username to install and start the system service(%s)", systemManager.String()))
 	}
 
-	serviceUninstallPtr := flag.Bool("u", false, fmt.Sprintf("stop and uninstall the system service(%s)", systemManager.String()))
-	printConfigPtr := flag.Bool("p", false, "print the active config")
-	versionPtr := flag.Bool("version", false, "show the frontman version")
-
 	flag.Parse()
-
+	// version should be handled first to ensure it will be accessible in case of fatal errors before
 	flagVersion(*versionPtr)
-
-	err := frontman.HandleConfig(fm, *cfgPathPtr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// process some of config params
-	err = fm.Initialize()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	flagLogLevel(fm, *logLevelPtr)
-	flagPrintConfig(*printConfigPtr, fm)
-
-	var osNotice string
-	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
-		osNotice = "!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!"
-	}
-
-	if runtime.GOOS == "linux" && !frontman.CheckIfRootlessICMPAvailable() && !frontman.CheckIfRawICMPAvailable() {
-		osNotice = `⚠️ In order to perform rootless ICMP Ping on Linux you need to run this command first:
-		sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
-	}
-
-	if osNotice != "" {
-		// print to console without log formatting
-		fmt.Println(osNotice)
-
-		// disable logging to stderr temporarily
-		log.SetOutput(ioutil.Discard)
-		log.Error(osNotice)
-		log.SetOutput(os.Stderr)
-	}
-
-	writePidFileIfNeeded(fm, oneRunOnlyModePtr)
-	defer removePidFileIfNeeded(fm, oneRunOnlyModePtr)
-
-	if !service.Interactive() {
-		runUnderOsServiceManager(fm)
-	}
-
-	flagServiceUninstall(fm, *serviceUninstallPtr)
 
 	// check some incompatible flags
 	if serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" ||
@@ -142,14 +98,49 @@ func main() {
 			fmt.Println("Output file(-o) flag can't be used together with service install(-s) flag")
 			os.Exit(1)
 		}
+
+		if *serviceUninstallPtr {
+			fmt.Println("Service uninstall(-u) flag can't be used together with service install(-s) flag")
+			os.Exit(1)
+		}
 	}
 
+	// initiate Frontman with default in-memory config
+	fm := frontman.New(version)
+	// read config file from path
+	// or create the minimal config file if it doesn't exist
+	err := frontman.HandleConfig(fm, *cfgPathPtr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// process some of config params
+	err = fm.Initialize()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// log level set in flag has a precedence. If specified we need to set it ASAP
+	flagLogLevel(fm, *logLevelPtr)
+
+	printOSSpecificWarnings()
+
+	writePidFileIfNeeded(fm, oneRunOnlyModePtr)
+	defer removePidFileIfNeeded(fm, oneRunOnlyModePtr)
+
+	if !service.Interactive() {
+		runUnderOsServiceManager(fm)
+	}
+
+	flagPrintConfig(*printConfigPtr, fm)
+	flagServiceUninstall(fm, *serviceUninstallPtr)
 	flagServiceInstall(fm, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
 	flagDaemonizeMode(*daemonizeModePtr)
 
+	// setup interrupt handler
+	interruptChan := make(chan struct{})
 	output := flagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
 
-	interruptChan := make(chan struct{})
 	flagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
 
 	// no any flag resulted in os.Exit
@@ -160,6 +151,7 @@ func main() {
 		doneChan <- struct{}{}
 	}()
 
+	//  Handle interrupts
 	select {
 	case sig := <-sigc:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
@@ -167,6 +159,26 @@ func main() {
 		os.Exit(0)
 	case <-doneChan:
 		return
+	}
+}
+
+func printOSSpecificWarnings() {
+	var osNotice string
+	if runtime.GOOS == "windows" && !frontman.CheckIfRawICMPAvailable() {
+		osNotice = "!!! You need to run frontman as administrator in order to use ICMP ping on Windows !!!"
+	}
+	if runtime.GOOS == "linux" && !frontman.CheckIfRootlessICMPAvailable() && !frontman.CheckIfRawICMPAvailable() {
+		osNotice = `⚠️ In order to perform rootless ICMP Ping on Linux you need to run this command first:
+			sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
+	}
+	if osNotice != "" {
+		// print to console without log formatting
+		fmt.Println(osNotice)
+
+		// disable logging to stderr temporarily
+		log.SetOutput(ioutil.Discard)
+		log.Error(osNotice)
+		log.SetOutput(os.Stderr)
 	}
 }
 
