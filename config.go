@@ -82,7 +82,8 @@ type Frontman struct {
 	version string
 }
 
-func New() *Frontman {
+// New returns an intialiased instance of Frontman
+func New(version string) *Frontman {
 	var defaultLogPath string
 	var rootCertsPath string
 
@@ -106,6 +107,7 @@ func New() *Frontman {
 	}
 
 	fm := &Frontman{
+		version:                version,
 		IOMode:                 "http",
 		LogFile:                defaultLogPath,
 		ICMPTimeout:            0.1,
@@ -168,10 +170,6 @@ func (fm *Frontman) ApplyEnv() {
 	if val, ok := os.LookupEnv("FRONTMAN_HUB_PASSWORD"); ok {
 		fm.HubPassword = val
 	}
-}
-
-func (fm *Frontman) SetVersion(version string) {
-	fm.version = version
 }
 
 func (fm *Frontman) userAgent() string {
