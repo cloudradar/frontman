@@ -35,6 +35,22 @@ var svcConfig = &service.Config{
 	Description: "Monitoring proxy for agentless monitoring of subnets",
 }
 
+func runUnderOsServiceManager(fm *frontman.Frontman) {
+	systemService, err := getServiceFromFlags(fm, "", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// we are running under OS service manager
+	err = systemService.Run()
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	os.Exit(0)
+}
+
 func main() {
 	fm := frontman.New(version)
 	setDefaultLogFormatter()
@@ -108,20 +124,11 @@ func main() {
 	writePidFileIfNeeded(fm, oneRunOnlyModePtr)
 	defer removePidFileIfNeeded(fm, oneRunOnlyModePtr)
 
-	systemService, err := getServiceFromFlags(fm, cfgPathPtr, serviceInstallUserPtr)
-
 	if !service.Interactive() {
-		// we are running under OS service manager
-		err = systemService.Run()
-
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-
-		os.Exit(0)
+		runUnderOsServiceManager(fm)
 	}
 
-	flagServiceUninstall(systemService, *serviceUninstallPtr)
+	flagServiceUninstall(fm, *serviceUninstallPtr)
 
 	// check some incompatible flags
 	if serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" ||
@@ -137,7 +144,7 @@ func main() {
 		}
 	}
 
-	flagServiceInstall(systemService, fm, serviceInstallUserPtr, serviceInstallPtr)
+	flagServiceInstall(fm, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
 	flagDaemonizeMode(*daemonizeModePtr)
 
 	output := flagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
@@ -225,11 +232,10 @@ func flagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) (
 
 		var err error
 		output, err = os.OpenFile(outputFile, mode, 0644)
-		defer output.Close()
-
 		if err != nil {
 			log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
 		}
+		defer output.Close()
 	}
 
 	return
@@ -264,18 +270,23 @@ func flagDaemonizeMode(daemonizeMode bool) {
 	}
 }
 
-func flagServiceUninstall(s service.Service, serviceUninstallPtr bool) {
+func flagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
 	if !serviceUninstallPtr {
 		return
 	}
 
-	err := s.Stop()
+	systemService, err := getServiceFromFlags(fm, "", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = systemService.Stop()
 	if err != nil {
 		// don't return error here, just write a warning and try to uninstall
 		fmt.Println("Failed to stop the service: ", err.Error())
 	}
 
-	err = s.Uninstall()
+	err = systemService.Uninstall()
 	if err != nil {
 		fmt.Println("Failed to uninstall the service: ", err.Error())
 		os.Exit(1)
@@ -284,15 +295,26 @@ func flagServiceUninstall(s service.Service, serviceUninstallPtr bool) {
 	os.Exit(0)
 }
 
-func flagServiceInstall(s service.Service, fm *frontman.Frontman, serviceInstallUserPtr *string, serviceInstallPtr *bool) {
-	systemManager := service.ChosenSystem()
-
+func flagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string) {
 	// serviceInstallPtr is currently used on windows
 	// serviceInstallUserPtr is used on other systems
 	// if both of them are empty - just return
 	if (serviceInstallUserPtr == nil || *serviceInstallUserPtr == "") &&
 		(serviceInstallPtr == nil || !*serviceInstallPtr) {
 		return
+	}
+
+	systemManager := service.ChosenSystem()
+
+	username := ""
+	if serviceInstallUserPtr != nil {
+		username = *serviceInstallUserPtr
+	}
+
+	s, err := getServiceFromFlags(fm, cfgPath, username)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 
 	if fm.HubURL == "" {
@@ -318,7 +340,7 @@ func flagServiceInstall(s service.Service, fm *frontman.Frontman, serviceInstall
 	}
 
 install:
-	err := s.Install()
+	err = s.Install()
 
 	if err != nil && strings.Contains(err.Error(), "already exists") {
 
@@ -330,6 +352,11 @@ install:
 		}
 		if askForConfirmation("Do you want to overwrite it?" + note) {
 			err = s.Stop()
+			if err != nil {
+				// lets try to uninstall despite of this error
+				fmt.Println("Failed to stop the service: ", err.Error())
+			}
+
 			err := s.Uninstall()
 			if err != nil {
 				fmt.Println("Failed to unistall the service: ", err.Error())
@@ -390,25 +417,24 @@ func (sw *serviceWrapper) Stop(s service.Service) error {
 	return nil
 }
 
-func getServiceFromFlags(fm *frontman.Frontman, configPathPtr, userNamePtr *string) (service.Service, error) {
+func getServiceFromFlags(fm *frontman.Frontman, configPath, userName string) (service.Service, error) {
 	prg := &serviceWrapper{Frontman: fm}
 
-	if *configPathPtr != "" {
-		absCfgPath := *configPathPtr
-		if !filepath.IsAbs(absCfgPath) {
+	if configPath != "" {
+		if !filepath.IsAbs(configPath) {
 			var err error
-			absCfgPath, err = filepath.Abs(*configPathPtr)
+			configPath, err = filepath.Abs(configPath)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to get absolute path to config at '%s': %s", *configPathPtr, err)
+				return nil, fmt.Errorf("Failed to get absolute path to config at '%s': %s", configPath, err)
 			}
 		}
-		svcConfig.Arguments = []string{"-c", absCfgPath}
+		svcConfig.Arguments = []string{"-c", configPath}
 	}
 
-	if userNamePtr != nil {
-		svcConfig.UserName = *userNamePtr
-
+	if userName != "" {
+		svcConfig.UserName = userName
 	}
+
 	return service.New(prg, svcConfig)
 }
 
