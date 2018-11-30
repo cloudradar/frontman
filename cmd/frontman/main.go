@@ -35,22 +35,6 @@ var svcConfig = &service.Config{
 	Description: "Monitoring proxy for agentless monitoring of subnets",
 }
 
-func runUnderOsServiceManager(fm *frontman.Frontman) {
-	systemService, err := getServiceFromFlags(fm, "", "")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// we are running under OS service manager
-	err = systemService.Run()
-
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	os.Exit(0)
-}
-
 func main() {
 	setDefaultLogFormatter()
 	systemManager := service.ChosenSystem()
@@ -402,6 +386,22 @@ install:
 	}
 
 	fmt.Printf("Logs file located at: %s\n", fm.LogFile)
+	os.Exit(0)
+}
+
+func runUnderOsServiceManager(fm *frontman.Frontman) {
+	systemService, err := getServiceFromFlags(fm, "", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// we are running under OS service manager
+	err = systemService.Run()
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	os.Exit(0)
 }
 
