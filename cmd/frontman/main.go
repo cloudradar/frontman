@@ -68,7 +68,7 @@ func main() {
 
 	flag.Parse()
 	// version should be handled first to ensure it will be accessible in case of fatal errors before
-	flagVersion(*versionPtr)
+	handleFlagVersion(*versionPtr)
 
 	// check some incompatible flags
 	if serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" ||
@@ -98,14 +98,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// process some of config params
+	// need to proccess some of fields that was set in frontman.New() & frontman.HandleConfig()
+	// e.g. set the log level and add syslog webhook
 	err = fm.Initialize()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// log level set in flag has a precedence. If specified we need to set it ASAP
-	flagLogLevel(fm, *logLevelPtr)
+	handleFlagLogLevel(fm, *logLevelPtr)
 
 	printOSSpecificWarnings()
 
@@ -116,16 +117,16 @@ func main() {
 		runUnderOsServiceManager(fm)
 	}
 
-	flagPrintConfig(*printConfigPtr, fm)
-	flagServiceUninstall(fm, *serviceUninstallPtr)
-	flagServiceInstall(fm, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
-	flagDaemonizeMode(*daemonizeModePtr)
+	handleFlagPrintConfig(*printConfigPtr, fm)
+	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
+	handleFlagServiceInstall(fm, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
+	handleFlagDaemonizeMode(*daemonizeModePtr)
 
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
-	output := flagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
+	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
 
-	flagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
+	handleFlagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
 
 	// no any flag resulted in os.Exit
 	// so lets use the default continuous run mode
@@ -166,21 +167,21 @@ func printOSSpecificWarnings() {
 	}
 }
 
-func flagVersion(versionFlag bool) {
+func handleFlagVersion(versionFlag bool) {
 	if versionFlag {
 		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", version)
 		os.Exit(0)
 	}
 }
 
-func flagPrintConfig(printConfig bool, fm *frontman.Frontman) {
+func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
 	if printConfig {
 		fmt.Println(fm.DumpConfigToml())
 		os.Exit(0)
 	}
 }
 
-func flagLogLevel(fm *frontman.Frontman, logLevel string) {
+func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
 	// Check loglevel and if needed warn user and set to default
 	if logLevel == string(frontman.LogLevelError) || logLevel == string(frontman.LogLevelInfo) || logLevel == string(frontman.LogLevelDebug) {
 		fm.SetLogLevel(frontman.LogLevel(logLevel))
@@ -189,7 +190,7 @@ func flagLogLevel(fm *frontman.Frontman, logLevel string) {
 	}
 }
 
-func flagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) (output *os.File) {
+func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) (output *os.File) {
 	if outputFile != "" && inputFile == "" {
 		fmt.Println("Output(-o) flag can be only used together with input(-i)")
 		os.Exit(1)
@@ -237,7 +238,7 @@ func flagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) (
 	return
 }
 
-func flagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile string, output *os.File, interruptChan chan struct{}) {
+func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile string, output *os.File, interruptChan chan struct{}) {
 	if oneRunOnlyMode {
 		input, err := fm.FetchInput(inputFile)
 		if err != nil {
@@ -254,7 +255,7 @@ func flagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile st
 	}
 }
 
-func flagDaemonizeMode(daemonizeMode bool) {
+func handleFlagDaemonizeMode(daemonizeMode bool) {
 	if daemonizeMode && os.Getenv("FRONTMAN_FORK") != "1" {
 		err := rerunDetached()
 		if err != nil {
@@ -266,7 +267,7 @@ func flagDaemonizeMode(daemonizeMode bool) {
 	}
 }
 
-func flagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
+func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
 	if !serviceUninstallPtr {
 		return
 	}
@@ -291,7 +292,7 @@ func flagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
 	os.Exit(0)
 }
 
-func flagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string) {
+func handleFlagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string) {
 	// serviceInstallPtr is currently used on windows
 	// serviceInstallUserPtr is used on other systems
 	// if both of them are empty - just return
@@ -369,7 +370,7 @@ install:
 	fmt.Printf("Frontman service(%s) installed. Starting...\n", systemManager.String())
 	err = s.Start()
 	if err != nil {
-		fmt.Println("Already running")
+		fmt.Println(err.Error())
 	}
 
 	switch systemManager.String() {
@@ -385,7 +386,7 @@ install:
 		fmt.Printf("Use the Windows Service Manager to stop it\n\n")
 	}
 
-	fmt.Printf("Logs file located at: %s\n", fm.LogFile)
+	fmt.Printf("Log file located at: %s\n", fm.LogFile)
 	os.Exit(0)
 }
 
@@ -405,6 +406,8 @@ func runUnderOsServiceManager(fm *frontman.Frontman) {
 	os.Exit(0)
 }
 
+// serviceWrapper is created to provide context and methods that satisfies service.Interface
+// in order to run Frontman under OS Service Manager
 type serviceWrapper struct {
 	Frontman      *frontman.Frontman
 	InterruptChan chan struct{}
