@@ -342,7 +342,7 @@ func handleFlagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *stri
 			fmt.Printf("Frontman service(%s) already installed: %s\n", systemManager.String(), err.Error())
 
 			if attempt == maxAttempts {
-				fmt.Println("Give up after %d attempts", attempt)
+				fmt.Printf("Give up after %d attempts\n", maxAttempts)
 				os.Exit(1)
 			}
 
