@@ -335,36 +335,41 @@ func handleFlagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *stri
 			fmt.Printf("Failed to chown log file for '%s' user\n", userName)
 		}
 	}
+	const maxAttempts = 3
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		err = s.Install()
+		if err != nil && strings.Contains(err.Error(), "already exists") {
+			fmt.Printf("Frontman service(%s) already installed: %s\n", systemManager.String(), err.Error())
 
-install:
-	err = s.Install()
-
-	if err != nil && strings.Contains(err.Error(), "already exists") {
-
-		fmt.Printf("Frontman service(%s) already installed: %s\n", systemManager.String(), err.Error())
-
-		note := ""
-		if runtime.GOOS == "windows" {
-			note = " Windows Services Manager app should not be opened!"
-		}
-		if askForConfirmation("Do you want to overwrite it?" + note) {
-			err = s.Stop()
-			if err != nil {
-				// lets try to uninstall despite of this error
-				fmt.Println("Failed to stop the service: ", err.Error())
-			}
-
-			err := s.Uninstall()
-			if err != nil {
-				fmt.Println("Failed to unistall the service: ", err.Error())
+			if attempt == maxAttempts {
+				fmt.Println("Give up after %d attempts", attempt)
 				os.Exit(1)
 			}
-			goto install
-		}
 
-	} else if err != nil {
-		fmt.Printf("Frontman service(%s) installing error: %s\n", systemManager.String(), err.Error())
-		os.Exit(1)
+			osSpecificNote := ""
+			if runtime.GOOS == "windows" {
+				osSpecificNote = " Windows Services Manager app should not be opened!"
+			}
+			if askForConfirmation("Do you want to overwrite it?" + osSpecificNote) {
+				err = s.Stop()
+				if err != nil {
+					// lets try to uninstall despite of this error
+					fmt.Println("Failed to stop the service: ", err.Error())
+				}
+
+				err := s.Uninstall()
+				if err != nil {
+					fmt.Println("Failed to unistall the service: ", err.Error())
+					os.Exit(1)
+				}
+			}
+
+		} else if err != nil {
+			fmt.Printf("Frontman service(%s) installing error: %s\n", systemManager.String(), err.Error())
+			os.Exit(1)
+		} else {
+			break
+		}
 	}
 
 	fmt.Printf("Frontman service(%s) installed. Starting...\n", systemManager.String())
