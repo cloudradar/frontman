@@ -119,7 +119,7 @@ func main() {
 
 	handleFlagPrintConfig(*printConfigPtr, fm)
 	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
-	handleFlagServiceInstall(fm, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
+	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
 	// setup interrupt handler
@@ -292,7 +292,7 @@ func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool)
 	os.Exit(0)
 }
 
-func handleFlagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string) {
+func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.System, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string) {
 	// serviceInstallPtr is currently used on windows
 	// serviceInstallUserPtr is used on other systems
 	// if both of them are empty - just return
@@ -300,8 +300,6 @@ func handleFlagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *stri
 		(serviceInstallPtr == nil || !*serviceInstallPtr) {
 		return
 	}
-
-	systemManager := service.ChosenSystem()
 
 	username := ""
 	if serviceInstallUserPtr != nil {
@@ -353,10 +351,10 @@ func handleFlagServiceInstall(fm *frontman.Frontman, serviceInstallUserPtr *stri
 			if askForConfirmation("Do you want to overwrite it?" + osSpecificNote) {
 				err = s.Stop()
 				if err != nil {
-					// lets try to uninstall despite of this error
 					fmt.Println("Failed to stop the service: ", err.Error())
 				}
 
+				// lets try to uninstall despite of this error
 				err := s.Uninstall()
 				if err != nil {
 					fmt.Println("Failed to unistall the service: ", err.Error())
@@ -403,7 +401,6 @@ func runUnderOsServiceManager(fm *frontman.Frontman) {
 
 	// we are running under OS service manager
 	err = systemService.Run()
-
 	if err != nil {
 		log.Fatal(err.Error())
 	}
