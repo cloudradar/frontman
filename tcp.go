@@ -60,14 +60,14 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	}()
 
 	// Open connection to the specified addr
-	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.NetTCPTimeout))
+	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.Config.NetTCPTimeout))
 	if err != nil {
 		return m, err
 	}
 	defer conn.Close()
 
 	// Execute the check
-	err = executeServiceCheck(conn, fm.NetTCPTimeout, service, hostname)
+	err = executeServiceCheck(conn, fm.Config.NetTCPTimeout, service, hostname)
 	if err != nil {
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}

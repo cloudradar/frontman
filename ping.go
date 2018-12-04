@@ -372,7 +372,7 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err err
 		return
 	}
 
-	p.Timeout = secToDuration(fm.ICMPTimeout)
+	p.Timeout = secToDuration(fm.Config.ICMPTimeout)
 	p.Count = 5
 
 	p.run()

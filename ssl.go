@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"math"
 	"net"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func certName(cert *x509.Certificate) string {
@@ -42,7 +43,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		prefix + "success": 0,
 	}
 
-	dialer := net.Dialer{Timeout: secToDuration(fm.NetTCPTimeout)}
+	dialer := net.Dialer{Timeout: secToDuration(fm.Config.NetTCPTimeout)}
 	connection, err := tls.DialWithDialer(&dialer, "tcp", addr.String(), &tls.Config{ServerName: hostname, InsecureSkipVerify: true})
 
 	if err != nil {
@@ -66,7 +67,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		if remainingValidity <= 0 {
 			err = fmt.Errorf("certificate is expired: %s", certName(cert))
 			return
-		} else if remainingValidity <= float64(fm.SSLCertExpiryThreshold) {
+		} else if remainingValidity <= float64(fm.Config.SSLCertExpiryThreshold) {
 			err = fmt.Errorf("certificate will expire soon: %s", certName(cert))
 			return
 		}
