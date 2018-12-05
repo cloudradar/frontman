@@ -336,6 +336,7 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 	const maxAttempts = 3
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		err = s.Install()
+		// Check error case where the service already exists
 		if err != nil && strings.Contains(err.Error(), "already exists") {
 			fmt.Printf("Frontman service(%s) already installed: %s\n", systemManager.String(), err.Error())
 
@@ -362,9 +363,11 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 				}
 			}
 
+			// Check general error case
 		} else if err != nil {
 			fmt.Printf("Frontman service(%s) installing error: %s\n", systemManager.String(), err.Error())
 			os.Exit(1)
+			// Service install was success so we can exit the loop
 		} else {
 			break
 		}
