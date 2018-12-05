@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	defaultLogLevel = "error"
+
 	IOModeFile = "file"
 	IOModeHTTP = "http"
 
@@ -82,7 +84,6 @@ type Frontman struct {
 	version string
 }
 
-// New returns an intialiased instance of Frontman
 func New(version string) *Frontman {
 	var defaultLogPath string
 	var rootCertsPath string
@@ -110,6 +111,7 @@ func New(version string) *Frontman {
 		version:                version,
 		IOMode:                 "http",
 		LogFile:                defaultLogPath,
+		LogLevel:               defaultLogLevel,
 		ICMPTimeout:            0.1,
 		Sleep:                  30,
 		SenderMode:             SenderModeWait,
@@ -226,7 +228,7 @@ func CreateDefaultConfigFile(configFilePath string) error {
 		return fmt.Errorf("failed to write headline to config file")
 	}
 
-	cfg := MinValuableConfig {
+	cfg := MinValuableConfig{
 		IOMode: "http",
 	}
 
@@ -267,6 +269,10 @@ func (fm *Frontman) Initialize() error {
 		}
 	}
 
+	if fm.LogLevel != "" {
+		log.SetLevel(fm.LogLevel.LogrusLevel())
+	}
+
 	return nil
 }
 
@@ -283,13 +289,12 @@ func HandleConfig(fm *Frontman, configFilePath string) error {
 		}
 	} else if err != nil {
 		if strings.Contains(err.Error(), "cannot load TOML value of type int64 into a Go float") {
-			log.Fatalf("Config load error: please use numbers with a decimal point for numerical values")
-		} else {
-			log.Fatalf("Config load error: %s", err.Error())
+			return fmt.Errorf("Config load error: please use numbers with a decimal point for numerical values")
 		}
+
+		return fmt.Errorf("Config load error: %s", err.Error())
 	}
 
 	fm.ApplyEnv()
-
-	return err
+	return nil
 }

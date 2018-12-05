@@ -24,6 +24,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
+
 func InputFromFile(filename string) (*Input, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -307,16 +309,20 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	return nil
 }
 
-func (fm *Frontman) FetchInput(inputFilePath *string) (*Input, error) {
+func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	var input *Input
 	var err error
 
-	if inputFilePath != nil && *inputFilePath != "" {
-		input, err = InputFromFile(*inputFilePath)
+	if inputFilePath != "" {
+		input, err = InputFromFile(inputFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("InputFromFile(%s) error: %s", *inputFilePath, err.Error())
+			return nil, fmt.Errorf("InputFromFile(%s) error: %s", inputFilePath, err.Error())
 		}
 		return input, nil
+	}
+
+	if fm.HubURL == "" {
+		return nil, ErrorMissingHubOrInput
 	}
 
 	// in case input file not specified this means we should request HUB instead
@@ -334,10 +340,13 @@ func (fm *Frontman) FetchInput(inputFilePath *string) (*Input, error) {
 	return input, nil
 }
 
-func (fm *Frontman) Run(inputFilePtr *string, outputFile *os.File, interrupt chan struct{}) {
+func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
 	for {
-		input, err := fm.FetchInput(inputFilePtr)
-		if err != nil {
+		input, err := fm.FetchInput(inputFilePath)
+		if err != nil && err == ErrorMissingHubOrInput {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		} else if err != nil {
 			log.Error(err)
 		} else {
 			err := fm.RunOnce(input, outputFile, interrupt, false)
