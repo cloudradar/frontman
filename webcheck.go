@@ -63,7 +63,7 @@ func (fm *Frontman) initHttpTransport() {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	if fm.IgnoreSSLErrors {
+	if fm.Config.IgnoreSSLErrors {
 		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
 	}
 }
@@ -96,8 +96,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
-	httpClientWithMaxRedirects := fm.newHTTPClientWithCustomMaxRedirectsLimit(fm.HTTPCheckMaxRedirects)
-	timeout := fm.HTTPCheckTimeout
+	httpClientWithMaxRedirects := fm.newHTTPClientWithCustomMaxRedirectsLimit(fm.Config.HTTPCheckMaxRedirects)
+	timeout := fm.Config.HTTPCheckTimeout
 
 	// set individual timeout in case it is less than in this check
 	if data.Timeout > 0 && data.Timeout < timeout {

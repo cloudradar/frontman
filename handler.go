@@ -41,23 +41,23 @@ func InputFromFile(filename string) (*Input, error) {
 }
 
 func (fm *Frontman) initHubHttpClient() {
-	if fm.hubHttpClient == nil {
+	if fm.hubHTTPClient == nil {
 		tr := *(http.DefaultTransport.(*http.Transport))
 		if fm.rootCAs != nil {
 			tr.TLSClientConfig = &tls.Config{RootCAs: fm.rootCAs}
 		}
-		if fm.HubProxy != "" {
-			if !strings.HasPrefix(fm.HubProxy, "http://") {
-				fm.HubProxy = "http://" + fm.HubProxy
+		if fm.Config.HubProxy != "" {
+			if !strings.HasPrefix(fm.Config.HubProxy, "http://") {
+				fm.Config.HubProxy = "http://" + fm.Config.HubProxy
 			}
 
-			u, err := url.Parse(fm.HubProxy)
+			u, err := url.Parse(fm.Config.HubProxy)
 
 			if err != nil {
 				log.Errorf("Failed to parse 'hub_proxy' URL")
 			} else {
-				if fm.HubProxyUser != "" {
-					u.User = url.UserPassword(fm.HubProxyUser, fm.HubProxyPassword)
+				if fm.Config.HubProxyUser != "" {
+					u.User = url.UserPassword(fm.Config.HubProxyUser, fm.Config.HubProxyPassword)
 				}
 				tr.Proxy = func(_ *http.Request) (*url.URL, error) {
 					return u, nil
@@ -65,7 +65,7 @@ func (fm *Frontman) initHubHttpClient() {
 			}
 		}
 
-		fm.hubHttpClient = &http.Client{
+		fm.hubHTTPClient = &http.Client{
 			Timeout:   time.Second * 30,
 			Transport: &tr,
 		}
@@ -76,18 +76,18 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 	fm.initHubHttpClient()
 
 	i := Input{}
-	r, err := http.NewRequest("GET", fm.HubURL, nil)
+	r, err := http.NewRequest("GET", fm.Config.HubURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	r.Header.Add("User-Agent", fm.userAgent())
 
-	if fm.HubUser != "" {
-		r.SetBasicAuth(fm.HubUser, fm.HubPassword)
+	if fm.Config.HubUser != "" {
+		r.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
-	resp, err := fm.hubHttpClient.Do(r)
+	resp, err := fm.hubHTTPClient.Do(r)
 
 	if err != nil {
 		return nil, err
@@ -136,8 +136,10 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	}
 
 	// in case we have HubMaxOfflineBufferBytes set(>0) and buffer + results exceed HubMaxOfflineBufferBytes -> reset buffer
-	if fm.HubMaxOfflineBufferBytes > 0 && len(b) > fm.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
-		log.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...", fm.HubMaxOfflineBufferBytes, len(results))
+	if fm.Config.HubMaxOfflineBufferBytes > 0 && len(b) > fm.Config.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
+		log.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...",
+			fm.Config.HubMaxOfflineBufferBytes,
+			len(results))
 
 		fm.offlineResultsBuffer = []Result{}
 		b, err = json.Marshal(Results{Results: results, HostInfo: hostInfo})
@@ -148,15 +150,15 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	var req *http.Request
 
-	if fm.HubGzip {
+	if fm.Config.HubGzip {
 		var buffer bytes.Buffer
 		zw := gzip.NewWriter(&buffer)
 		zw.Write(b)
 		zw.Close()
-		req, err = http.NewRequest("POST", fm.HubURL, &buffer)
+		req, err = http.NewRequest("POST", fm.Config.HubURL, &buffer)
 		req.Header.Set("Content-Encoding", "gzip")
 	} else {
-		req, err = http.NewRequest("POST", fm.HubURL, bytes.NewBuffer(b))
+		req, err = http.NewRequest("POST", fm.Config.HubURL, bytes.NewBuffer(b))
 	}
 	if err != nil {
 		return err
@@ -164,11 +166,11 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	req.Header.Add("User-Agent", fm.userAgent())
 
-	if fm.HubUser != "" {
-		req.SetBasicAuth(fm.HubUser, fm.HubPassword)
+	if fm.Config.HubUser != "" {
+		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
-	resp, err := fm.hubHttpClient.Do(req)
+	resp, err := fm.hubHTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -241,7 +243,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 }
 
 func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) error {
-	sendResultsTicker := time.NewTicker(secToDuration(fm.SenderModeInterval))
+	sendResultsTicker := time.NewTicker(secToDuration(fm.Config.SenderModeInterval))
 	defer sendResultsTicker.Stop()
 
 	var results []Result
@@ -296,9 +298,9 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
 	} else if outputFile != nil {
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
-	} else if fm.SenderMode == SenderModeInterval {
+	} else if fm.Config.SenderMode == SenderModeInterval {
 		err = fm.sendResultsChanToHubWithInterval(resultsChan)
-	} else if fm.SenderMode == SenderModeWait {
+	} else if fm.Config.SenderMode == SenderModeWait {
 		err = fm.sendResultsChanToHub(resultsChan)
 	}
 
@@ -321,17 +323,17 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		return input, nil
 	}
 
-	if fm.HubURL == "" {
+	if fm.Config.HubURL == "" {
 		return nil, ErrorMissingHubOrInput
 	}
 
 	// in case input file not specified this means we should request HUB instead
 	input, err = fm.InputFromHub()
 	if err != nil {
-		if fm.HubUser != "" {
+		if fm.Config.HubUser != "" {
 			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
 			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
-			return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.HubUser, err.Error())
+			return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.Config.HubUser, err.Error())
 		}
 
 		return nil, fmt.Errorf("InputFromHub: %s", err.Error())
@@ -358,7 +360,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		select {
 		case <-interrupt:
 			return
-		case <-time.After(secToDuration(fm.Sleep)):
+		case <-time.After(secToDuration(fm.Config.Sleep)):
 			continue
 		}
 	}
@@ -495,7 +497,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 	res := MeasurementsMap{}
 
-	if len(fm.SystemFields) == 0 {
+	if len(fm.Config.SystemFields) == 0 {
 		log.Warnf("[SYSTEM] HostInfoResults called but no SystemFields are defined.")
 		return res, fmt.Errorf("No system_fields defined")
 	}
@@ -511,7 +513,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		errs = append(errs, err.Error())
 	}
 
-	for _, field := range fm.SystemFields {
+	for _, field := range fm.Config.SystemFields {
 		switch strings.ToLower(field) {
 		case "os_kernel":
 			if info != nil {

@@ -36,7 +36,6 @@ var svcConfig = &service.Config{
 }
 
 func main() {
-	setDefaultLogFormatter()
 	systemManager := service.ChosenSystem()
 
 	sigc := make(chan os.Signal, 1)
@@ -89,21 +88,21 @@ func main() {
 		}
 	}
 
-	// initiate Frontman with default in-memory config
-	fm := frontman.New(version)
-	// read config file from path
-	// or create the minimal config file if it doesn't exist
-	err := frontman.HandleConfig(fm, *cfgPathPtr)
+	if *versionPtr {
+		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", version)
+		return
+	}
+
+	cfg, err := frontman.HandleAllConfigSetup(*cfgPathPtr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// need to proccess some of fields that was set in frontman.New() & frontman.HandleConfig()
-	// e.g. set the log level and add syslog webhook
-	err = fm.Initialize()
-	if err != nil {
-		log.Fatal(err)
-	}
+	fm := frontman.New(cfg, version)
+
+	handleFlagPrintConfig(*printConfigPtr, fm)
+
+	setDefaultLogFormatter()
 
 	// log level set in flag has a precedence. If specified we need to set it ASAP
 	handleFlagLogLevel(fm, *logLevelPtr)
@@ -117,7 +116,6 @@ func main() {
 		runUnderOsServiceManager(fm)
 	}
 
-	handleFlagPrintConfig(*printConfigPtr, fm)
 	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
@@ -176,7 +174,7 @@ func handleFlagVersion(versionFlag bool) {
 
 func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
 	if printConfig {
-		fmt.Println(fm.DumpConfigToml())
+		fmt.Println(fm.Config.DumpToml())
 		os.Exit(0)
 	}
 }
@@ -186,7 +184,7 @@ func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
 	if logLevel == string(frontman.LogLevelError) || logLevel == string(frontman.LogLevelInfo) || logLevel == string(frontman.LogLevelDebug) {
 		fm.SetLogLevel(frontman.LogLevel(logLevel))
 	} else if logLevel != "" {
-		log.Warnf("Invalid log level: \"%s\". Set to default: \"%s\"", logLevel, fm.LogLevel)
+		log.Warnf("Invalid log level: \"%s\". Set to default: \"%s\"", logLevel, fm.Config.LogLevel)
 	}
 }
 
@@ -312,7 +310,7 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 		os.Exit(1)
 	}
 
-	if fm.HubURL == "" {
+	if fm.Config.HubURL == "" {
 		fmt.Printf("To install the service you first need to set 'hub_url' config param")
 		os.Exit(1)
 	}
@@ -328,7 +326,7 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 		svcConfig.UserName = userName
 		// we need to chown log file with user who will run service
 		// because installer can be run under root so the log file will be also created under root
-		err = chownFile(fm.LogFile, u)
+		err = chownFile(fm.Config.LogFile, u)
 		if err != nil {
 			fmt.Printf("Failed to chown log file for '%s' user\n", userName)
 		}
@@ -392,7 +390,7 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 		fmt.Printf("Use the Windows Service Manager to stop it\n\n")
 	}
 
-	fmt.Printf("Log file located at: %s\n", fm.LogFile)
+	fmt.Printf("Log file located at: %s\n", fm.Config.LogFile)
 	os.Exit(0)
 }
 
@@ -459,19 +457,19 @@ func getServiceFromFlags(fm *frontman.Frontman, configPath, userName string) (se
 }
 
 func writePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
-	if fm.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
-		err := ioutil.WriteFile(fm.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
+	if fm.Config.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
+		err := ioutil.WriteFile(fm.Config.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
 		if err != nil {
-			log.Errorf("Failed to write pid file at: %s", fm.PidFile)
+			log.Errorf("Failed to write pid file at: %s", fm.Config.PidFile)
 		}
 	}
 }
 
 func removePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
-	if fm.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
-		err := os.Remove(fm.PidFile)
+	if fm.Config.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
+		err := os.Remove(fm.Config.PidFile)
 		if err != nil {
-			log.Errorf("Failed to remove pid file at: %s", fm.PidFile)
+			log.Errorf("Failed to remove pid file at: %s", fm.Config.PidFile)
 		}
 	}
 }
