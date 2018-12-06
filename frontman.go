@@ -26,7 +26,7 @@ type Frontman struct {
 	version string
 }
 
-func New(version string, cfg *Config) *Frontman {
+func New(cfg *Config, version string) *Frontman {
 	fm := &Frontman{
 		Config:       cfg,
 		hostInfoSent: false,
@@ -64,10 +64,6 @@ func New(version string, cfg *Config) *Frontman {
 	}
 
 	return fm
-}
-
-func (fm *Frontman) SetVersion(version string) {
-	fm.version = version
 }
 
 func (fm *Frontman) userAgent() string {

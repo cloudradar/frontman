@@ -98,7 +98,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fm := frontman.New(version, cfg)
+	fm := frontman.New(cfg, version)
 
 	handleFlagPrintConfig(*printConfigPtr, fm)
 
