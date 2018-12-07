@@ -140,7 +140,7 @@ func main() {
 		interruptChan <- struct{}{}
 		os.Exit(0)
 	case <-doneChan:
-		return
+		os.Exit(0)
 	}
 }
 
