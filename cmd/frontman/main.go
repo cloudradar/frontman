@@ -38,12 +38,6 @@ var svcConfig = &service.Config{
 func main() {
 	systemManager := service.ChosenSystem()
 
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM)
-
 	var serviceInstallUserPtr *string
 	var serviceInstallPtr *bool
 
@@ -126,8 +120,13 @@ func main() {
 
 	handleFlagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
 
-	// no any flag resulted in os.Exit
-	// so lets use the default continuous run mode
+	// nothing resulted in os.Exit
+	// so lets use the default continuous run mode and wait for interrupt
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM)
 	doneChan := make(chan struct{})
 	go func() {
 		fm.Run(*inputFilePtr, output, interruptChan)
