@@ -41,8 +41,8 @@ jobs:
       # Trigger msi creating
       - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/build-win.bat ${CIRCLE_BUILD_NUM} ${CIRCLE_TAG} ${SIGN_CERT_PASS}
       # Fix permissions
-      - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod 0644 /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/_frontman_32.msi
-      - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod 0644 /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/_frontman_64.msi
+      #- run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod 0644 /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/_frontman_32.msi
+      #- run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod 0644 /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/_frontman_64.msi
       # Trigger signing 
       - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl http://localhost:8080/?file=frontman_32.msi
       - run: ssh -i /tmp/id_win_ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl http://localhost:8080/?file=frontman_64.msi

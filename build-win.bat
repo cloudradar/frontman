@@ -15,7 +15,7 @@ go-msi make --src pkg-scripts\msi-templates --msi dist/_frontman_64.msi --versio
 DEL frontman.exe
 
 COPY dist\_frontman_32.msi C:\Users\hero\ci\frontman32.msi
-COPY dist\_frontman_64.msi C:\Users\hero\ci\frontman32.msi
+COPY dist\_frontman_64.msi C:\Users\hero\ci\frontman64.msi
 
 ::signtool sign /t http://timestamp.comodoca.com /f "C:\Users\hero\frontman_ci\build_msi\cloudradar.io.p12" /p %cert_pass% dist/frontman_32.msi
 ::signtool sign /t http://timestamp.comodoca.com /f "C:\Users\hero\frontman_ci\build_msi\cloudradar.io.p12" /p %cert_pass% dist/frontman_64.msi
