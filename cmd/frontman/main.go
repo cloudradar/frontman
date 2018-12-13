@@ -38,12 +38,6 @@ var svcConfig = &service.Config{
 func main() {
 	systemManager := service.ChosenSystem()
 
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM)
-
 	var serviceInstallUserPtr *string
 	var serviceInstallPtr *bool
 
@@ -88,14 +82,9 @@ func main() {
 		}
 	}
 
-	if *versionPtr {
-		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", version)
-		return
-	}
-
 	cfg, err := frontman.HandleAllConfigSetup(*cfgPathPtr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to handle frontman configuration: %s", err)
 	}
 
 	fm := frontman.New(cfg, version)
@@ -126,8 +115,13 @@ func main() {
 
 	handleFlagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
 
-	// no any flag resulted in os.Exit
-	// so lets use the default continuous run mode
+	// nothing resulted in os.Exit
+	// so lets use the default continuous run mode and wait for interrupt
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM)
 	doneChan := make(chan struct{})
 	go func() {
 		fm.Run(*inputFilePtr, output, interruptChan)
@@ -141,7 +135,7 @@ func main() {
 		interruptChan <- struct{}{}
 		os.Exit(0)
 	case <-doneChan:
-		return
+		os.Exit(0)
 	}
 }
 
@@ -188,7 +182,7 @@ func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
 	}
 }
 
-func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) (output *os.File) {
+func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) *os.File {
 	if outputFile != "" && inputFile == "" {
 		fmt.Println("Output(-o) flag can be only used together with input(-i)")
 		os.Exit(1)
@@ -203,37 +197,42 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 		outputFile = defaultOutputFile
 	}
 
+	var output *os.File
+	var err error
+
+	// Set output to stdout
 	if outputFile == "-" {
 		log.SetOutput(ioutil.Discard)
 		output = os.Stdout
-	} else {
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			dir := filepath.Dir(outputFile)
-			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				err = os.MkdirAll(dir, 0644)
-				if err != nil {
-					log.WithError(err).Errorf("Failed to create the output file directory: '%s'", dir)
-				}
-			}
-		}
-
-		mode := os.O_WRONLY | os.O_CREATE
-
-		if oneRunOnlyMode {
-			mode = mode | os.O_TRUNC
-		} else {
-			mode = mode | os.O_APPEND
-		}
-
-		var err error
-		output, err = os.OpenFile(outputFile, mode, 0644)
-		if err != nil {
-			log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
-		}
-		defer output.Close()
+		return output
 	}
 
-	return
+	// Try to create the output file directory if it does not exist
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		dir := filepath.Dir(outputFile)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			err = os.MkdirAll(dir, 0644)
+			if err != nil {
+				log.WithError(err).Fatalf("Failed to create the output file directory: '%s'", dir)
+			}
+		}
+	}
+
+	mode := os.O_WRONLY | os.O_CREATE
+
+	if oneRunOnlyMode {
+		mode = mode | os.O_TRUNC
+	} else {
+		mode = mode | os.O_APPEND
+	}
+
+	output, err = os.OpenFile(outputFile, mode, 0644)
+	if err != nil {
+		log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
+	}
+	defer output.Close()
+
+	return output
 }
 
 func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile string, output *os.File, interruptChan chan struct{}) {
