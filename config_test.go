@@ -72,7 +72,7 @@ func TestGenerateDefaultConfigFile(t *testing.T) {
 	assert.Nil(t, err)
 
 	loadedMVC := &MinValuableConfig{}
-	err = toml.NewDecoder(tmpFile).Decode(loadedMVC)
+	_, err = toml.DecodeReader(tmpFile, loadedMVC)
 	assert.Nil(t, err)
 
 	if !assert.ObjectsAreEqual(*mvc, *loadedMVC) {
@@ -121,7 +121,7 @@ ignore_ssl_errors = true
 
 		mvc := NewMinimumConfig()
 		loadedMVC := &MinValuableConfig{}
-		err = toml.NewDecoder(tmpFile).Decode(loadedMVC)
+		_, err = toml.DecodeFile(configFilePath, loadedMVC)
 		assert.Nil(t, err)
 
 		if !assert.ObjectsAreEqual(*mvc, *loadedMVC) {
