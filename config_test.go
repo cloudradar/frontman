@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	toml "github.com/pelletier/go-toml"
 	"github.com/stretchr/testify/assert"
+	"github.com/troian/toml"
 )
 
 func TestNewMinimumConfig(t *testing.T) {
