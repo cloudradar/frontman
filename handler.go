@@ -111,24 +111,10 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.initHubHttpClient()
 
-	var err error
-	var hostInfo MeasurementsMap
-
-	if !fm.hostInfoSent {
-		// Fetch hostInfo
-		hostInfo, err = fm.HostInfoResults()
-		// TODO: Do we need special handling in error case? Send a special error object to the hub?
-		if err != nil {
-			log.Warnf("Failed to fetch HostInfo: %s", err)
-			hostInfo["error"] = err.Error()
-		}
-	}
-
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	// Bundle hostInfo and results
 	b, err := json.Marshal(Results{
-		Results:  fm.offlineResultsBuffer,
-		HostInfo: hostInfo,
+		Results: fm.offlineResultsBuffer,
 	})
 
 	if err != nil {
@@ -142,7 +128,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 			len(results))
 
 		fm.offlineResultsBuffer = []Result{}
-		b, err = json.Marshal(Results{Results: results, HostInfo: hostInfo})
+		b, err = json.Marshal(Results{Results: results})
 		if err != nil {
 			return err
 		}
@@ -284,9 +270,28 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 
 func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
 	var err error
+	var hostInfo MeasurementsMap
 
 	// in case HUB server will hang on response we will need a buffer to continue perform checks
 	resultsChan := make(chan Result, 100)
+
+	// since fm.Run calls fm.RunOnce over and over again, we need this check here
+	if !fm.hostInfoSent {
+		hostInfo, err = fm.HostInfoResults()
+		// TODO: Do we need special handling in error case? Send a special error object to the hub?
+		if err != nil {
+			log.Warnf("Failed to fetch HostInfo: %s", err)
+			hostInfo["error"] = err.Error()
+		}
+
+		// Send our hostInfo as first result
+		// TODO: Is this ok? Do we need to set more values?
+		resultsChan <- Result{
+			Measurements: hostInfo,
+			Timestamp:    time.Now().Unix(),
+		}
+		fm.hostInfoSent = true
+	}
 
 	if input != nil {
 		go fm.processInput(input, resultsChan)
