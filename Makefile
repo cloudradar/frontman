@@ -55,4 +55,4 @@ windows-sign:
 	scp -i /tmp/id_win_ssh -P 24481 -oStrictHostKeyChecking=no hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_64.msi /go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_64.msi
 	# Add files to Github release
 	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_Windows_386.msi" --file "/go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_386.msi"
-github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "/go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_64.msi"
+	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "/go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_64.msi"
