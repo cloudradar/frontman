@@ -18,8 +18,6 @@ jobs:
       - run: echo $WIN_SSH_KEY | base64 -d > /tmp/id_win_ssh
       - run: chmod 0600 /tmp/id_win_ssh
       - checkout
-      # Build binaries
-      - run: make goreleaser-rm-dist
       # Create remote build dir
       - run: make ci
       - run:
