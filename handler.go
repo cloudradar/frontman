@@ -112,7 +112,6 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.initHubHttpClient()
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
-	// Bundle hostInfo and results
 	b, err := json.Marshal(Results{
 		Results: fm.offlineResultsBuffer,
 	})
@@ -167,13 +166,6 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.New(resp.Status)
-	}
-
-	// We assume the hostInfo was successfully sent because the responnse code
-	// was ok and hostInfo will only be sent if the flag was flase before.
-	if !fm.hostInfoSent {
-		fm.hostInfoSent = true
-		log.Debugf("hostInfoSent was set to true")
 	}
 
 	// in case of successful POST reset the offline buffer
