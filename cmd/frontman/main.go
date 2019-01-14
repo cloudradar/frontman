@@ -112,6 +112,9 @@ func main() {
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
 	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
+	if output != nil {
+		defer output.Close()
+	}
 
 	handleFlagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
 
@@ -230,7 +233,6 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 	if err != nil {
 		log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
 	}
-	defer output.Close()
 
 	return output
 }
