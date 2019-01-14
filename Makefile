@@ -23,6 +23,12 @@ run:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./cmd/frontman/...
 	./$(BINARY_NAME)
 
+vendor:
+	go mod vendor
+
+goimports:
+	goimports -l $$(find . -type f -name '*.go' -not -path "./vendor/*")
+
 ci: goreleaser-rm-dist windows-sign
 
 goreleaser-rm-dist:
