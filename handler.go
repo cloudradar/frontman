@@ -278,16 +278,15 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	// since fm.Run calls fm.RunOnce over and over again, we need this check here
 	if !fm.hostInfoSent {
 		hostInfo, err = fm.HostInfoResults()
-		// TODO: Do we need special handling in error case? Send a special error object to the hub?
 		if err != nil {
 			log.Warnf("Failed to fetch HostInfo: %s", err)
 			hostInfo["error"] = err.Error()
 		}
 
-		// Send our hostInfo as first result
-		// TODO: Is this ok? Do we need to set more values?
+		// Send hostInfo as first result
 		resultsChan <- Result{
 			Measurements: hostInfo,
+			CheckType:    "hostInfo",
 			Timestamp:    time.Now().Unix(),
 		}
 		fm.hostInfoSent = true
