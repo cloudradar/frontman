@@ -397,8 +397,8 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	go func() {
 		ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
 		if resolveErr != nil {
-			err = fmt.Errorf("resolve ip error: %s", err.Error())
-			log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
+			err = fmt.Errorf("resolve ip error: %s", resolveErr.Error())
+			log.Debugf("serviceCheck: ResolveIPAddr error: %s", resolveErr.Error())
 			done <- struct{}{}
 			return
 		}
@@ -612,20 +612,18 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 }
 
 func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, error) {
-	var ipaddr *net.IPAddr
-	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	var ch = make(chan struct{})
-	go func() {
-		ipaddr, err = net.ResolveIPAddr("ip", addr)
-		ch <- struct{}{}
-	}()
-
-	select {
-	case <-ch:
-		return ipaddr, err
-	case <-time.After(timeout):
-		// this shouldn't happens
-		return nil, fmt.Errorf("got timeout after %.0fs", timeout.Seconds())
+	ipAddrs, err := net.DefaultResolver.LookupIPAddr(ctx, addr)
+	if err != nil {
+		return nil, err
 	}
+
+	if len(ipAddrs) == 0 {
+		return nil, errors.New("can't resolve host")
+	}
+
+	ipAddr := ipAddrs[0]
+	return &ipAddr, nil
 }
