@@ -244,6 +244,8 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 		return fmt.Errorf("PostResultsToHub: %s", err.Error())
 	}
 
+	fm.Stats.CheckResultsSentToHub += uint64(len(results))
+
 	fm.offlineResultsBuffer = []Result{}
 	return nil
 }
