@@ -400,50 +400,53 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			if check.Check.Connect == "" {
 				log.Errorf("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
-			} else {
+				resultsChan <- res
+				return
+			}
 
-				ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
+			ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
+			if err != nil {
+				res.Message = err.Error()
+				log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
+				resultsChan <- res
+				return
+			}
+
+			switch check.Check.Protocol {
+			case ProtocolICMP:
+				res.Measurements, err = fm.runPing(ipaddr)
 				if err != nil {
+					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
-					log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
 				} else {
-					switch check.Check.Protocol {
-					case ProtocolICMP:
-						res.Measurements, err = fm.runPing(ipaddr)
-						if err != nil {
-							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-							res.Message = err.Error()
-						} else {
-							succeed++
-						}
-					case ProtocolTCP:
-						port, _ := check.Check.Port.Int64()
-
-						res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-						if err != nil {
-							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-							res.Message = err.Error()
-						} else {
-							succeed++
-						}
-					case ProtocolSSL:
-						port, _ := check.Check.Port.Int64()
-
-						res.Measurements, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-						if err != nil {
-							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-							res.Message = err.Error()
-						} else {
-							succeed++
-						}
-					case "":
-						log.Errorf("serviceCheck: missing check.protocol")
-						res.Message = "Missing check.protocol"
-					default:
-						log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
-						res.Message = "Unknown check.protocol"
-					}
+					succeed++
 				}
+			case ProtocolTCP:
+				port, _ := check.Check.Port.Int64()
+
+				res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+				if err != nil {
+					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
+				} else {
+					succeed++
+				}
+			case ProtocolSSL:
+				port, _ := check.Check.Port.Int64()
+
+				res.Measurements, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+				if err != nil {
+					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
+				} else {
+					succeed++
+				}
+			case "":
+				log.Errorf("serviceCheck: missing check.protocol")
+				res.Message = "Missing check.protocol"
+			default:
+				log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
+				res.Message = "Unknown check.protocol"
 			}
 
 			resultsChan <- res
