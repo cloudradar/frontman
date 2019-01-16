@@ -1,7 +1,10 @@
 package frontman
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -88,6 +91,32 @@ func (hook *logrusFileHook) Levels() []log.Level {
 		log.InfoLevel,
 		log.DebugLevel,
 	}
+}
+
+// StartWritingStats writes fm.Stats every minute to Config.StatsFile
+func (fm *Frontman) StartWritingStats() {
+	var stats stats.FrontmanStats
+	var buff bytes.Buffer
+	var err error
+
+	go func() {
+		for {
+			time.Sleep(time.Minute * 1)
+			// Get snapshot from current stats
+			stats = *fm.Stats
+			err = json.NewEncoder(&buff).Encode(stats)
+			if err != nil {
+				log.Errorf("Could not encode stats file: %s", err)
+				continue
+			}
+
+			err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
+			if err != nil {
+				// TODO: should we return in this case? Or after 5 times or...?
+				log.Errorf("Could not write stats file: %s", err)
+			}
+		}
+	}()
 }
 
 // SetLogLevel sets Log level and corresponding logrus level

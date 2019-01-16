@@ -370,6 +370,10 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			time.Sleep(time.Second * 1)
 		}
 	}()
+
+	log.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
+	fm.StartWritingStats()
+
 	for {
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
