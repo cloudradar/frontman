@@ -412,6 +412,8 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				return
 			}
 
+			fm.Stats.ChecksPerformedTotal++
+
 			switch check.Check.Protocol {
 			case ProtocolICMP:
 				res.Measurements, err = fm.runPing(ipaddr)
