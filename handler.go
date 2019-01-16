@@ -26,6 +26,11 @@ import (
 
 var ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
 
+const timeoutDNSResolve = time.Second * 5
+
+// serviceCheckEmergencyTimeout used to protect from unhandled timeouts
+const serviceCheckEmergencyTimeout = time.Second * 30
+
 func InputFromFile(filename string) (*Input, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -385,9 +390,61 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
+func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{}, error) {
+	var done = make(chan struct{})
+	var err error
+	var results map[string]interface{}
+	go func() {
+		ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
+		if resolveErr != nil {
+			err = fmt.Errorf("resolve ip error: %s", err.Error())
+			log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
+			done <- struct{}{}
+			return
+		}
+
+		switch check.Check.Protocol {
+		case ProtocolICMP:
+			results, err = fm.runPing(ipaddr)
+			if err != nil {
+				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+			}
+		case ProtocolTCP:
+			port, _ := check.Check.Port.Int64()
+
+			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			if err != nil {
+				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+			}
+		case ProtocolSSL:
+			port, _ := check.Check.Port.Int64()
+
+			results, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			if err != nil {
+				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+			}
+		case "":
+			log.Errorf("serviceCheck: missing check.protocol")
+			err = errors.New("Missing check.protocol")
+		default:
+			log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
+			err = errors.New("Unknown check.protocol")
+		}
+		done <- struct{}{}
+	}()
+
+	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
+	// instead use individual timeouts inside all checks
+	select {
+	case <-done:
+		return results, err
+	case <-time.After(serviceCheckEmergencyTimeout):
+		log.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout)
+		return nil, fmt.Errorf("got unexpected timeout")
+	}
+}
 func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
-
 	startedAt := time.Now()
 	succeed := 0
 
@@ -413,55 +470,8 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			if check.Check.Connect == "" {
 				log.Errorf("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
-				resultsChan <- res
-				return
-			}
-
-			ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
-			if err != nil {
-				res.Message = err.Error()
-				log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
-				resultsChan <- res
-				return
-			}
-
-			fm.Stats.ChecksPerformedTotal++
-
-			switch check.Check.Protocol {
-			case ProtocolICMP:
-				res.Measurements, err = fm.runPing(ipaddr)
-				if err != nil {
-					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-					res.Message = err.Error()
-				} else {
-					succeed++
-				}
-			case ProtocolTCP:
-				port, _ := check.Check.Port.Int64()
-
-				res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-				if err != nil {
-					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-					res.Message = err.Error()
-				} else {
-					succeed++
-				}
-			case ProtocolSSL:
-				port, _ := check.Check.Port.Int64()
-
-				res.Measurements, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-				if err != nil {
-					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-					res.Message = err.Error()
-				} else {
-					succeed++
-				}
-			case "":
-				log.Errorf("serviceCheck: missing check.protocol")
-				res.Message = "Missing check.protocol"
-			default:
-				log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
-				res.Message = "Unknown check.protocol"
+			} else {
+				fm.runServiceCheck(check)
 			}
 
 			resultsChan <- res
@@ -592,4 +602,23 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 	}
 
 	return res, errors.New("SYSTEM: " + strings.Join(errs, "; "))
+}
+
+func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, error) {
+	var ipaddr *net.IPAddr
+	var err error
+
+	var ch = make(chan struct{})
+	go func() {
+		ipaddr, err = net.ResolveIPAddr("ip", addr)
+		ch <- struct{}{}
+	}()
+
+	select {
+	case <-ch:
+		return ipaddr, err
+	case <-time.After(timeout):
+		// this shouldn't happens
+		return nil, fmt.Errorf("got timeout after %.0fs", timeout.Seconds())
+	}
 }
