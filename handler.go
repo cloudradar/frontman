@@ -98,11 +98,18 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 		return nil, errors.New(resp.Status)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&i)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	err = json.Unmarshal(body, &i)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update rontman statistics
+	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
 	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks))
 	fm.Stats.ChecksFetchedFromHub += uint64(len(i.WebChecks))
 
