@@ -99,12 +99,17 @@ func (fm *Frontman) StartWritingStats() {
 	var buff bytes.Buffer
 	var err error
 
+	// Make the output indented
+	encoder := json.NewEncoder(&buff)
+	encoder.SetIndent("", "    ")
+
 	go func() {
 		for {
+			buff.Reset()
 			time.Sleep(time.Minute * 1)
 			// Get snapshot from current stats
 			stats = *fm.Stats
-			err = json.NewEncoder(&buff).Encode(stats)
+			err = encoder.Encode(stats)
 			if err != nil {
 				log.Errorf("Could not encode stats file: %s", err)
 				continue
