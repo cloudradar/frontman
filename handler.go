@@ -108,7 +108,7 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 		return nil, err
 	}
 
-	// Update rontman statistics
+	// Update frontman statistics
 	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
 	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks))
 	fm.Stats.ChecksFetchedFromHub += uint64(len(i.WebChecks))
@@ -204,8 +204,8 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	// in case of successful POST reset the offline buffer
 	fm.offlineResultsBuffer = []Result{}
 
-	// Update frontmen stats
-	fm.Stats.BytesSentTohubTotal += uint64(bodyLength)
+	// Update frontman statistics
+	fm.Stats.BytesSentToHubTotal += uint64(bodyLength)
 
 	return nil
 }

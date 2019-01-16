@@ -2,8 +2,8 @@ package stats
 
 // FrontmanStats holds application stats
 type FrontmanStats struct {
-	BytesSentTohubTotal    uint64
-	BytesFetchedTohubTotal uint64
+	BytesSentToHubTotal      uint64
+	BytesFetchedFromHubTotal uint64
 
 	ChecksPerformedTotal  uint64
 	ChecksFetchedFromHub  uint64
