@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/cloudradar-monitoring/frontman/pkg/stats"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -54,6 +56,16 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	return nil
 }
 
+func addErrorHook(stats *stats.FrontmanStats) {
+	hook := &LogrusErrorHook{
+		InternalErrorsTotal:        &stats.InternalErrorsTotal,
+		InternalLastErrorMessage:   &stats.InternalLastErrorMessage,
+		InternalLastErrorTimestamp: &stats.InternalLastErrorTimestamp,
+	}
+
+	log.AddHook(hook)
+}
+
 // Fire event
 func (hook *logrusFileHook) Fire(entry *log.Entry) error {
 	plainformat, err := hook.formatter.Format(entry)
@@ -82,4 +94,26 @@ func (hook *logrusFileHook) Levels() []log.Level {
 func (fm *Frontman) SetLogLevel(lvl LogLevel) {
 	fm.Config.LogLevel = lvl
 	log.SetLevel(lvl.LogrusLevel())
+}
+
+type LogrusErrorHook struct {
+	InternalErrorsTotal        *uint64
+	InternalLastErrorMessage   *string
+	InternalLastErrorTimestamp *uint64
+}
+
+func (h *LogrusErrorHook) Fire(entry *log.Entry) error {
+	now := uint64(time.Now().Unix())
+
+	*h.InternalErrorsTotal++
+	*h.InternalLastErrorMessage = entry.Message
+	*h.InternalLastErrorTimestamp = now
+
+	return nil
+}
+
+func (h *LogrusErrorHook) Levels() []log.Level {
+	return []log.Level{
+		log.ErrorLevel,
+	}
 }
