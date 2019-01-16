@@ -105,6 +105,9 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 		return nil, err
 	}
 
+	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks))
+	fm.Stats.ChecksFetchedFromHub += uint64(len(i.WebChecks))
+
 	return &i, nil
 }
 
