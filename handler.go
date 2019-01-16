@@ -89,6 +89,9 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 
 	resp, err := fm.hubHTTPClient.Do(r)
 	if err != nil {
+		fm.Stats.HubLastErrorMessage = err.Error()
+		fm.Stats.HubLastErrorTimestamp = uint64(time.Now().Second())
+		fm.Stats.HubErrorsTotal++
 		return nil, err
 	}
 
