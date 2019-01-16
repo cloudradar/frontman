@@ -88,7 +88,6 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 	}
 
 	resp, err := fm.hubHTTPClient.Do(r)
-
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +99,6 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&i)
-
 	if err != nil {
 		return nil, err
 	}
