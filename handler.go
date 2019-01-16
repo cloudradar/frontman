@@ -439,10 +439,11 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	case <-done:
 		return results, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		log.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout)
+		log.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
 	}
 }
+
 func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
@@ -471,7 +472,13 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				log.Errorf("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
 			} else {
-				fm.runServiceCheck(check)
+				var err error
+				res.Measurements, err = fm.runServiceCheck(check)
+				if err != nil {
+					res.Message = err
+				} else {
+					succeed++
+				}
 			}
 
 			resultsChan <- res
