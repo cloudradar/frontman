@@ -10,10 +10,14 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/cloudradar-monitoring/frontman/pkg/stats"
 )
 
 type Frontman struct {
 	Config *Config
+
+	Stats stats.FrontmanStats
 
 	// internal use
 	httpTransport *http.Transport

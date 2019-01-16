@@ -149,6 +149,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	}
 
 	var req *http.Request
+	var bodyLength int
 
 	if fm.Config.HubGzip {
 		var buffer bytes.Buffer
@@ -156,9 +157,11 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		zw.Write(b)
 		zw.Close()
 		req, err = http.NewRequest("POST", fm.Config.HubURL, &buffer)
+		bodyLength = buffer.Len()
 		req.Header.Set("Content-Encoding", "gzip")
 	} else {
 		req, err = http.NewRequest("POST", fm.Config.HubURL, bytes.NewBuffer(b))
+		bodyLength = len(b)
 	}
 	if err != nil {
 		return err
@@ -192,6 +195,9 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	// in case of successful POST reset the offline buffer
 	fm.offlineResultsBuffer = []Result{}
+
+	// Update frontmen stats
+	fm.Stats.BytesSentTohubTotal += uint64(bodyLength)
 
 	return nil
 }
