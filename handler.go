@@ -359,6 +359,14 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
+	// Update statistics about uptime
+	// TODO: Is there any chance Run can be alled multiple times?
+	go func() {
+		for {
+			fm.Stats.Uptime++
+			time.Sleep(time.Second * 1)
+		}
+	}()
 	for {
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
