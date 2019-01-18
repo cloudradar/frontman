@@ -475,7 +475,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				var err error
 				res.Measurements, err = fm.runServiceCheck(check)
 				if err != nil {
-					res.Message = err
+					res.Message = err.Error()
 				} else {
 					succeed++
 				}
