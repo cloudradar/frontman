@@ -66,6 +66,10 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	}
 	defer conn.Close()
 
+	err = conn.SetDeadline(time.Now().Add(secToDuration(fm.Config.NetTCPTimeout)))
+	if err != nil {
+		return m, fmt.Errorf("can't set tcp conn timeout: %s", err.Error())
+	}
 	// Execute the check
 	err = executeServiceCheck(conn, fm.Config.NetTCPTimeout, service, hostname)
 	if err != nil {
