@@ -51,6 +51,7 @@ func main() {
 	serviceUninstallPtr := flag.Bool("u", false, fmt.Sprintf("stop and uninstall the system service(%s)", systemManager.String()))
 	printConfigPtr := flag.Bool("p", false, "print the active config")
 	versionPtr := flag.Bool("version", false, "show the frontman version")
+	statsPtr := flag.Bool("stats", false, "show the frontman stats")
 
 	// some OS specific flags
 	if runtime.GOOS == "windows" {
@@ -89,6 +90,7 @@ func main() {
 
 	fm := frontman.New(cfg, version)
 
+	handleFlagPrintStats(*statsPtr, fm)
 	handleFlagPrintConfig(*printConfigPtr, fm)
 
 	setDefaultLogFormatter()
@@ -174,6 +176,21 @@ func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
 		fmt.Println(fm.Config.DumpToml())
 		os.Exit(0)
 	}
+}
+
+func handleFlagPrintStats(statsFlag bool, fm *frontman.Frontman) {
+	if !statsFlag {
+		return
+	}
+
+	buff, err := ioutil.ReadFile(fm.Config.StatsFile)
+	if err != nil {
+		fmt.Printf("Could not read stats file: %s\n", fm.Config.StatsFile)
+		os.Exit(1)
+	}
+
+	fmt.Printf("%s", buff)
+	os.Exit(0)
 }
 
 func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {

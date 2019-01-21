@@ -2,6 +2,7 @@
 
 sleep = 5.0 # delay before starting a new round of checks in seconds; number must contains decimal point
 pid = "/tmp/frontman.pid" # pid file location
+stats_file = "/tmp/frontman.stats"
 
 # Logging
 log = "/var/log/frontman/frontman.log" # log file location

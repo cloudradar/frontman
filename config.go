@@ -47,6 +47,7 @@ type Config struct {
 
 	PidFile   string `toml:"pid" comment:"path to pid file"`
 	LogFile   string `toml:"log" comment:"path to log file"`
+	StatsFile string `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 	LogSyslog string `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
 
 	MinValuableConfig

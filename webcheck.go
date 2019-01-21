@@ -122,7 +122,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		},
 	}
 
-	ctx, _ := context.WithTimeout(req.Context(), secToDuration(timeout))
+	ctx, cancel := context.WithTimeout(req.Context(), secToDuration(timeout))
+	defer cancel()
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())

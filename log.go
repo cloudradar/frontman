@@ -1,10 +1,15 @@
 package frontman
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/cloudradar-monitoring/frontman/pkg/stats"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -54,6 +59,16 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	return nil
 }
 
+func addErrorHook(stats *stats.FrontmanStats) {
+	hook := &LogrusErrorHook{
+		InternalErrorsTotal:        &stats.InternalErrorsTotal,
+		InternalLastErrorMessage:   &stats.InternalLastErrorMessage,
+		InternalLastErrorTimestamp: &stats.InternalLastErrorTimestamp,
+	}
+
+	log.AddHook(hook)
+}
+
 // Fire event
 func (hook *logrusFileHook) Fire(entry *log.Entry) error {
 	plainformat, err := hook.formatter.Format(entry)
@@ -78,8 +93,63 @@ func (hook *logrusFileHook) Levels() []log.Level {
 	}
 }
 
+// StartWritingStats writes fm.Stats every minute to Config.StatsFile
+// This method should only be called once
+func (fm *Frontman) StartWritingStats() {
+	var stats stats.FrontmanStats
+	var buff bytes.Buffer
+	var err error
+
+	// Make the output indented
+	encoder := json.NewEncoder(&buff)
+	encoder.SetIndent("", "    ")
+
+	go func() {
+		for {
+			buff.Reset()
+			time.Sleep(time.Minute * 1)
+			stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
+			// Get snapshot from current stats
+			stats = *fm.Stats
+			err = encoder.Encode(stats)
+			if err != nil {
+				log.Errorf("Could not encode stats file: %s", err)
+				continue
+			}
+
+			err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
+			if err != nil {
+				// TODO: should we return in this case? Or after 5 times or...?
+				log.Errorf("Could not write stats file: %s", err)
+			}
+		}
+	}()
+}
+
 // SetLogLevel sets Log level and corresponding logrus level
 func (fm *Frontman) SetLogLevel(lvl LogLevel) {
 	fm.Config.LogLevel = lvl
 	log.SetLevel(lvl.LogrusLevel())
+}
+
+type LogrusErrorHook struct {
+	InternalErrorsTotal        *uint64
+	InternalLastErrorMessage   *string
+	InternalLastErrorTimestamp *uint64
+}
+
+func (h *LogrusErrorHook) Fire(entry *log.Entry) error {
+	now := uint64(time.Now().Unix())
+
+	*h.InternalErrorsTotal++
+	*h.InternalLastErrorMessage = entry.Message
+	*h.InternalLastErrorTimestamp = now
+
+	return nil
+}
+
+func (h *LogrusErrorHook) Levels() []log.Level {
+	return []log.Level{
+		log.ErrorLevel,
+	}
 }

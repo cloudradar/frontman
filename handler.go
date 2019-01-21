@@ -88,8 +88,10 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 	}
 
 	resp, err := fm.hubHTTPClient.Do(r)
-
 	if err != nil {
+		fm.Stats.HubLastErrorMessage = err.Error()
+		fm.Stats.HubLastErrorTimestamp = uint64(time.Now().Second())
+		fm.Stats.HubErrorsTotal++
 		return nil, err
 	}
 
@@ -99,11 +101,20 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 		return nil, errors.New(resp.Status)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&i)
-
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
+	err = json.Unmarshal(body, &i)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update frontman statistics
+	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
+	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks))
+	fm.Stats.ChecksFetchedFromHub += uint64(len(i.WebChecks))
 
 	return &i, nil
 }
@@ -134,6 +145,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 	}
 
 	var req *http.Request
+	var bodyLength int
 
 	if fm.Config.HubGzip {
 		var buffer bytes.Buffer
@@ -141,9 +153,11 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		zw.Write(b)
 		zw.Close()
 		req, err = http.NewRequest("POST", fm.Config.HubURL, &buffer)
+		bodyLength = buffer.Len()
 		req.Header.Set("Content-Encoding", "gzip")
 	} else {
 		req, err = http.NewRequest("POST", fm.Config.HubURL, bytes.NewBuffer(b))
+		bodyLength = len(b)
 	}
 	if err != nil {
 		return err
@@ -170,6 +184,9 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	// in case of successful POST reset the offline buffer
 	fm.offlineResultsBuffer = []Result{}
+
+	// Update frontman statistics
+	fm.Stats.BytesSentToHubTotal += uint64(bodyLength)
 
 	return nil
 }
@@ -215,6 +232,8 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 	if err != nil {
 		return fmt.Errorf("PostResultsToHub: %s", err.Error())
 	}
+
+	fm.Stats.CheckResultsSentToHub += uint64(len(results))
 
 	fm.offlineResultsBuffer = []Result{}
 	return nil
@@ -339,6 +358,10 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
+	fm.Stats.StartedAt = time.Now()
+	log.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
+	fm.StartWritingStats()
+
 	for {
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
@@ -390,50 +413,55 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			if check.Check.Connect == "" {
 				log.Errorf("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
-			} else {
+				resultsChan <- res
+				return
+			}
 
-				ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
+			ipaddr, err := net.ResolveIPAddr("ip", check.Check.Connect)
+			if err != nil {
+				res.Message = err.Error()
+				log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
+				resultsChan <- res
+				return
+			}
+
+			fm.Stats.ChecksPerformedTotal++
+
+			switch check.Check.Protocol {
+			case ProtocolICMP:
+				res.Measurements, err = fm.runPing(ipaddr)
 				if err != nil {
+					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
-					log.Debugf("serviceCheck: ResolveIPAddr error: %s", err.Error())
 				} else {
-					switch check.Check.Protocol {
-					case ProtocolICMP:
-						res.Measurements, err = fm.runPing(ipaddr)
-						if err != nil {
-							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-							res.Message = err.Error()
-						} else {
-							succeed++
-						}
-					case ProtocolTCP:
-						port, _ := check.Check.Port.Int64()
-
-						res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-						if err != nil {
-							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-							res.Message = err.Error()
-						} else {
-							succeed++
-						}
-					case ProtocolSSL:
-						port, _ := check.Check.Port.Int64()
-
-						res.Measurements, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-						if err != nil {
-							log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-							res.Message = err.Error()
-						} else {
-							succeed++
-						}
-					case "":
-						log.Errorf("serviceCheck: missing check.protocol")
-						res.Message = "Missing check.protocol"
-					default:
-						log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
-						res.Message = "Unknown check.protocol"
-					}
+					succeed++
 				}
+			case ProtocolTCP:
+				port, _ := check.Check.Port.Int64()
+
+				res.Measurements, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+				if err != nil {
+					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
+				} else {
+					succeed++
+				}
+			case ProtocolSSL:
+				port, _ := check.Check.Port.Int64()
+
+				res.Measurements, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+				if err != nil {
+					log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
+				} else {
+					succeed++
+				}
+			case "":
+				log.Errorf("serviceCheck: missing check.protocol")
+				res.Message = "Missing check.protocol"
+			default:
+				log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
+				res.Message = "Unknown check.protocol"
 			}
 
 			resultsChan <- res

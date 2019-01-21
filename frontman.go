@@ -10,10 +10,14 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/cloudradar-monitoring/frontman/pkg/stats"
 )
 
 type Frontman struct {
 	Config *Config
+
+	Stats *stats.FrontmanStats
 
 	// internal use
 	httpTransport *http.Transport
@@ -29,6 +33,7 @@ type Frontman struct {
 func New(cfg *Config, version string) *Frontman {
 	fm := &Frontman{
 		Config:       cfg,
+		Stats:        &stats.FrontmanStats{},
 		hostInfoSent: false,
 		version:      version,
 	}
@@ -62,6 +67,10 @@ func New(cfg *Config, version string) *Frontman {
 			log.Error("Can't set up syslog: ", err.Error())
 		}
 	}
+
+	// Add hook to logrus that updates our LastInternalError statistics
+	// whenever an error log is done
+	addErrorHook(fm.Stats)
 
 	return fm
 }
