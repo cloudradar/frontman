@@ -94,6 +94,7 @@ func (hook *logrusFileHook) Levels() []log.Level {
 }
 
 // StartWritingStats writes fm.Stats every minute to Config.StatsFile
+// This method should only be called once
 func (fm *Frontman) StartWritingStats() {
 	var stats stats.FrontmanStats
 	var buff bytes.Buffer
