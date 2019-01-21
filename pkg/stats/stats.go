@@ -1,5 +1,7 @@
 package stats
 
+import "time"
+
 // FrontmanStats holds application stats
 type FrontmanStats struct {
 	BytesSentToHubTotal      uint64
@@ -17,5 +19,6 @@ type FrontmanStats struct {
 	InternalLastErrorMessage   string
 	InternalLastErrorTimestamp uint64
 
-	Uptime uint64
+	Uptime    uint64
+	StartedAt time.Time `json:"-"` // Used to calculate Uptime
 }

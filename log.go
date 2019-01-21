@@ -107,6 +107,7 @@ func (fm *Frontman) StartWritingStats() {
 		for {
 			buff.Reset()
 			time.Sleep(time.Minute * 1)
+			stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
 			// Get snapshot from current stats
 			stats = *fm.Stats
 			err = encoder.Encode(stats)
