@@ -1,6 +1,7 @@
 package frontman
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -12,6 +13,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 )
+
+const timeoutPortLookup = time.Second * 3
 
 func certName(cert *x509.Certificate) string {
 	return fmt.Sprintf("'%s' issued by %s", cert.Subject.CommonName, cert.Issuer.CommonName)
@@ -25,16 +28,17 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 	}
 
 	if addr.Port == 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), timeoutPortLookup)
+		defer cancel()
+
 		if port, exists := defaultPortByService[service]; exists {
 			addr.Port = port
-		} else if port, _ := net.LookupPort("tcp", service); port > 0 {
+		} else if port, lerr := net.DefaultResolver.LookupPort(ctx, "tcp", service); port > 0 {
 			addr.Port = port
+		} else if lerr != nil {
+			err = fmt.Errorf("failed to auto-determine port for '%s': %s", service, lerr.Error())
+			return
 		}
-	}
-
-	if addr.Port == 0 {
-		err = fmt.Errorf("failed to auto-determine port for '%s'", service)
-		return
 	}
 
 	prefix := fmt.Sprintf("net.tcp.ssl.%d.", addr.Port)
