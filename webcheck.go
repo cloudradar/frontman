@@ -137,6 +137,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 
 	resp, err := httpClientWithMaxRedirects.Do(req)
 
+	// Error checks for httpClientWithMaxRedirects.Do
 	if !data.DontFollowRedirects && httpClientWithMaxRedirects.Err != nil {
 		// if request exceed the number of globally allowed redirects
 		// we need to stop and return the error
@@ -144,9 +145,11 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		// But in case we have DontFollowRedirects mode we don't need to return here
 		// because user may want to check the HTTP code or content of 30x page
 		return m, httpClientWithMaxRedirects.Err
-	} else if ctx.Err() == context.DeadlineExceeded {
+	}
+	if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
-	} else if err != nil {
+	}
+	if err != nil {
 		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
 
