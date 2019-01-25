@@ -1,2 +1,2 @@
 #!/bin/sh
-/usr/bin/frontman -u
+/usr/bin/frontman -u || true
