@@ -153,6 +153,9 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
 
+	// Set the httpStatusCode in case we got a response
+	m[prefix+"httpStatusCode"] = resp.StatusCode
+
 	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
 		return m, fmt.Errorf("bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
 	}
