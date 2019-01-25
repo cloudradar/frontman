@@ -38,11 +38,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2c4470d47613daac5ff660ff9b67a6f8dca489845bb867186e3fcda742a3e53f"
+  digest = "1:833906243c69267906c5935dbda058540be450f4e545248cd5c5907c06991a5a"
   name = "github.com/kardianos/service"
   packages = ["."]
   pruneopts = "UT"
-  revision = "615a14ed75099c9eaac6949e22ac2341bf9d3197"
+  revision = "4c239ee84e7bb93441b1b6a3f2db62d40e0e6cbd"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
