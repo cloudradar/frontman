@@ -101,4 +101,4 @@ release:
   github:
     owner: cloudradar-monitoring
     name: frontman
-  draft: false
+  draft: true
