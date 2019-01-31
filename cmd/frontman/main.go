@@ -290,13 +290,20 @@ func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool)
 
 	systemService, err := getServiceFromFlags(fm, "", "")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to get system service: %s", err.Error())
 	}
 
-	err = systemService.Stop()
+	status, err := systemService.Status()
 	if err != nil {
-		// don't return error here, just write a warning and try to uninstall
-		fmt.Println("Failed to stop the service: ", err.Error())
+		fmt.Println("Failed to get service status: ", err.Error())
+	}
+
+	if status == service.StatusRunning {
+		err = systemService.Stop()
+		if err != nil {
+			// don't exit here, just write a warning and try to uninstall
+			fmt.Println("Failed to stop the running service: ", err.Error())
+		}
 	}
 
 	err = systemService.Uninstall()
@@ -325,11 +332,6 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 	s, err := getServiceFromFlags(fm, cfgPath, username)
 	if err != nil {
 		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	if fm.Config.HubURL == "" {
-		fmt.Printf("To install the service you first need to set 'hub_url' config param")
 		os.Exit(1)
 	}
 
@@ -395,20 +397,16 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 		fmt.Println(err.Error())
 	}
 
-	switch systemManager.String() {
-	case "unix-systemv":
-		fmt.Printf("Run this command to stop it:\nsudo service %s stop\n\n", svcConfig.Name)
-	case "linux-upstart":
-		fmt.Printf("Run this command to stop it:\nsudo initctl stop %s\n\n", svcConfig.Name)
-	case "linux-systemd":
-		fmt.Printf("Run this command to stop it:\nsudo systemctl stop %s.service\n\n", svcConfig.Name)
-	case "darwin-launchd":
-		fmt.Printf("Run this command to stop it:\nsudo launchctl unload %s\n\n", svcConfig.Name)
-	case "windows-service":
-		fmt.Printf("Use the Windows Service Manager to stop it\n\n")
+	fmt.Printf("Log file located at: %s\n", fm.Config.LogFile)
+	fmt.Printf("Config file located at: %s\n", cfgPath)
+
+	if fm.Config.HubURL == "" {
+		fmt.Printf(`*** Attention: 'hub_url' config param is empty.\n
+*** You need to put the right credentials from your Cloudradar account into the config and then restart the service\n\n`)
 	}
 
-	fmt.Printf("Log file located at: %s\n", fm.Config.LogFile)
+	fmt.Printf("Run this command to restart the service: %s\n\n", getSystemMangerCommand(systemManager.String(), svcConfig.Name, "restart"))
+
 	os.Exit(0)
 }
 
@@ -554,4 +552,29 @@ func setDefaultLogFormatter() {
 	}
 
 	log.SetFormatter(&tfmt)
+}
+
+func getSystemMangerCommand(manager string, service string, command string) string {
+	switch manager {
+	case "unix-systemv":
+		return "sudo service " + service + " " + command
+	case "linux-upstart":
+		return "sudo initctl " + command + " " + service
+	case "linux-systemd":
+		return "sudo systemctl " + command + " " + service + ".service"
+	case "darwin-launchd":
+		switch command {
+		case "stop":
+			command = "unload"
+		case "start":
+			command = "load"
+		case "restart":
+			return "sudo launchctl unload " + service + " && sudo launchctl load " + service
+		}
+		return "sudo launchctl " + command + " " + service
+	case "windows-service":
+		return "sc " + command + " " + service
+	default:
+		return ""
+	}
 }
