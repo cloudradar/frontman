@@ -197,18 +197,15 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 }
 
 func (fm *Frontman) sendResultsChanToFileContinuously(resultsChan chan Result, outputFile *os.File) error {
-	var outputLock sync.Mutex
 	var errs []string
 	var jsonEncoder = json.NewEncoder(outputFile)
 
 	// encode and add results to the file as we get it from the chan
 	for res := range resultsChan {
-		outputLock.Lock()
 		err := jsonEncoder.Encode(res)
 		if err != nil {
 			errs = append(errs, err.Error())
 		}
-		outputLock.Unlock()
 	}
 
 	if errs != nil {
