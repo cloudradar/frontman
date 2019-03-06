@@ -59,9 +59,10 @@ ignore_ssl_errors = true
 
 func TestGenerateDefaultConfigFile(t *testing.T) {
 	mvc := &MinValuableConfig{
-		LogLevel: "debug",
-		IOMode:   "foo",
-		HubUser:  "bar",
+		LogLevel:  "debug",
+		IOMode:    "foo",
+		HubUser:   "bar",
+		StatsFile: "/baz",
 	}
 
 	tmpFile, err := ioutil.TempFile("", "")

@@ -37,6 +37,7 @@ var rootCertsPath string
 type MinValuableConfig struct {
 	LogLevel    LogLevel `toml:"log_level" comment:"\"debug\", \"info\", \"error\" verbose level; can be overridden with -v flag"`
 	IOMode      string   `toml:"io_mode" comment:"\"file\" or \"http\" – where frontman gets checks to perform and post results"`
+	StatsFile   string   `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 	HubURL      string   `toml:"hub_url" commented:"true"`
 	HubUser     string   `toml:"hub_user" commented:"true"`
 	HubPassword string   `toml:"hub_password" commented:"true"`
@@ -47,7 +48,6 @@ type Config struct {
 
 	PidFile   string `toml:"pid" comment:"path to pid file"`
 	LogFile   string `toml:"log" comment:"path to log file"`
-	StatsFile string `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 	LogSyslog string `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
 
 	MinValuableConfig
@@ -116,6 +116,13 @@ func NewMinimumConfig() *MinValuableConfig {
 	cfg := &MinValuableConfig{
 		IOMode:   IOModeHTTP,
 		LogLevel: defaultLogLevel,
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		cfg.StatsFile = "C:\\Windows\temp\frontman.stats"
+	default:
+		cfg.StatsFile = "/tmp/frontman.stats"
 	}
 
 	cfg.applyEnv(false)
