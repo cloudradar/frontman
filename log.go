@@ -119,8 +119,8 @@ func (fm *Frontman) StartWritingStats() {
 
 			err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
 			if err != nil {
-				// TODO: should we return in this case? Or after 5 times or...?
 				log.Errorf("Could not write stats file: %s", err)
+				return
 			}
 		}
 	}()
