@@ -290,10 +290,13 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 
 	// since fm.Run calls fm.RunOnce over and over again, we need this check here
 	if !fm.hostInfoSent {
-		hostInfo, err = fm.HostInfoResults()
-		if err != nil {
-			log.Warnf("Failed to fetch HostInfo: %s", err)
-			hostInfo["error"] = err.Error()
+		// Only try to collect HostInfo when SystemFields are defined
+		if len(fm.Config.SystemFields) > 0 {
+			hostInfo, err = fm.HostInfoResults()
+			if err != nil {
+				log.Warnf("Failed to fetch HostInfo: %s", err)
+				hostInfo["error"] = err.Error()
+			}
 		}
 
 		// Send hostInfo as first result
@@ -534,11 +537,6 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 // send to the hub alongside measurements.
 func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 	res := MeasurementsMap{}
-
-	if len(fm.Config.SystemFields) == 0 {
-		log.Warnf("[SYSTEM] HostInfoResults called but no SystemFields are defined.")
-		return res, fmt.Errorf("No system_fields defined")
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
