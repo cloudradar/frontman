@@ -84,7 +84,7 @@ func init() {
 	case "windows":
 		DefaultCfgPath = filepath.Join(exPath, "./frontman.conf")
 		defaultLogPath = filepath.Join(exPath, "./frontman.log")
-		defaultStatsFilePath = "C:\\Windows\temp\frontman.stats"
+		defaultStatsFilePath = "C:\\Windows\\temp\\frontman.stats"
 	case "darwin":
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
