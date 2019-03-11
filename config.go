@@ -114,6 +114,8 @@ func NewConfig() *Config {
 		SystemFields:           []string{},
 	}
 
+	log.Errorf("Using statsfile: %s", cfg.StatsFile)
+
 	return cfg
 }
 
