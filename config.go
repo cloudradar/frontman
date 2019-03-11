@@ -114,13 +114,6 @@ func NewConfig() *Config {
 		SystemFields:           []string{},
 	}
 
-	switch runtime.GOOS {
-	case "windows":
-		cfg.StatsFile = "C:\\Windows\temp\frontman.stats"
-	default:
-		cfg.StatsFile = "/tmp/frontman.stats"
-	}
-
 	return cfg
 }
 
