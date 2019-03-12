@@ -38,7 +38,6 @@ var defaultStatsFilePath string
 type MinValuableConfig struct {
 	LogLevel    LogLevel `toml:"log_level" comment:"\"debug\", \"info\", \"error\" verbose level; can be overridden with -v flag"`
 	IOMode      string   `toml:"io_mode" comment:"\"file\" or \"http\" – where frontman gets checks to perform and post results"`
-	StatsFile   string   `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 	HubURL      string   `toml:"hub_url" commented:"true"`
 	HubUser     string   `toml:"hub_user" commented:"true"`
 	HubPassword string   `toml:"hub_password" commented:"true"`
@@ -50,6 +49,7 @@ type Config struct {
 	PidFile   string `toml:"pid" comment:"path to pid file"`
 	LogFile   string `toml:"log" comment:"path to log file"`
 	LogSyslog string `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
+	StatsFile string `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 
 	MinValuableConfig
 
@@ -84,7 +84,7 @@ func init() {
 	case "windows":
 		DefaultCfgPath = filepath.Join(exPath, "./frontman.conf")
 		defaultLogPath = filepath.Join(exPath, "./frontman.log")
-		defaultStatsFilePath = "C:\\Windows\temp\frontman.stats"
+		defaultStatsFilePath = "C:\\Windows\\temp\\frontman.stats"
 	case "darwin":
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
@@ -100,10 +100,10 @@ func init() {
 func NewConfig() *Config {
 	cfg := &Config{
 		MinValuableConfig: MinValuableConfig{
-			IOMode:    IOModeHTTP,
-			StatsFile: defaultStatsFilePath,
+			IOMode: IOModeHTTP,
 		},
 		LogFile:                defaultLogPath,
+		StatsFile:              defaultStatsFilePath,
 		ICMPTimeout:            0.1,
 		Sleep:                  30,
 		SenderMode:             SenderModeWait,
@@ -112,13 +112,6 @@ func NewConfig() *Config {
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
 		SystemFields:           []string{},
-	}
-
-	switch runtime.GOOS {
-	case "windows":
-		cfg.StatsFile = "C:\\Windows\temp\frontman.stats"
-	default:
-		cfg.StatsFile = "/tmp/frontman.stats"
 	}
 
 	return cfg
