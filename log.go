@@ -104,26 +104,29 @@ func (fm *Frontman) StartWritingStats() {
 	encoder := json.NewEncoder(&buff)
 	encoder.SetIndent("", "    ")
 
-	go func() {
-		for {
-			buff.Reset()
-			time.Sleep(time.Minute * 1)
-			stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
-			// Get snapshot from current stats
-			stats = *fm.Stats
-			err = encoder.Encode(stats)
-			if err != nil {
-				log.Errorf("Could not encode stats file: %s", err)
-				continue
-			}
+	// Only start writing out stats if there is a StatsFile configued
+	if fm.Config.StatsFile != "" {
+		go func() {
+			for {
+				buff.Reset()
+				time.Sleep(time.Minute * 1)
+				stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
+				// Get snapshot from current stats
+				stats = *fm.Stats
+				err = encoder.Encode(stats)
+				if err != nil {
+					log.Errorf("Could not encode stats file: %s", err)
+					continue
+				}
 
-			err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
-			if err != nil {
-				log.Errorf("Could not write stats file: %s", err)
-				return
+				err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
+				if err != nil {
+					log.Errorf("Could not write stats file: %s", err)
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 // SetLogLevel sets Log level and corresponding logrus level
