@@ -49,8 +49,8 @@ loopDom:
 	return
 }
 
-func (fm *Frontman) initHttpTransport() {
-	fm.httpTransport = &http.Transport{
+func defaultHttpTransport() *http.Transport {
+	return &http.Transport{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -62,18 +62,22 @@ func (fm *Frontman) initHttpTransport() {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
+}
+
+func (fm *Frontman) initHttpTransport() {
+	fm.httpTransport = defaultHttpTransport()
 
 	if fm.Config.IgnoreSSLErrors {
 		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
 	}
 }
 
-// transportWithInsecureSSL creates a copy of the default http.Transport, with
-// option set to skip verification of insecure TLS.
+// transportWithInsecureSSL creates a default http.Transport,
+// sets the option to skip verification of insecure TLS.
 func (fm *Frontman) transportWithInsecureSSL() *http.Transport {
-	transport := *fm.httpTransport
+	transport := defaultHttpTransport()
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
-	return &transport
+	return transport
 }
 
 func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
