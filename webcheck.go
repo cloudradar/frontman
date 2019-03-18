@@ -68,6 +68,14 @@ func (fm *Frontman) initHttpTransport() {
 	}
 }
 
+// transportWithInsecureSSL creates a copy of the default http.Transport, with
+// option set to skip verification of insecure TLS.
+func (fm *Frontman) transportWithInsecureSSL() *http.Transport {
+	transport := *fm.httpTransport
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
+	return &transport
+}
+
 func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
 	var text []byte
 
@@ -96,7 +104,13 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
-	httpClientWithMaxRedirects := fm.newHTTPClientWithCustomMaxRedirectsLimit(fm.Config.HTTPCheckMaxRedirects)
+	var httpTransport *http.Transport
+	if data.IgnoreSSLErrors {
+		httpTransport = fm.transportWithInsecureSSL()
+	} else {
+		httpTransport = fm.httpTransport
+	}
+	httpClient := fm.newClientWithOptions(httpTransport, fm.Config.HTTPCheckMaxRedirects)
 	timeout := fm.Config.HTTPCheckTimeout
 
 	// set individual timeout in case it is less than in this check
@@ -135,16 +149,16 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	resp, err := httpClientWithMaxRedirects.Do(req)
+	resp, err := httpClient.Do(req)
 
-	// Error checks for httpClientWithMaxRedirects.Do
-	if !data.DontFollowRedirects && httpClientWithMaxRedirects.Err != nil {
+	// Error checks for httpClient.Do
+	if !data.DontFollowRedirects && httpClient.Err != nil {
 		// if request exceed the number of globally allowed redirects
 		// we need to stop and return the error
 		//
 		// But in case we have DontFollowRedirects mode we don't need to return here
 		// because user may want to check the HTTP code or content of 30x page
-		return m, httpClientWithMaxRedirects.Err
+		return m, httpClient.Err
 	}
 	if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
@@ -204,15 +218,18 @@ type httpClientAndError struct {
 	Err error
 }
 
-func (fm *Frontman) newHTTPClientWithCustomMaxRedirectsLimit(maxRedirects int) *httpClientAndError {
-	if fm.httpTransport == nil {
-		fm.initHttpTransport()
+func (fm *Frontman) newClientWithOptions(
+	transport *http.Transport, maxRedirects int) *httpClientAndError {
+	if transport == nil {
+		return &httpClientAndError{
+			Err: fmt.Errorf("no transport available"),
+		}
 	}
 
 	// httpClientAndError used to set the error related to the httpClient from the within CheckRedirect function
 	// we can't return it inside CheckRedirect, because it will prevent the HTTP client to provide the intermediate response with headers&body
 	client := &httpClientAndError{
-		&http.Client{Transport: fm.httpTransport},
+		&http.Client{Transport: transport},
 		nil,
 	}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {

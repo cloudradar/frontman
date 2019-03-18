@@ -44,6 +44,7 @@ type WebCheckData struct {
 	SearchHTMLSource    bool    `json:"searchHtmlSource"`
 	ExpectedPattern     string  `json:"expectedPattern,omitempty"`
 	DontFollowRedirects bool    `json:"dontFollowRedirects"`
+	IgnoreSSLErrors     bool    `json:"ignoreSSLErrors,omitempty"`
 	Timeout             float64 `json:"timeout,omitempty"`
 }
 
