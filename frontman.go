@@ -68,6 +68,8 @@ func New(cfg *Config, version string) *Frontman {
 		}
 	}
 
+	fm.initHttpTransport()
+
 	// Add hook to logrus that updates our LastInternalError statistics
 	// whenever an error log is done
 	addErrorHook(fm.Stats)
