@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -74,9 +75,12 @@ func (fm *Frontman) initHttpTransport() {
 
 // transportWithInsecureSSL creates a default http.Transport,
 // sets the option to skip verification of insecure TLS.
-func (fm *Frontman) transportWithInsecureSSL() *http.Transport {
+func transportWithInsecureSSL(rootCAs *x509.CertPool) *http.Transport {
 	transport := defaultHttpTransport()
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
+	transport.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true,
+		RootCAs:            rootCAs,
+	}
 	return transport
 }
 
@@ -110,7 +114,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 
 	var httpTransport *http.Transport
 	if data.IgnoreSSLErrors {
-		httpTransport = fm.transportWithInsecureSSL()
+		httpTransport = transportWithInsecureSSL(fm.rootCAs)
 	} else {
 		httpTransport = fm.httpTransport
 	}
