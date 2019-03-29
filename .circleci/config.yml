@@ -1,27 +1,77 @@
 ---
 version: 2
 jobs:
+  get-source:
+    docker:
+      - image: cloudradario/go-build:0.0.11
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - checkout
+      - persist_to_workspace:
+          root: /go/src/github.com/cloudradar-monitoring
+          paths:
+            - frontman
+  
   test:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
-      - checkout
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
       - run: make test
   
-  gorelease:
+  test-goreleaser:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
-      # Setup our ssh key from env var to be able to connect to Windows VM
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run: make goreleaser-snapshot
+  
+  build-goreleaser:
+    docker:
+      - image: cloudradario/go-build:0.0.11
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run: make goreleaser-rm-dist
+      - persist_to_workspace:
+          root: /go/src/github.com/cloudradar-monitoring
+          paths:
+            - frontman
+
+  build-docker:
+    docker:
+      - image: cloudradario/go-build:0.0.11
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - setup_remote_docker
+      - run: docker login --username ${DOCKERHUB_USER} --password ${DOCKERHUB_PASS}
+      - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/fontman:${CIRCLE_TAG} .
+      - run: docker push cloudradario/fontman:${CIRCLE_TAG}
+
+  build-sign-msi:
+    docker:
+      - image: cloudradario/go-build:0.0.11
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
       - run:
           name: Setup ssh key to access windows signing machine
-          command: echo $WIN_SSH_KEY | base64 -d > /tmp/id_win_ssh && chmod 0600 /tmp/id_win_ssh
-      - checkout
-      - run:
-          name: Build binaries, sign msi files and create GitHub release
-          command: make ci
+          command: echo $SSH_KEY | base64 -d > /tmp/id_ssh && chmod 0600 /tmp/id_ssh
+      - run: make windows-sign
+
+  release-github:
+    docker:
+      - image: cloudradario/go-build:0.0.11
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
       - run:
           name: Fetch release changelog so we can preserve it when releasing
           command: "CHANGELOGRAW=$(curl -H \"Authorization: token ${GITHUB_TOKEN}\"  https://api.github.com/repos/cloudradar-monitoring/frontman/releases | jq \".[0].body\") && echo \"export CHANGELOGRAW=$CHANGELOGRAW\" >> $BASH_ENV"
@@ -39,41 +89,79 @@ jobs:
           name: Delete GitHub release in case something went wrong
           command: github-release delete --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG}
           when: on_fail
-  
-  goreleasse-test:
-    docker:
-      - image: cloudradario/go-build:0.0.10
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
-    steps:
-      - checkout
-      - run: make goreleaser-snapshot
 
 workflows:
   version: 2
   test-on-commit:
     jobs:
-      - test:
+      - get-source:
           filters:
             tags:
               ignore: /.*/
-      - goreleasse-test:
+      - test:
+          requires:
+            - get-source
+          filters:
+            tags:
+              ignore: /.*/
+      - test-goreleaser:
+          requires:
+            - get-source
           filters:
             tags:
               ignore: /.*/
   
-  test-and-release:
+  release:
     jobs:
-      - test:
+      - get-source:
+          context: cloudradar
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
-      - gorelease:
+      - test:
+          context: cloudradar
+          requires:
+            - get-source
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-goreleaser:
+          context: cloudradar
           requires:
             - test
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-sign-msi:
+          context: cloudradar
+          requires:
+            - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - release-github:
+          context: cloudradar
+          requires:
+            - build-sign-msi
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-docker:
+          context: cloudradar
+          requires:
+            - release-github
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
             branches:
               ignore: /.*/

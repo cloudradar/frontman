@@ -80,6 +80,13 @@ Should be done on Windows machine
 - Run `goreleaser --snapshot` to build binaries
 - Run `build-win.bat`
 
+## Running as a docker container
+Check [dockerhub](https://cloud.docker.com/u/cloudradario/repository/docker/cloudradario/frontman) for available images.
+
+### Passing credentials
+Username and password need to be configured via environment variables. You can pass them using the `-e` flags.
+`docker run -d -e FRONTMAN_HUB_USER=YOUR_USERNAME -e FRONTMAN_HUB_PASSWORD=YOUR_PASS cloudradar/frontman:1.0.0`
+
 ## Credits
 Project co-financed by the European Regional Development Fund under the Innovative Economy Operational Programme. Innovation grants. We invest in your future.
 
