@@ -51,8 +51,8 @@ jobs:
       - attach_workspace:
           at: /go/src/github.com/cloudradar-monitoring
       - setup_remote_docker
-      - run: echo https://github.com/cloudradar-monitoring/frontman/releases/download/untagged-${CIRCLE_SHA1}/frontman_${CIRCLE_TAG}_Linux_x86_64.tar.gz
-      - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} --build-arg GIT_COMMIT=${CIRCLE_SHA1} -t cloudradario/fontman:${CIRCLE_TAG} .
+      # - run: echo https://github.com/cloudradar-monitoring/frontman/releases/download/untagged-${CIRCLE_SHA1}/frontman_${CIRCLE_TAG}_Linux_x86_64.tar.gz
+      - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/fontman:${CIRCLE_TAG} .
   
   build-aptly:
     docker:
@@ -165,14 +165,6 @@ workflows:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
-      - build-docker:
-          requires:
-            - build-goreleaser
-          filters:
-            tags:
-              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
-            branches:
-              ignore: /.*/
       - build-sign-msi:
           requires:
             - build-goreleaser
@@ -183,8 +175,15 @@ workflows:
               ignore: /.*/
       - release-github:
           requires:
-            - build-docker
             - build-sign-msi
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-docker:
+          requires:
+            - release-github
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
