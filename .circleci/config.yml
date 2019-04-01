@@ -8,9 +8,9 @@ jobs:
     steps:
       - checkout
       - persist_to_workspace:
-        root: /go/src/github.com/cloudradar-monitoring
-        paths:
-          - frontman
+          root: /go/src/github.com/cloudradar-monitoring
+          paths:
+            - frontman
   
   test:
     docker:
