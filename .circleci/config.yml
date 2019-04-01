@@ -64,7 +64,7 @@ jobs:
       - attach_workspace:
           at: /go/src/github.com/cloudradar-monitoring
       - run: make windows-sign
-    
+
  release-github:
   docker:
       - image: cloudradario/go-build:0.0.10
