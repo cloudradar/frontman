@@ -56,9 +56,9 @@ jobs:
           at: /go/src/github.com/cloudradar-monitoring
       - run: make windows-sign
     
-  release-github:
+#  release-github:
 
-  release-docker:
+#  release-docker:
 
   gorelease:
     docker:
