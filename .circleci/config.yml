@@ -49,8 +49,8 @@ jobs:
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - setup_remote_docker
-      - run: pwd
-      - run: ls -lah
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
       - run: docker build -t cloudradario/fontman:${CIRCLE_TAG} .
 
   build-sign-msi:
