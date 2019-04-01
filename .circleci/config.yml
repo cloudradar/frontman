@@ -48,6 +48,8 @@ jobs:
       - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
       - setup_remote_docker
       - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/fontman:${CIRCLE_TAG} .
   
@@ -154,18 +156,9 @@ workflows:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
-      - test-goreleaser:
-          requires:
-            - get-source
-          filters:
-            tags:
-              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
-            branches:
-              ignore: /.*/
       - build-goreleaser:
           requires:
             - test
-            - test-goreleaser
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
