@@ -65,8 +65,8 @@ jobs:
           at: /go/src/github.com/cloudradar-monitoring
       - run: make windows-sign
 
- release-github:
-  docker:
+  release-github:
+    docker:
       - image: cloudradario/go-build:0.0.10
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
