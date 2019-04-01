@@ -46,8 +46,17 @@ jobs:
     steps:
       - setup_remote_docker
       - run: docker build -t cloudradario/fontman:${CIRCLE_TAG} .
+  
+  build-aptly:
+    docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run: make aptly
 
-  sign-msi:
+  build-sign-msi:
     docker:
       - image: cloudradario/go-build:0.0.10
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
@@ -56,7 +65,28 @@ jobs:
           at: /go/src/github.com/cloudradar-monitoring
       - run: make windows-sign
     
-#  release-github:
+ release-github:
+  docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - run:
+          name: Fetch release changelog so we can preserve it when releasing
+          command: "CHANGELOGRAW=$(curl -H \"Authorization: token ${GITHUB_TOKEN}\"  https://api.github.com/repos/cloudradar-monitoring/frontman/releases | jq \".[0].body\") && echo \"export CHANGELOGRAW=$CHANGELOGRAW\" >> $BASH_ENV"
+      - run:
+          name: Publish release
+          shell: /bin/bash
+          command: |
+            if [[ ${CIRCLE_TAG} =~ -{1}((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$ ]] ; then
+              echo -e ${CHANGELOGRAW} | github-release edit --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --pre-release --description -
+            else
+              echo -e ${CHANGELOGRAW} | github-release edit --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --description -
+            fi
+          when: on_success
+      - run:
+          name: Delete GitHub release in case something went wrong
+          command: github-release delete --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG}
+          when: on_fail
 
 #  release-docker:
 
@@ -140,6 +170,32 @@ workflows:
       - build-docker:
           requires:
             - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-aptly:
+          requires:
+            - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-sign-msi:
+          requires:
+            - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - release-github:
+          requires:
+            - build-docker
+            - build-aptly
+            - build-sign-msi
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
