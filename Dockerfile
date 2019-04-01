@@ -1,5 +1,7 @@
 FROM alpine:3.9
 
+ARG FRONTMAN_VERSION
+
 ENV FRONTMAN_HUB_URL=https://hub.cloudradar.io/checks/
 # User and password should be passed via -e when starting the container
 #ENV FRONTMAN_HUB_USER=XXXXXXXXX
