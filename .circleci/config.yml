@@ -1,14 +1,65 @@
 ---
 version: 2
 jobs:
-  test:
+  get-source:
     docker:
       - image: cloudradario/go-build:0.0.10
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - checkout
+      - persist_to_workspace:
+        root: /go/src/github.com/cloudradar-monitoring
+        paths:
+          - frontman
+  
+  test:
+    docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
       - run: make test
   
+  test-goreleaser:
+    docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run: make goreleaser-snapshot
+  
+  build-goreleaser:
+    docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run: make goreleaser-rm-dist
+
+  build-docker:
+    docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - setup_remote_docker
+      - run: docker build -t cloudradario/fontman:${CIRCLE_TAG} .
+
+  sign-msi:
+    docker:
+      - image: cloudradario/go-build:0.0.10
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run: make windows-sign
+    
+  release-github:
+
+  release-docker:
+
   gorelease:
     docker:
       - image: cloudradario/go-build:0.0.10
@@ -39,14 +90,6 @@ jobs:
           name: Delete GitHub release in case something went wrong
           command: github-release delete --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG}
           when: on_fail
-  
-  goreleasse-test:
-    docker:
-      - image: cloudradario/go-build:0.0.10
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
-    steps:
-      - checkout
-      - run: make goreleaser-snapshot
 
 workflows:
   version: 2
@@ -56,22 +99,47 @@ workflows:
           filters:
             tags:
               ignore: /.*/
-      - goreleasse-test:
+      - test-goreleaser:
           filters:
             tags:
               ignore: /.*/
   
-  test-and-release:
+  release:
     jobs:
-      - test:
+      - get-source:
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
-      - gorelease:
+      - test:
+          requires:
+            - get-source
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - test-goreleaser:
+          requires:
+            - get-source
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-goreleaser:
           requires:
             - test
+            - test-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-docker:
+          requires:
+            - build-goreleaser
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
