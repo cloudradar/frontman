@@ -7,7 +7,7 @@ ENV FRONTMAN_HUB_URL=https://hub.cloudradar.io/checks/
 
 RUN apk update && apk add ca-certificates
 
-ENV FRONTMAN_VERSION=1.0.1-rc22
+#ENV FRONTMAN_VERSION=1.0.1-rc22
 
 RUN wget https://github.com/cloudradar-monitoring/frontman/releases/download/${FRONTMAN_VERSION}/frontman_${FRONTMAN_VERSION}_Linux_x86_64.tar.gz && \
     tar xf frontman_${FRONTMAN_VERSION}_Linux_x86_64.tar.gz && \
