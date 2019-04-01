@@ -1,0 +1,38 @@
+# This is example config
+
+sleep = 5.0 # delay before starting a new round of checks in seconds; number must contains decimal point
+pid = "/tmp/frontman.pid" # pid file location
+
+stats_file = "/tmp/frontman.stats"
+
+# Logging
+log = "./frontman.log" # log file location
+log_level = "info" # "debug", "info", "error" verbose level; can be overriden with -v flag
+
+# ICMP pings
+icmp_timeout = 0.5 # ICMP ping timeout in seconds; number must contains decimal point
+
+# TCP checks
+net_tcp_timeout = 2.0 # TCP timeout in seconds; number must contains decimal point
+
+# Web checks
+http_tcp_timeout = 15.0 # HTTP timeout in seconds; number must contains decimal point
+max_redirects = 3 # Max number of HTTP redirects to follow
+ignore_ssl_errors = false # Ignore SSL errors (e.g. self-signed or expired certificate)
+ssl_cert_expiry_threshold = 7 # Min days remain on the SSL cert to pass the check
+
+# Input and results
+io_mode = "http" # "file" or "http" – where frontman gets checks to perform and post results, can be overriden with -i and -o flag
+hub_url = "http://127.0.0.1:9999" # requires io_mode to be "http"
+hub_user = "" # requires io_mode to be "http"
+hub_password = "" # requires io_mode to be "http"
+hub_proxy = "" # HTTP proxy to use with HUB, requires io_mode to be "http"
+hub_proxy_user = "" # requires hub_proxy to be set
+hub_proxy_password = "" # requires hub_proxy_user to be set
+
+sender_mode = "interval" # "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval; requires io_mode to be "http"
+sender_mode_interval = 5.0 # interval in seconds to post results to HUB server  # requires sender_mode to be "interval";s number must contains decimal point
+
+# System
+# system_fields of frontman machine will be sent to hub
+system_fields = []
