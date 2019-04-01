@@ -3,7 +3,7 @@ version: 2
 jobs:
   get-source:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - checkout
@@ -14,7 +14,7 @@ jobs:
   
   test:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - attach_workspace:
@@ -23,7 +23,7 @@ jobs:
   
   test-goreleaser:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - attach_workspace:
@@ -32,7 +32,7 @@ jobs:
   
   build-goreleaser:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - attach_workspace:
@@ -45,25 +45,15 @@ jobs:
 
   build-docker:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - setup_remote_docker
       - run: docker build -t cloudradario/fontman:${CIRCLE_TAG} .
-  
-  build-aptly:
-    docker:
-      - image: cloudradario/go-build:0.0.10
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
-    steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
-      - run: cat Makefile
-      - run: make aptly
 
   build-sign-msi:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - attach_workspace:
@@ -72,7 +62,7 @@ jobs:
 
   release-github:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - run:
@@ -97,7 +87,7 @@ jobs:
 
   gorelease:
     docker:
-      - image: cloudradario/go-build:0.0.10
+      - image: cloudradario/go-build:0.0.11
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       # Setup our ssh key from env var to be able to connect to Windows VM
@@ -171,14 +161,6 @@ workflows:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
-      - build-aptly:
-          requires:
-            - build-goreleaser
-          filters:
-            tags:
-              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
-            branches:
-              ignore: /.*/
       - build-sign-msi:
           requires:
             - build-goreleaser
@@ -190,7 +172,6 @@ workflows:
       - release-github:
           requires:
             - build-docker
-            - build-aptly
             - build-sign-msi
           filters:
             tags:
