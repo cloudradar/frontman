@@ -127,13 +127,13 @@ workflows:
             tags:
               ignore: /.*/
       - test:
-        requires:
+          requires:
             - get-source
           filters:
             tags:
               ignore: /.*/
       - test-goreleaser:
-        requires:
+          requires:
             - get-source
           filters:
             tags:
