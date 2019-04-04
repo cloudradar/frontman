@@ -63,7 +63,7 @@ func sendSuccessNotification(title, message string) error {
 	return msg.Push()
 }
 
-func handleToastFeedback(ca *frontman.Frontman, cfgPath string) {
+func handleToastFeedback(fm *frontman.Frontman, cfgPath string) {
 	// handle URL schema arguments on windows
 	if runtime.GOOS != "windows" {
 		return
@@ -80,23 +80,23 @@ func handleToastFeedback(ca *frontman.Frontman, cfgPath string) {
 		if console != 0 {
 			w32.ShowWindow(console, w32.SW_HIDE)
 		}
-		windowsShowSettingsUI(ca, false)
+		windowsShowSettingsUI(fm, false)
 	case urlScheme + ":install":
 		// hide console window
 		console := w32.GetConsoleWindow()
 		if console != 0 {
 			w32.ShowWindow(console, w32.SW_HIDE)
 		}
-		windowsShowSettingsUI(ca, true)
+		windowsShowSettingsUI(fm, true)
 	case urlScheme + ":test":
-		toastCmdTest(ca)
+		toastCmdTest(fm)
 	case urlScheme + ":config":
 		toastOpenConfig(cfgPath)
 	}
 }
 
-func toastCmdTest(ca *frontman.Frontman) {
-	handleFlagTest(true, ca)
+func toastCmdTest(fm *frontman.Frontman) {
+	handleFlagTest(true, fm)
 }
 
 func toastOpenConfig(cfgPath string) error {

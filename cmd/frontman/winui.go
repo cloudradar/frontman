@@ -186,7 +186,7 @@ func windowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
 	inputFont := Font{PointSize: 12, Family: "Segoe UI"}
 	buttonFont := Font{PointSize: 12, Family: "Segoe UI"}
 
-	MainWindow{
+	w := MainWindow{
 		AssignTo: &ui.MainWindow,
 		Title:    "Frontman",
 		MinSize:  Size{360, 300},
@@ -254,7 +254,15 @@ func windowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
 			Width:     40,
 			OnClicked: func() {},
 		}},
-	}.Create()
+	}
+
+	if err := w.Create(); err != nil {
+		panic(err)
+	}
+
+	go func() {
+		ui.CheckSaveAndReload(true)
+	}()
 
 	// disable window resize
 	win.SetWindowLong(ui.MainWindow.Handle(), win.GWL_STYLE, win.WS_CAPTION|win.WS_SYSMENU)
