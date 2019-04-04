@@ -464,7 +464,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	for {
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
-			// do nothing
+			log.Warnln(err)
+			os.Exit(0)
 		} else if err != nil {
 			log.Error(err)
 		} else {
