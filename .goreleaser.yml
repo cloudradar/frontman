@@ -1,5 +1,5 @@
 builds:
-- main: cmd/frontman/main.go
+- main: ./cmd/frontman
   binary: frontman
   goos:
   - windows

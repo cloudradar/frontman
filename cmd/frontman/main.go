@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -40,11 +41,13 @@ func main() {
 
 	var serviceInstallUserPtr *string
 	var serviceInstallPtr *bool
+	var settingsPtr *bool
 
 	// Setup flag pointers
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
 	outputFilePtr := flag.String("o", "", "file to write the results (default ./results.out)")
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
+	testConfigPtr := flag.Bool("t", false, "test the Hub config and exit")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
 	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
@@ -56,6 +59,7 @@ func main() {
 	// some OS specific flags
 	if runtime.GOOS == "windows" {
 		serviceInstallPtr = flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
+		settingsPtr = flag.Bool("x", false, "open the settings UI")
 	} else {
 		serviceInstallUserPtr = flag.String("s", "", fmt.Sprintf("username to install and start the system service(%s)", systemManager.String()))
 	}
@@ -88,10 +92,12 @@ func main() {
 		log.Fatalf("Failed to handle frontman configuration: %s", err)
 	}
 
-	fm := frontman.New(cfg, version)
+	fm := frontman.New(cfg, *cfgPathPtr, version)
 
 	handleFlagPrintStats(*statsPtr, fm)
 	handleFlagPrintConfig(*printConfigPtr, fm)
+	handleFlagTest(*testConfigPtr, fm)
+	handleFlagSettings(settingsPtr, fm)
 
 	setDefaultLogFormatter()
 
@@ -102,6 +108,8 @@ func main() {
 
 	writePidFileIfNeeded(fm, oneRunOnlyModePtr)
 	defer removePidFileIfNeeded(fm, oneRunOnlyModePtr)
+
+	handleToastFeedback(fm, *cfgPathPtr)
 
 	if !service.Interactive() {
 		runUnderOsServiceManager(fm)
@@ -190,6 +198,57 @@ func handleFlagPrintStats(statsFlag bool, fm *frontman.Frontman) {
 	}
 
 	fmt.Printf("%s", buff)
+	os.Exit(0)
+}
+
+func handleFlagSettings(settingsUI *bool, fm *frontman.Frontman) {
+	if settingsUI != nil && *settingsUI {
+		windowsShowSettingsUI(fm, false)
+		os.Exit(0)
+	}
+}
+
+func handleFlagTest(testConfig bool, fm *frontman.Frontman) {
+	if !testConfig {
+		return
+	}
+
+	ctx := context.Background()
+	err := fm.CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
+	if err != nil {
+		if runtime.GOOS == "windows" {
+			// ignore toast error to make the main error clear for user
+			// toast error probably means toast not supported on the system
+			_ = sendErrorNotification("Hub connection check failed", err.Error())
+		}
+		log.WithError(err).Errorln("Hub connection check failed")
+		systemService, err := getServiceFromFlags(fm, "", "")
+		if err != nil {
+			log.WithError(err).Fatalln("Failed to get system service")
+		}
+
+		status, err := systemService.Status()
+		if err != nil {
+			// service seems not installed
+			// no need to show the tip on how to restart it
+			os.Exit(1)
+		}
+
+		systemManager := service.ChosenSystem()
+		if status == service.StatusRunning || status == service.StatusStopped {
+			restartCmdSpec := getSystemMangerCommand(systemManager.String(), svcConfig.Name, "restart")
+			log.WithFields(log.Fields{
+				"restartCmd": restartCmdSpec,
+			}).Infoln("Fix the config and then restart the service")
+		}
+
+		os.Exit(1)
+	}
+
+	if runtime.GOOS == "windows" {
+		_ = sendSuccessNotification("Hub connection check is done", "")
+	}
+	log.Infoln("Hub connection check is done and credentials are correct!")
 	os.Exit(0)
 }
 

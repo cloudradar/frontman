@@ -30,18 +30,36 @@
       <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>
 
       <Directory Id="TARGETDIR" Name="SourceDir">
-
+            <Component Id="RegistryEntries" Guid="e4e0d475-ca19-4a32-bd22-d0ed7ce303f0">
+                <RegistryKey Root="HKCR" Key="frontman\shell\open\command" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+                    <RegistryValue Type="string" Value='"[INSTALLDIR]\frontman.exe" "%1%"' />
+                </RegistryKey>
+                <RegistryKey Root="HKCR" Key="frontman" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+                    <RegistryValue Type="string" Name="URL Protocol" Value="" KeyPath="yes" />
+                    <RegistryValue Type="string" Value="URL:frontman" />
+                </RegistryKey>
+            </Component>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="Frontman" />
+            </Directory>
          <Directory Id="$(var.Program_Files)">
             <Directory Id="INSTALLDIR" Name="{{.Product}}">
                {{if gt (.Files.Items | len) 0}}
                <Component Id="ApplicationFiles" Guid="{{.Files.GUID}}">
+                <RemoveFolder Id="CleanApplicationFolders" Directory="ApplicationProgramsFolder" On="uninstall" />
                   {{range $i, $e := .Files.Items}}
                      {{if eq $i 0}}
                          <ServiceInstall Id="ServiceInstaller" Name="Frontman" Type="ownProcess" Vital="yes" DisplayName="Frontman" Description="Frontman" Start="auto" Account="LocalSystem" ErrorControl="normal" Arguments=" /start frontman" Interactive="no" />
-                         <ServiceControl Id="StartService" Name="Frontman" Stop="both" Start="install" Remove="uninstall" Wait="yes" />
+                         <ServiceControl Id="StartService" Name="Frontman" Stop="both" Start="install" Remove="uninstall" Wait="yes" >
+                            <ServiceArgument />
+                        </ServiceControl>
+                        <File Id="ApplicationFile{{$i}}" Source="{{$e}}" KeyPath="yes">
+                            <Shortcut Id="FrontmanShortcut" Name="Frontman Settings" Arguments="frontman:settings" Description="Opens the settings UI" Directory="ApplicationProgramsFolder" />
+                        </File>
+                     {{else}}
+                     <File Id="ApplicationFile{{$i}}" Source="{{$e}}"/>  
                      {{end}}
-               	 <File Id="ApplicationFile{{$i}}" Source="{{$e}}"/>  
-		{{end}}
+               {{end}}
                </Component>
                {{end}}
                {{if gt (.Directories | len) 0}}
@@ -52,7 +70,7 @@
             </Directory>
          </Directory>
 
-          <Component Id="ENVS" Guid="{{.Env.GUID}}">
+         <Component Id="ENVS" Guid="{{.Env.GUID}}">
                       <Environment Id="ENV_HUB"
                       Name="FRONTMAN_HUB_URL"
                       Value="[HUB_URL]"
@@ -76,7 +94,7 @@
                       Part="all"
                       Action="set"
                       System="yes" />
-           </Component>
+         </Component>
 
          {{if gt (.Shortcuts.Items | len) 0}}
          <Directory Id="ProgramMenuFolder">
@@ -109,9 +127,16 @@
 
       </Directory>
 
+
+      <SetProperty Id="CustomInstallExecInstall" Value='"[INSTALLDIR]\frontman.exe" "frontman:install"' Before="CustomInstallExecInstall" Sequence="execute"/>
+      <CustomAction Id="CustomInstallExecInstall" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no"/>
+
+      <SetProperty Id="CustomInstallExecQuietInstall" Value='"[INSTALLDIR]\frontman.exe" "frontman:test"' Before="CustomInstallExecQuietInstall" Sequence="execute"/>
+      <CustomAction Id="CustomInstallExecQuietInstall" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no"/>
+
       {{range $i, $e := .InstallHooks}}
       <SetProperty Id="CustomInstallExec{{$i}}" Value="{{$e.CookedCommand}}" Before="CustomInstallExec{{$i}}" Sequence="execute"/>
-      <CustomAction Id="CustomInstallExec{{$i}}" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
+      <CustomAction Id="CustomInstallExec{{$i}}" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
       {{end}}
       {{range $i, $e := .UninstallHooks}}
       <SetProperty Id="CustomUninstallExec{{$i}}" Value="{{$e.CookedCommand}}" Before="CustomUninstallExec{{$i}}" Sequence="execute"/>
@@ -119,13 +144,18 @@
       {{end}}
       <SetProperty Id="ARPNOMODIFY" Value="1" After="InstallValidate" Sequence="execute"/>
       <InstallExecuteSequence>
-         <RemoveExistingProducts After="InstallValidate"/>
-         {{range $i, $e := .InstallHooks}}
-         <Custom Action="CustomInstallExec{{$i}}" After="{{if eq $i 0}}InstallFiles{{else}}CustomInstallExec{{dec $i}}{{end}}">NOT Installed AND NOT REMOVE</Custom>
-         {{end}}
-         {{range $i, $e := .UninstallHooks}}
-         <Custom Action="CustomUninstallExec{{$i}}" After="{{if eq $i 0}}InstallInitialize{{else}}CustomUninstallExec{{dec $i}}{{end}}">REMOVE ~= "ALL"</Custom>
-         {{end}}
+            <RemoveExistingProducts After="InstallValidate"/>
+
+            <Custom Action="CustomInstallExecInstall" Before="InstallFinalize">NOT Installed AND NOT REMOVE AND UILevel &gt; 2</Custom>
+            <Custom Action="CustomInstallExecQuietInstall" Before="InstallFinalize">NOT Installed AND NOT REMOVE AND UILevel &lt; 3</Custom>
+            
+            {{range $i, $e := .InstallHooks}}
+            <Custom Action="CustomInstallExec{{$i}}" {{if eq $i 0}}Before="InstallFinalize{{else}}After="CustomInstallExec{{dec $i}}{{end}}">NOT Installed AND NOT REMOVE</Custom>
+            {{end}}
+
+            {{range $i, $e := .UninstallHooks}}
+            <Custom Action="CustomUninstallExec{{$i}}" After="{{if eq $i 0}}InstallInitialize{{else}}CustomUninstallExec{{dec $i}}{{end}}">REMOVE ~= "ALL"</Custom>
+            {{end}}
       </InstallExecuteSequence>
 
       <Feature Id="DefaultFeature" Level="1">
@@ -139,6 +169,7 @@
          {{range $i, $e := .Directories}}
          <ComponentGroupRef Id="AppFiles{{$i}}" />
          {{end}}
+         <ComponentRef Id="RegistryEntries" />
          <Feature Id="Uninstall">
              <ComponentRef Id="UninstallFolder" Primary="yes"/>
          </Feature>
@@ -148,11 +179,11 @@
          <!-- Define the installer UI -->
          <UIRef Id="WixUI_HK" />
       </UI>
+      <Property Id="INSTALLDIR" Secure="yes"/>
       <Property Id="HUB_URL" Secure="yes"/>
       <Property Id="HUB_USER" Secure="yes"/>
       <Property Id="HUB_PASSWORD" Secure="yes"/>
       <Property Id="WIXUI_OLDERVERSIONBEINGUPGRADED" Value="OLDERVERSIONBEINGUPGRADED"/>
-
       <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
       <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
       <!-- this should help to propagate env var changes -->

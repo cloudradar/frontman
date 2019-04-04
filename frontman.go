@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -15,13 +16,14 @@ import (
 )
 
 type Frontman struct {
-	Config *Config
+	Config         *Config
+	ConfigLocation string
 
 	Stats *stats.FrontmanStats
 
-	// internal use
 	httpTransport *http.Transport
-	hubHTTPClient *http.Client
+	hubClient     *http.Client
+	hubClientOnce sync.Once
 	hostInfoSent  bool
 
 	offlineResultsBuffer []Result
@@ -30,12 +32,13 @@ type Frontman struct {
 	version string
 }
 
-func New(cfg *Config, version string) *Frontman {
+func New(cfg *Config, cfgPath, version string) *Frontman {
 	fm := &Frontman{
-		Config:       cfg,
-		Stats:        &stats.FrontmanStats{},
-		hostInfoSent: false,
-		version:      version,
+		Config:         cfg,
+		ConfigLocation: cfgPath,
+		Stats:          &stats.FrontmanStats{},
+		hostInfoSent:   false,
+		version:        version,
 	}
 
 	if rootCertsPath != "" {

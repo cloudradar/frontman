@@ -6,8 +6,8 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -45,40 +46,123 @@ func InputFromFile(filename string) (*Input, error) {
 	return &i, nil
 }
 
-func (fm *Frontman) initHubHttpClient() {
-	if fm.hubHTTPClient == nil {
-		tr := *(http.DefaultTransport.(*http.Transport))
-		if fm.rootCAs != nil {
-			tr.TLSClientConfig = &tls.Config{RootCAs: fm.rootCAs}
+func (fm *Frontman) initHubClientOnce() {
+	fm.hubClientOnce.Do(func() {
+		transport := &http.Transport{
+			ResponseHeaderTimeout: 15 * time.Second,
 		}
-		if fm.Config.HubProxy != "" {
+		if fm.rootCAs != nil {
+			transport.TLSClientConfig = &tls.Config{
+				RootCAs: fm.rootCAs,
+			}
+		}
+		if len(fm.Config.HubProxy) > 0 {
 			if !strings.HasPrefix(fm.Config.HubProxy, "http://") {
 				fm.Config.HubProxy = "http://" + fm.Config.HubProxy
 			}
-
-			u, err := url.Parse(fm.Config.HubProxy)
-
+			proxyURL, err := url.Parse(fm.Config.HubProxy)
 			if err != nil {
-				log.Errorf("Failed to parse 'hub_proxy' URL")
+				log.WithFields(log.Fields{
+					"url": fm.Config.HubProxy,
+				}).Warningln("failed to parse hub_proxy URL")
 			} else {
-				if fm.Config.HubProxyUser != "" {
-					u.User = url.UserPassword(fm.Config.HubProxyUser, fm.Config.HubProxyPassword)
+				if len(fm.Config.HubProxyUser) > 0 {
+					proxyURL.User = url.UserPassword(fm.Config.HubProxyUser, fm.Config.HubProxyPassword)
 				}
-				tr.Proxy = func(_ *http.Request) (*url.URL, error) {
-					return u, nil
+				transport.Proxy = func(_ *http.Request) (*url.URL, error) {
+					return proxyURL, nil
 				}
 			}
 		}
-
-		fm.hubHTTPClient = &http.Client{
-			Timeout:   time.Second * 30,
-			Transport: &tr,
+		fm.hubClient = &http.Client{
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		}
+	})
+}
+
+// CheckHubCredentials performs credentials check for a Hub config, returning errors that reference
+// field names as in source config. Since config may be filled from file or UI, the field names can be different.
+// Consider also localization of UI, we want to decouple credential checking logic from their actual view in UI.
+//
+// Examples:
+// * for TOML: CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
+// * for WinUI: CheckHubCredentials(ctx, "URL", "User", "Password")
+func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldHubUser, fieldHubPassword string) error {
+	fm.initHubClientOnce()
+
+	if len(fm.Config.HubURL) == 0 {
+		return newEmptyFieldError(fieldHubURL)
+	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
+		err = errors.WithStack(err)
+		return newFieldError(fieldHubURL, err)
+	} else if u.Scheme != "http" && u.Scheme != "https" {
+		err := errors.Errorf("wrong scheme '%s', URL must start with http:// or https://", u.Scheme)
+		return newFieldError(fieldHubURL, err)
 	}
+	req, _ := http.NewRequest("HEAD", fm.Config.HubURL, nil)
+	req.Header.Add("User-Agent", fm.userAgent())
+	if len(fm.Config.HubUser) > 0 {
+		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
+	}
+
+	ctx, cancelFn := context.WithTimeout(ctx, time.Minute)
+	req = req.WithContext(ctx)
+	resp, err := fm.hubClient.Do(req)
+	cancelFn()
+	if err = fm.checkClientError(resp, err, fieldHubUser, fieldHubPassword); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (fm *Frontman) checkClientError(resp *http.Response, err error, fieldHubUser, fieldHubPassword string) error {
+	if err != nil {
+		if errors.Cause(err) == context.DeadlineExceeded {
+			err = errors.New("connection timeout, please check your proxy or firewall settings")
+			return err
+		}
+		return err
+	}
+	_, _ = io.Copy(ioutil.Discard, resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		if len(fm.Config.HubUser) == 0 {
+			return newEmptyFieldError(fieldHubUser)
+		} else if len(fm.Config.HubPassword) == 0 {
+			return newEmptyFieldError(fieldHubPassword)
+		}
+		err := errors.Errorf("unable to authorize with provided Hub credentials (HTTP %d)", resp.StatusCode)
+		return err
+	} else if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
+		err := errors.Errorf("unable to authorize with provided Hub credentials (HTTP %d)", resp.StatusCode)
+		return err
+	}
+	return nil
+}
+
+func newEmptyFieldError(name string) error {
+	err := errors.Errorf("unexpected empty field %s", name)
+	return errors.Wrap(err, "the field must be filled with details of your Cloudradar account")
+}
+
+func newFieldError(name string, err error) error {
+	return errors.Wrapf(err, "%s field verification failed", name)
 }
 
 func (fm *Frontman) InputFromHub() (*Input, error) {
-	fm.initHubHttpClient()
+	fm.initHubClientOnce()
+
+	if len(fm.Config.HubURL) == 0 {
+		return nil, newEmptyFieldError("hub_url")
+	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
+		err = errors.WithStack(err)
+		return nil, newFieldError("hub_url", err)
+	} else if u.Scheme != "http" && u.Scheme != "https" {
+		err := errors.Errorf("wrong scheme '%s', URL must start with http:// or https://", u.Scheme)
+		return nil, newFieldError("hub_url", err)
+	}
 
 	i := Input{}
 	r, err := http.NewRequest("GET", fm.Config.HubURL, nil)
@@ -92,7 +176,7 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 		r.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
-	resp, err := fm.hubHTTPClient.Do(r)
+	resp, err := fm.hubClient.Do(r)
 	if err != nil {
 		fm.Stats.HubLastErrorMessage = err.Error()
 		fm.Stats.HubLastErrorTimestamp = uint64(time.Now().Second())
@@ -125,7 +209,7 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 }
 
 func (fm *Frontman) PostResultsToHub(results []Result) error {
-	fm.initHubHttpClient()
+	fm.initHubClientOnce()
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	b, err := json.Marshal(Results{
@@ -147,6 +231,16 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if len(fm.Config.HubURL) == 0 {
+		return newEmptyFieldError("hub_url")
+	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
+		err = errors.WithStack(err)
+		return newFieldError("hub_url", err)
+	} else if u.Scheme != "http" && u.Scheme != "https" {
+		err := errors.Errorf("wrong scheme '%s', URL must start with http:// or https://", u.Scheme)
+		return newFieldError("hub_url", err)
 	}
 
 	var req *http.Request
@@ -174,7 +268,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
-	resp, err := fm.hubHTTPClient.Do(req)
+	resp, err := fm.hubClient.Do(req)
 	if err != nil {
 		return err
 	}
