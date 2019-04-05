@@ -45,6 +45,41 @@
   revision = "4c239ee84e7bb93441b1b6a3f2db62d40e0e6cbd"
 
 [[projects]]
+  branch = "master"
+  digest = "1:dbf6c26bb769b9c3bf25a92cb5b7e75daaf830d14e63b1c1526c6b51fb9cdf34"
+  name = "github.com/lxn/walk"
+  packages = [
+    ".",
+    "declarative",
+  ]
+  pruneopts = "UT"
+  revision = "79c445caf3e94a21822d70e80d021c20fdb704fa"
+
+[[projects]]
+  branch = "master"
+  digest = "1:3a0b840c0b2fac7d1f39260f91ccf426c98c05aa5e3e5243ae178d7d330379d9"
+  name = "github.com/lxn/win"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0040366d745006bbf7528ac96de2de375846aa79"
+
+[[projects]]
+  branch = "master"
+  digest = "1:0e1e5f960c58fdc677212fcc70e55042a0084d367623e51afbdb568963832f5d"
+  name = "github.com/nu7hatch/gouuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+
+[[projects]]
+  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -143,6 +178,14 @@
   revision = "0ffbfd41fbef8ffcf9b62b0b0aa3a5873ed7a4fe"
 
 [[projects]]
+  digest = "1:5d3e23515e7916c152cc665eda0f7eaf6fdf8fdfe7c3dbac97049bcbd649b33f"
+  name = "gopkg.in/Knetic/govaluate.v3"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d216395917cc49052c7c7094cf57f09657ca08a8"
+  version = "v3.0.0"
+
+[[projects]]
   digest = "1:81e1c5cee195fca5de06e2540cb63eea727a850b7e5c213548e7f81521c97a57"
   name = "gopkg.in/asn1-ber.v1"
   packages = ["."]
@@ -158,14 +201,27 @@
   revision = "bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9"
   version = "v2.5.1"
 
+[[projects]]
+  branch = "v1"
+  digest = "1:b71ccd8615521db4ea2f9381f55780a1312654f5d8431d2e58eca51c74110de2"
+  name = "gopkg.in/toast.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0a84660828b24d25b35525c9a1f1f51267f8da91"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
     "github.com/kardianos/service",
+    "github.com/lxn/walk",
+    "github.com/lxn/walk/declarative",
+    "github.com/lxn/win",
+    "github.com/pkg/errors",
     "github.com/shirou/gopsutil/cpu",
     "github.com/shirou/gopsutil/host",
     "github.com/shirou/gopsutil/mem",
+    "github.com/shirou/w32",
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/syslog",
     "github.com/stretchr/testify/assert",
@@ -174,7 +230,10 @@
     "golang.org/x/net/icmp",
     "golang.org/x/net/ipv4",
     "golang.org/x/net/ipv6",
+    "golang.org/x/sys/windows/svc",
+    "golang.org/x/sys/windows/svc/mgr",
     "gopkg.in/ldap.v2",
+    "gopkg.in/toast.v1",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

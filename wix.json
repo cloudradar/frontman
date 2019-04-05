@@ -11,6 +11,9 @@
       "example.json"
     ]
   },
+  "directories": [
+    "resources"
+  ],
   "env": {
     "guid": "43e89972-ea2f-4b01-b4c6-87d6929d5015",
     "vars": [
