@@ -118,7 +118,15 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	} else {
 		httpTransport = fm.httpTransport
 	}
-	httpClient := fm.newClientWithOptions(httpTransport, fm.Config.HTTPCheckMaxRedirects)
+
+	var httpClient *httpClientAndError
+	// In case the webcheck disables redirect following we set maxRedirects to 0
+	if data.DontFollowRedirects {
+		httpClient = fm.newClientWithOptions(httpTransport, 0)
+	} else {
+		httpClient = fm.newClientWithOptions(httpTransport, fm.Config.HTTPCheckMaxRedirects)
+	}
+
 	timeout := fm.Config.HTTPCheckTimeout
 
 	// set individual timeout in case it is less than in this check
