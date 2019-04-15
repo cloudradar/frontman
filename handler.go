@@ -465,6 +465,9 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
 			log.Warnln(err)
+			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
+			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
+			time.Sleep(10 * time.Second)
 			os.Exit(0)
 		} else if err != nil {
 			log.Error(err)
