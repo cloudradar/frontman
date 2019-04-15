@@ -56,7 +56,7 @@ func (fm *Frontman) initHubClientOnce() {
 				RootCAs: fm.rootCAs,
 			}
 		}
-		if len(fm.Config.HubProxy) > 0 {
+		if fm.Config.HubProxy != "" {
 			if !strings.HasPrefix(fm.Config.HubProxy, "http://") {
 				fm.Config.HubProxy = "http://" + fm.Config.HubProxy
 			}
@@ -66,7 +66,7 @@ func (fm *Frontman) initHubClientOnce() {
 					"url": fm.Config.HubProxy,
 				}).Warningln("failed to parse hub_proxy URL")
 			} else {
-				if len(fm.Config.HubProxyUser) > 0 {
+				if fm.Config.HubProxyUser != "" {
 					proxyURL.User = url.UserPassword(fm.Config.HubProxyUser, fm.Config.HubProxyPassword)
 				}
 				transport.Proxy = func(_ *http.Request) (*url.URL, error) {
@@ -91,7 +91,7 @@ func (fm *Frontman) initHubClientOnce() {
 func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldHubUser, fieldHubPassword string) error {
 	fm.initHubClientOnce()
 
-	if len(fm.Config.HubURL) == 0 {
+	if fm.Config.HubURL == "" {
 		return newEmptyFieldError(fieldHubURL)
 	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
 		err = errors.WithStack(err)
@@ -102,7 +102,7 @@ func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldH
 	}
 	req, _ := http.NewRequest("HEAD", fm.Config.HubURL, nil)
 	req.Header.Add("User-Agent", fm.userAgent())
-	if len(fm.Config.HubUser) > 0 {
+	if fm.Config.HubUser != "" {
 		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
@@ -128,9 +128,9 @@ func (fm *Frontman) checkClientError(resp *http.Response, err error, fieldHubUse
 	_, _ = io.Copy(ioutil.Discard, resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		if len(fm.Config.HubUser) == 0 {
+		if fm.Config.HubUser == "" {
 			return newEmptyFieldError(fieldHubUser)
-		} else if len(fm.Config.HubPassword) == 0 {
+		} else if fm.Config.HubPassword == "" {
 			return newEmptyFieldError(fieldHubPassword)
 		}
 		err := errors.Errorf("unable to authorize with provided Hub credentials (HTTP %d)", resp.StatusCode)
@@ -154,7 +154,7 @@ func newFieldError(name string, err error) error {
 func (fm *Frontman) InputFromHub() (*Input, error) {
 	fm.initHubClientOnce()
 
-	if len(fm.Config.HubURL) == 0 {
+	if fm.Config.HubURL == "" {
 		return nil, newEmptyFieldError("hub_url")
 	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
 		err = errors.WithStack(err)
@@ -233,7 +233,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 		}
 	}
 
-	if len(fm.Config.HubURL) == 0 {
+	if fm.Config.HubURL == "" {
 		return newEmptyFieldError("hub_url")
 	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
 		err = errors.WithStack(err)
@@ -275,7 +275,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	log.Debugf("Sent %d results to HUB.. Status %d", len(results), resp.StatusCode)
+	log.Debugf("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.New(resp.Status)

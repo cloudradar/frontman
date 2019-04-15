@@ -91,14 +91,15 @@ func (ui *UI) CheckSaveAndReload(testOnly bool) {
 	setupStatus := &setupErrors{}
 	err := ui.frontman.CheckHubCredentials(ctx, "URL", "User", "Password")
 	if err != nil {
-		if !testOnly {
-			setupStatus.SetConnectionError(err)
-			ui.StatusBar.SetText("Status: failed to connect to the Hub")
-			ui.StatusBar.SetIcon(ui.ErrorIcon)
-			RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+		if testOnly {
+			return
 		}
-		return
-	} else if testOnly {
+		setupStatus.SetConnectionError(err)
+		ui.StatusBar.SetText("Status: failed to connect to the Hub")
+		ui.StatusBar.SetIcon(ui.ErrorIcon)
+		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+	}
+	if testOnly {
 		// in case we running this inside msi installer, just exit
 		if ui.installationMode {
 			os.Exit(0)
