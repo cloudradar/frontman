@@ -98,6 +98,7 @@ func (ui *UI) CheckSaveAndReload(testOnly bool) {
 		ui.StatusBar.SetText("Status: failed to connect to the Hub")
 		ui.StatusBar.SetIcon(ui.ErrorIcon)
 		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+		return
 	}
 	if testOnly {
 		// in case we running this inside msi installer, just exit
@@ -157,6 +158,7 @@ func (ui *UI) CheckSaveAndReload(testOnly bool) {
 		RunDialog(ui.MainWindow, ui.SuccessIcon, "Success", setupStatus.Describe(), func() {
 			os.Exit(0)
 		})
+		return
 	}
 	RunDialog(ui.MainWindow, ui.SuccessIcon, "Success", setupStatus.Describe(), nil)
 }
