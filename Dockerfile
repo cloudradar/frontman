@@ -11,10 +11,10 @@ RUN apk update && apk add ca-certificates
 
 RUN wget https://github.com/cloudradar-monitoring/frontman/releases/download/${FRONTMAN_VERSION}/frontman_${FRONTMAN_VERSION}_Linux_x86_64.tar.gz && \
     tar xf frontman_${FRONTMAN_VERSION}_Linux_x86_64.tar.gz && \
-    mv frontman /usr/local/bin && \
+    mv frontman /usr/local/bin/ && \
     mkdir /etc/frontman && \
     mv example.config.toml /etc/frontman/config.toml && \
     rm -rf frontman_${FRONTMAN_VERSION}_Linux_x86_64 && \
     rm frontman_${FRONTMAN_VERSION}_Linux_x86_64.tar.gz
 
-CMD [/usr/local/bin/frontman]
+CMD ["/usr/local/bin/frontman"]
