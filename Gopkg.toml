@@ -15,6 +15,10 @@
   name = "github.com/kardianos/service"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/sparrc/go-ping"
+
+[[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "1.0.6"
 
