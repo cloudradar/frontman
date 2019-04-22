@@ -23,6 +23,7 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	log "github.com/sirupsen/logrus"
+	ping "github.com/sparrc/go-ping"
 )
 
 var ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
@@ -375,6 +376,59 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 	}
 }
 
+// HealthCheck runs before any other check to ensure that the host itself and its network are healthly.
+// This is useful to confirm a stable internet connection to avoid false alerts due to network outages.
+func (fm *Frontman) HealthCheck() error {
+	hcfg := fm.Config.HealthChecks
+	if len(hcfg.ReferencePingHosts) == 0 {
+		fm.HealthCheckNotPassed = false
+		return nil
+	}
+	count := hcfg.ReferencePingCount
+	if count == 0 {
+		fm.HealthCheckNotPassed = false
+		return nil
+	}
+	timeout := secToDuration(hcfg.ReferencePingTimeout)
+	if timeout == 0 {
+		// use the default timeout
+		timeout = 500 * time.Millisecond
+	}
+	successC := make(chan bool, len(hcfg.ReferencePingHosts))
+
+	wg := new(sync.WaitGroup)
+	for _, addr := range hcfg.ReferencePingHosts {
+		p, err := ping.NewPinger(addr)
+		if err != nil {
+			log.WithError(err).Warningln("failed to parse host for ICMP ping")
+			continue
+		}
+		p.Timeout = timeout
+		p.Count = count
+		p.OnRecv = func(_ *ping.Packet) {
+			successC <- true
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			p.Run()
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(successC)
+	}()
+	for isSuccess := range successC {
+		if isSuccess {
+			fm.HealthCheckNotPassed = false
+			return nil
+		}
+	}
+	fm.HealthCheckNotPassed = true
+	err := errors.New("all hosts failed to respond to ICMP ping")
+	return err
+}
+
 func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
 	var err error
 	var hostInfo MeasurementsMap
@@ -463,6 +517,18 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	fm.StartWritingStats()
 
 	for {
+		if err := fm.HealthCheck(); err != nil {
+			log.WithError(err).Warningln("Health checks are not passed. Skipping other checks.")
+			select {
+			case <-interrupt:
+				return
+			case <-time.After(secToDuration(fm.Config.Sleep)):
+				continue
+			}
+		} else if fm.HealthCheckNotPassed {
+			log.Warningln("All health checks are positive. Resuming normal operation.")
+		}
+
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
 			log.Warnln(err)

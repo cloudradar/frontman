@@ -315,6 +315,13 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 
 func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile string, output *os.File, interruptChan chan struct{}) {
 	if oneRunOnlyMode {
+		if err := fm.HealthCheck(); err != nil {
+			log.WithError(err).Warningln("Health checks are not passed. Skipping other checks.")
+			return
+		} else if fm.HealthCheckNotPassed {
+			log.Warningln("All health checks are positive. Resuming normal operation.")
+		}
+
 		input, err := fm.FetchInput(inputFile)
 		if err != nil {
 			fmt.Println(err)

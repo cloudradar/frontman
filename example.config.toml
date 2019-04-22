@@ -37,3 +37,20 @@ sender_mode_interval = 0.0 # interval in seconds to post results to HUB server  
 # host_info of frontman machine will be sent to hub
 # default ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostname','memory_total_B']
 host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostname','memory_total_B']
+# system_fields of frontman machine will be sent to hub
+system_fields = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','memory_total_B'] # default ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','memory_total_B']
+
+#
+# Frontman can perform health checks before executing all other checks.
+# This is useful to confirm a stable internet connection to avoid false alerts due to network outages
+# The health check is performed every time a new check round starts according to the sleep interval.
+# If the health check fails, the round is skipped and no checks are performed.
+# 
+[health_checks]
+  # Ping all hosts of the list. Only if frontman gets a positive answer form all of them, frontman continues.
+  # Only 0% packet loss is considered as a positive check result. Pings are performed in parallel. 
+  reference_ping_hosts = ['8.8.8.8','1.1.1.1','8.8.4.4']
+  # Maximum time (millis) to wait for the response
+  reference_ping_timeout = 0.5
+  # Number of request packets to send to each host.
+  reference_ping_count = 1
