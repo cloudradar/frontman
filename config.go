@@ -71,6 +71,14 @@ type Config struct {
 
 	// Will be sent to hub as HostInfo
 	SystemFields []string `toml:"system_fields" commented:"true"`
+
+	HealthChecks HealthCheckConfig `toml:"health_checks" commented:"true"`
+}
+
+type HealthCheckConfig struct {
+	ReferencePingHosts   []string `toml:"reference_ping_hosts" comment:"Ping all hosts of the list. Only if frontman gets a positive answer form all of them, frontman continues.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel."`
+	ReferencePingTimeout float64  `toml:"reference_ping_timeout" comment:"Maximum time (seconds) to wait for the response"`
+	ReferencePingCount   int      `toml:"reference_ping_count" comment:"Number of request packets to send to each host."`
 }
 
 func init() {
