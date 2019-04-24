@@ -381,12 +381,9 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 func (fm *Frontman) HealthCheck() error {
 	hcfg := fm.Config.HealthChecks
 	if len(hcfg.ReferencePingHosts) == 0 {
-		fm.HealthCheckNotPassed = false
 		return nil
 	}
-	count := hcfg.ReferencePingCount
-	if count == 0 {
-		fm.HealthCheckNotPassed = false
+	if hcfg.ReferencePingCount == 0 {
 		return nil
 	}
 	timeout := secToDuration(hcfg.ReferencePingTimeout)
@@ -404,7 +401,7 @@ func (fm *Frontman) HealthCheck() error {
 			continue
 		}
 		p.Timeout = timeout
-		p.Count = count
+		p.Count = hcfg.ReferencePingCount
 		p.OnRecv = func(_ *ping.Packet) {
 			successC <- true
 		}
@@ -420,11 +417,9 @@ func (fm *Frontman) HealthCheck() error {
 	}()
 	for isSuccess := range successC {
 		if isSuccess {
-			fm.HealthCheckNotPassed = false
 			return nil
 		}
 	}
-	fm.HealthCheckNotPassed = true
 	err := errors.New("all hosts failed to respond to ICMP ping")
 	return err
 }
@@ -518,6 +513,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 
 	for {
 		if err := fm.HealthCheck(); err != nil {
+			fm.HealthCheckPassedPreviously = false
 			log.WithError(err).Warningln("Health checks are not passed. Skipping other checks.")
 			select {
 			case <-interrupt:
@@ -525,7 +521,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			case <-time.After(secToDuration(fm.Config.Sleep)):
 				continue
 			}
-		} else if fm.HealthCheckNotPassed {
+		} else if !fm.HealthCheckPassedPreviously {
+			fm.HealthCheckPassedPreviously = true
 			log.Warningln("All health checks are positive. Resuming normal operation.")
 		}
 

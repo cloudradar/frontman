@@ -19,8 +19,8 @@ type Frontman struct {
 	Config         *Config
 	ConfigLocation string
 
-	Stats                *stats.FrontmanStats
-	HealthCheckNotPassed bool
+	Stats                       *stats.FrontmanStats
+	HealthCheckPassedPreviously bool
 
 	httpTransport *http.Transport
 	hubClient     *http.Client

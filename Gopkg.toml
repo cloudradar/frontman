@@ -11,8 +11,8 @@
   version = "2.5.1"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/kardianos/service"
+  revision = "ef3ab45e41b017889941ea5bb796dd502d2b5a1b"
 
 [[constraint]]
   branch = "master"
@@ -36,7 +36,7 @@
 
 [[constraint]]
   name = "github.com/lxn/walk"
-  version = "79c445caf3e94a21822d70e80d021c20fdb704fa"
+  revision = "79c445caf3e94a21822d70e80d021c20fdb704fa"
 
 [[constraint]]
   branch = "v1"
