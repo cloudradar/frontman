@@ -47,7 +47,7 @@ system_fields = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','m
   # Ping all hosts of the list. Only if frontman gets a positive answer form all of them, frontman continues.
   # Only 0% packet loss is considered as a positive check result. Pings are performed in parallel. 
   reference_ping_hosts = ['8.8.8.8','1.1.1.1','8.8.4.4']
-  # Maximum time (millis) to wait for the response
+  # Maximum time (seconds) to wait for the response.
   reference_ping_timeout = 0.5
   # Number of request packets to send to each host.
   reference_ping_count = 1
