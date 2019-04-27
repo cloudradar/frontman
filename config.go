@@ -71,6 +71,7 @@ type Config struct {
 
 	// Will be sent to hub as HostInfo
 	SystemFields []string `toml:"system_fields" commented:"true"`
+	HostInfo     []string `toml:"host_info" commented:"true"`
 }
 
 func init() {
@@ -112,6 +113,7 @@ func NewConfig() *Config {
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
 		SystemFields:           []string{},
+		HostInfo:               []string{},
 	}
 
 	return cfg
