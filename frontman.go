@@ -35,11 +35,12 @@ type Frontman struct {
 
 func New(cfg *Config, cfgPath, version string) *Frontman {
 	fm := &Frontman{
-		Config:         cfg,
-		ConfigLocation: cfgPath,
-		Stats:          &stats.FrontmanStats{},
-		hostInfoSent:   false,
-		version:        version,
+		Config:                      cfg,
+		ConfigLocation:              cfgPath,
+		Stats:                       &stats.FrontmanStats{},
+		HealthCheckPassedPreviously: true,
+		hostInfoSent:                false,
+		version:                     version,
 	}
 
 	if rootCertsPath != "" {

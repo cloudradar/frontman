@@ -391,7 +391,7 @@ func (fm *Frontman) HealthCheck() error {
 		// use the default timeout
 		timeout = 500 * time.Millisecond
 	}
-	successC := make(chan bool, len(hcfg.ReferencePingHosts))
+	failC := make(chan bool, len(hcfg.ReferencePingHosts))
 
 	wg := new(sync.WaitGroup)
 	for _, addr := range hcfg.ReferencePingHosts {
@@ -402,26 +402,26 @@ func (fm *Frontman) HealthCheck() error {
 		}
 		p.Timeout = timeout
 		p.Count = hcfg.ReferencePingCount
-		p.OnRecv = func(_ *ping.Packet) {
-			successC <- true
-		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			p.Run()
+			if p.Statistics().PacketLoss > 0 {
+				failC <- true
+			}
 		}()
 	}
 	go func() {
 		wg.Wait()
-		close(successC)
+		close(failC)
 	}()
-	for isSuccess := range successC {
-		if isSuccess {
-			return nil
+	for hasLostPackets := range failC {
+		if hasLostPackets {
+			err := errors.New("host failed to respond to ICMP ping")
+			return err
 		}
 	}
-	err := errors.New("all hosts failed to respond to ICMP ping")
-	return err
+	return nil
 }
 
 func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
@@ -513,7 +513,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	for {
 		if err := fm.HealthCheck(); err != nil {
 			fm.HealthCheckPassedPreviously = false
-			log.WithError(err).Warningln("Health checks are not passed. Skipping other checks.")
+			log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
 			select {
 			case <-interrupt:
 				return
@@ -522,7 +522,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			}
 		} else if !fm.HealthCheckPassedPreviously {
 			fm.HealthCheckPassedPreviously = true
-			log.Warningln("All health checks are positive. Resuming normal operation.")
+			log.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
 		input, err := fm.FetchInput(inputFilePath)
