@@ -27,6 +27,7 @@ type Frontman struct {
 	hostInfoSent  bool
 
 	offlineResultsBuffer []Result
+	uniquify             Uniquify
 
 	rootCAs *x509.CertPool
 	version string
@@ -38,6 +39,7 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 		ConfigLocation: cfgPath,
 		Stats:          &stats.FrontmanStats{},
 		hostInfoSent:   false,
+		uniquify:       NewUniquify(),
 		version:        version,
 	}
 

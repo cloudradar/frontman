@@ -402,8 +402,14 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		fm.hostInfoSent = true
 	}
 
+	wg := new(sync.WaitGroup)
+	defer wg.Wait()
 	if input != nil {
-		go fm.processInput(input, resultsChan)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			fm.processInput(input, resultsChan)
+		}()
 	} else {
 		close(resultsChan)
 	}
@@ -432,7 +438,8 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	if inputFilePath != "" {
 		input, err = InputFromFile(inputFilePath)
 		if err != nil {
-			return nil, fmt.Errorf("InputFromFile(%s) error: %s", inputFilePath, err.Error())
+			err = errors.Wrapf(err, "InputFromFile(%s) error", inputFilePath)
+			return nil, err
 		}
 		return input, nil
 	}
@@ -447,10 +454,11 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		if fm.Config.HubUser != "" {
 			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
 			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
-			return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.Config.HubUser, err.Error())
+			err = errors.Wrapf(err, "InputFromHub(%s:***) error", fm.Config.HubUser)
+			return nil, err
 		}
-
-		return nil, fmt.Errorf("InputFromHub: %s", err.Error())
+		err = errors.Wrap(err, "InputFromHub error")
+		return nil, err
 	}
 
 	return input, nil
@@ -488,46 +496,69 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 }
 
 func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{}, error) {
-	var done = make(chan struct{})
+	done := make(chan struct{})
+	defer func() {
+		close(done)
+	}()
+
 	var err error
 	var results map[string]interface{}
+	checkLog := log.WithFields(log.Fields{
+		"uuid": check.UUID,
+	})
+
 	go func() {
-		ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
-		if resolveErr != nil {
-			err = fmt.Errorf("resolve ip error: %s", resolveErr.Error())
-			log.Debugf("serviceCheck: ResolveIPAddr error: %s", resolveErr.Error())
-			done <- struct{}{}
-			return
-		}
-
-		switch check.Check.Protocol {
-		case ProtocolICMP:
-			results, err = fm.runPing(ipaddr)
-			if err != nil {
-				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+		// Calling the routine using uniquify object will guarantee that
+		// only one instance of a check with same UUID is running, even if there was a leak.
+		err = fm.uniquify.Call(check.UUID, func() error {
+			ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
+			if resolveErr != nil {
+				checkLog.WithError(resolveErr).Debugln("serviceCheck: resolveIPAddr failed")
+				return errors.Wrap(resolveErr, "resolveIPAddr failed")
 			}
-		case ProtocolTCP:
-			port, _ := check.Check.Port.Int64()
 
-			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-			if err != nil {
-				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+			switch check.Check.Protocol {
+			case ProtocolICMP:
+				if res, pingErr := fm.runPing(ipaddr); pingErr != nil {
+					checkLog.WithError(pingErr).Debugln("serviceCheck: runPing failed")
+					return errors.Wrap(pingErr, "runPing failed")
+				} else {
+					results = res
+				}
+			case ProtocolTCP:
+				port, _ := check.Check.Port.Int64()
+				addr := &net.TCPAddr{
+					IP:   ipaddr.IP,
+					Port: int(port),
+				}
+				if res, tcpErr := fm.runTCPCheck(addr, check.Check.Connect, check.Check.Service); tcpErr != nil {
+					checkLog.WithError(tcpErr).Debugln("serviceCheck: tcpCheck failed")
+					return errors.Wrap(tcpErr, "tcpCheck failed")
+				} else {
+					results = res
+				}
+			case ProtocolSSL:
+				port, _ := check.Check.Port.Int64()
+				addr := &net.TCPAddr{
+					IP:   ipaddr.IP,
+					Port: int(port),
+				}
+				if res, sslErr := fm.runSSLCheck(addr, check.Check.Connect, check.Check.Service); sslErr != nil {
+					checkLog.WithError(sslErr).Debugln("serviceCheck: sslCheck failed")
+					return errors.Wrap(sslErr, "sslCheck failed")
+				} else {
+					results = res
+				}
+			case "":
+				checkLog.Errorf("serviceCheck: missing check.protocol")
+				return errors.New("Missing check.protocol")
+			default:
+				checkLog.WithField("check.protocol", check.Check.Protocol).
+					Errorf("serviceCheck: unknown check.protocol")
+				return errors.New("Unknown check.protocol")
 			}
-		case ProtocolSSL:
-			port, _ := check.Check.Port.Int64()
-
-			results, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-			if err != nil {
-				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-			}
-		case "":
-			log.Errorf("serviceCheck: missing check.protocol")
-			err = errors.New("Missing check.protocol")
-		default:
-			log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
-			err = errors.New("Unknown check.protocol")
-		}
-		done <- struct{}{}
+			return nil
+		})
 	}()
 
 	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
@@ -536,26 +567,35 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	case <-done:
 		return results, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		log.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
-		return nil, fmt.Errorf("got unexpected timeout")
+		secs := serviceCheckEmergencyTimeout.Seconds()
+		checkLog.Errorf("serviceCheck: got unexpected timeout after %.0fs", secs)
+		return nil, errors.New("got unexpected timeout")
 	}
 }
 
 func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
-	wg := sync.WaitGroup{}
+	wg := new(sync.WaitGroup)
 	startedAt := time.Now()
 	succeed := 0
 
+	seenServiceChecks := make(map[string]struct{}, len(input.ServiceChecks))
+
 	for _, check := range input.ServiceChecks {
+		if check.UUID == "" {
+			log.Errorf("serviceCheck: missing checkUuid key")
+			continue
+		} else if _, ok := seenServiceChecks[check.UUID]; ok {
+			continue
+		} else {
+			seenServiceChecks[check.UUID] = struct{}{}
+		}
+		checkLog := log.WithFields(log.Fields{
+			"uuid": check.UUID,
+		})
+
 		wg.Add(1)
 		go func(check ServiceCheck) {
 			defer wg.Done()
-
-			if check.UUID == "" {
-				// in case checkUuid is missing we can ignore this item
-				log.Errorf("serviceCheck: missing checkUuid key")
-				return
-			}
 
 			res := Result{
 				CheckType: "serviceCheck",
@@ -566,32 +606,36 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			res.Check = check.Check
 
 			if check.Check.Connect == "" {
-				log.Errorf("serviceCheck: missing data.connect key")
+				checkLog.Errorf("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
+			} else if result, err := fm.runServiceCheck(check); err != nil {
+				res.Message = err.Error()
 			} else {
-				var err error
-				res.Measurements, err = fm.runServiceCheck(check)
-				if err != nil {
-					res.Message = err.Error()
-				} else {
-					succeed++
-				}
+				res.Measurements = result
+				succeed++
 			}
-
 			resultsChan <- res
 		}(check)
 	}
 
+	seenWebChecks := make(map[string]struct{}, len(input.WebChecks))
+
 	for _, check := range input.WebChecks {
+		if check.UUID == "" {
+			log.Errorf("webCheck: missing checkUuid key")
+			continue
+		} else if _, ok := seenWebChecks[check.UUID]; ok {
+			continue
+		} else {
+			seenWebChecks[check.UUID] = struct{}{}
+		}
+		checkLog := log.WithFields(log.Fields{
+			"uuid": check.UUID,
+		})
+
 		wg.Add(1)
 		go func(check WebCheck) {
 			defer wg.Done()
-
-			if check.UUID == "" {
-				// in case checkUuid is missing we can ignore this item
-				log.Errorf("webCheck: missing checkUuid key")
-				return
-			}
 
 			res := Result{
 				CheckType: "webCheck",
@@ -602,17 +646,27 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			res.Check = check.Check
 
 			if check.Check.Method == "" {
-				log.Errorf("webCheck: missing check.method key")
+				checkLog.Errorf("webCheck: missing check.method key")
 				res.Message = "Missing check.method key"
 			} else if check.Check.URL == "" {
-				log.Errorf("webCheck: missing check.url key")
+				checkLog.Errorf("webCheck: missing check.url key")
 				res.Message = "Missing check.url key"
 			} else {
-				var err error
-				res.Measurements, err = fm.runWebCheck(check.Check)
-				if err != nil {
-					log.Debugf("webCheck: %s: %s", check.UUID, err.Error())
+				var result map[string]interface{}
+				// Calling the routine using uniquify object will guarantee that
+				// only one instance of a check with same UUID is running, even if there was a leak.
+				if err := fm.uniquify.Call(check.UUID, func() error {
+					if res, checkErr := fm.runWebCheck(check.Check); checkErr != nil {
+						return errors.Wrap(checkErr, "runWebCheck failed")
+					} else {
+						result = res
+					}
+					return nil
+				}); err != nil {
+					checkLog.WithError(err).Debugln("webCheck failed")
 					res.Message = err.Error()
+				} else {
+					res.Measurements = result
 				}
 			}
 
