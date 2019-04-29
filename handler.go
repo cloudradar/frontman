@@ -46,8 +46,8 @@ func InputFromFile(filename string) (*Input, error) {
 	return &i, nil
 }
 
-func (fm *Frontman) initHubClientOnce() {
-	fm.hubClientOnce.Do(func() {
+func (fm *Frontman) initHubClientOnce(reinit bool) {
+	initClient := func() {
 		transport := &http.Transport{
 			ResponseHeaderTimeout: 15 * time.Second,
 		}
@@ -78,7 +78,12 @@ func (fm *Frontman) initHubClientOnce() {
 			Timeout:   30 * time.Second,
 			Transport: transport,
 		}
-	})
+	}
+	if reinit {
+		initClient()
+		return
+	}
+	fm.hubClientOnce.Do(initClient)
 }
 
 // CheckHubCredentials performs credentials check for a Hub config, returning errors that reference
@@ -89,7 +94,7 @@ func (fm *Frontman) initHubClientOnce() {
 // * for TOML: CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
 // * for WinUI: CheckHubCredentials(ctx, "URL", "User", "Password")
 func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldHubUser, fieldHubPassword string) error {
-	fm.initHubClientOnce()
+	fm.initHubClientOnce(true)
 
 	if fm.Config.HubURL == "" {
 		return newEmptyFieldError(fieldHubURL)
@@ -152,7 +157,7 @@ func newFieldError(name string, err error) error {
 }
 
 func (fm *Frontman) InputFromHub() (*Input, error) {
-	fm.initHubClientOnce()
+	fm.initHubClientOnce(false)
 
 	if fm.Config.HubURL == "" {
 		return nil, newEmptyFieldError("hub_url")
@@ -209,7 +214,7 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 }
 
 func (fm *Frontman) PostResultsToHub(results []Result) error {
-	fm.initHubClientOnce()
+	fm.initHubClientOnce(false)
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	b, err := json.Marshal(Results{
