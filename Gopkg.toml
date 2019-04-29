@@ -20,19 +20,22 @@
 
 [prune]
   go-tests = true
-  unused-packages = true
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"
-  version = "2.18.7"
+  version = "2.19.03"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.2"
+  version = "1.3.0"
+
+[[constraint]]
+  name = "github.com/lxn/win"
+  revision = "45c59655ac45e8227cf9a3df01a76b829b7770fe"
 
 [[constraint]]
   name = "github.com/lxn/walk"
-  version = "79c445caf3e94a21822d70e80d021c20fdb704fa"
+  revision = "663c8a5b3e325b6b87d3aa6ca038522622e939cf"
 
 [[constraint]]
   branch = "v1"
