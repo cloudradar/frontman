@@ -135,5 +135,16 @@
   },{
     "checkUUID": "ssl_cert_failed_to_determine_port",
     "check": { "connect": "google.com", "protocol": "ssl", "service": "unknown"}
-  }]
+  }],
+  "snmpChecks": [{
+    "checkUUID": "snmp_basedata_v2",
+    "check": {
+      "connect": "192.168.178.220",
+      "port": 161,
+      "timeout": 1.0,
+      "protocol": "v2",
+      "preset": "basedata",
+      "community": "public",
+      "oids": []
+  }}]
 }
