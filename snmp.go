@@ -19,8 +19,12 @@ func (fm *Frontman) runSNMPCheck(check SNMPCheck) (map[string]interface{}, error
 	var results map[string]interface{}
 	go func() {
 		results, err = fm.runSNMPProbe(&check.Check)
+		successKey := "snmpCheck." + check.Check.Preset + ".success"
 		if err != nil {
 			log.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
+			results[successKey] = 0
+		} else {
+			results[successKey] = 1
 		}
 		done <- struct{}{}
 	}()
@@ -53,26 +57,26 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		params.Version = gosnmp.Version2c
 	case ProtocolSNMPv3:
 		// XXX auth stuff
-		return nil, errors.New("SNMP v3 not implemented")
+		return m, errors.New("SNMP v3 not implemented")
 	default:
 		log.Errorf("snmpCheck: unknown check.protocol: '%s'", check.Protocol)
-		return nil, errors.New("Unknown check.protocol")
+		return m, errors.New("Unknown check.protocol")
 	}
 
 	err := params.Connect()
 	if err != nil {
-		return nil, fmt.Errorf("Connect err: %v", err)
+		return m, fmt.Errorf("Connect err: %v", err)
 	}
 	defer params.Conn.Close()
 
 	oids, err := mapSnmpPreset(check.Preset)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 
 	result, err := params.Get(oids) // XXX "Bulk Get" ????
 	if err != nil {
-		return nil, fmt.Errorf("Get err: %v", err)
+		return m, fmt.Errorf("Get err: %v", err)
 	}
 
 	for _, variable := range result.Variables {
@@ -92,7 +96,6 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
 	}
-	m["snmpCheck."+check.Preset+".success"] = 1
 
 	return m, nil
 }
