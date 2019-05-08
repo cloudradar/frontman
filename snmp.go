@@ -51,8 +51,9 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		params.Version = gosnmp.Version1
 	case ProtocolSNMPv2:
 		params.Version = gosnmp.Version2c
-	// case ProtocolSNMPv3:
-	// XXX auth stuff
+	case ProtocolSNMPv3:
+		// XXX auth stuff
+		return nil, errors.New("SNMP v3 not implemented")
 	default:
 		log.Errorf("snmpCheck: unknown check.protocol: '%s'", check.Protocol)
 		return nil, errors.New("Unknown check.protocol")
@@ -69,13 +70,17 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		return nil, err
 	}
 
-	result, err := params.Get(oids)
+	result, err := params.Get(oids) // XXX "Bulk Get" ????
 	if err != nil {
 		return nil, fmt.Errorf("Get err: %v", err)
 	}
 
 	for _, variable := range result.Variables {
-		prefix := variable.Name
+		prefix, err := snmpOidHumanName(variable.Name)
+		if err != nil {
+			log.Debug(err)
+			continue
+		}
 		switch variable.Type {
 		case gosnmp.OctetString:
 			m[prefix] = string(variable.Value.([]byte))
@@ -87,10 +92,29 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
 	}
+	m["snmpCheck."+check.Preset+".success"] = 1
 
 	return m, nil
 }
 
+// map OID to a human readable key
+func snmpOidHumanName(name string) (prefix string, err error) {
+	switch name {
+	case ".1.3.6.1.2.1.1.1.0":
+		prefix = "system.description"
+	case ".1.3.6.1.2.1.1.4.0":
+		prefix = "system.contact"
+	case ".1.3.6.1.2.1.1.6.0":
+		prefix = "system.location"
+	case ".1.3.6.1.2.1.1.3.0":
+		prefix = "system.uptime_s"
+	case ".1.3.6.1.2.1.1.5.0":
+		prefix = "system.hostname"
+	default:
+		err = fmt.Errorf("Unrecognized SNMP variable %s", name)
+	}
+	return
+}
 func mapSnmpPreset(preset string) (oids []string, err error) {
 
 	switch preset {
