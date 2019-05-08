@@ -143,8 +143,8 @@
       "port": 161,
       "timeout": 1.0,
       "protocol": "v2",
-      "preset": "basedata",
       "community": "public",
+      "preset": "basedata",
       "oids": []
   }}]
 }

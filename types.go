@@ -17,6 +17,7 @@ const (
 type Input struct {
 	ServiceChecks []ServiceCheck `json:"serviceChecks"`
 	WebChecks     []WebCheck     `json:"webChecks"`
+	SNMPChecks    []SNMPCheck    `json:"snmpChecks"`
 }
 
 type ServiceCheck struct {
@@ -46,6 +47,21 @@ type WebCheckData struct {
 	DontFollowRedirects bool    `json:"dontFollowRedirects"`
 	IgnoreSSLErrors     bool    `json:"ignoreSSLErrors,omitempty"`
 	Timeout             float64 `json:"timeout,omitempty"`
+}
+
+type SNMPCheck struct {
+	UUID  string        `json:"checkUuid"`
+	Check SNMPCheckData `json:"check"`
+}
+
+type SNMPCheckData struct {
+	Connect   string   `json:"connect"`
+	Port      int      `json:"port"`
+	Timeout   float64  `json:"timeout"`
+	Protocol  string   `json:"protocol"`
+	Community string   `json:"comunity"`
+	Preset    string   `json:"preset"`
+	Oids      []string `json:"oids,omitempty"`
 }
 
 type Results struct {

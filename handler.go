@@ -203,8 +203,7 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 
 	// Update frontman statistics
 	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
-	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks))
-	fm.Stats.ChecksFetchedFromHub += uint64(len(i.WebChecks))
+	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
 
 	return &i, nil
 }
@@ -690,10 +689,50 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 		}(check)
 	}
 
+	for _, check := range input.SNMPChecks {
+		wg.Add(1)
+		go func(check SNMPCheck) {
+			defer wg.Done()
+
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				log.Errorf("snmpCheck: missing checkUuid key")
+				return
+			}
+
+			res := Result{
+				CheckType: "snmpCheck",
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+
+			res.Check = check.Check
+
+			if check.Check.Connect == "" {
+				log.Errorf("snmpCheck: missing check.connect key")
+				res.Message = "Missing check.connect key"
+			} else {
+				var err error
+				res.Measurements, err = fm.runSNMPCheck(check)
+				if err != nil {
+					log.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
+				}
+			}
+
+			if res.Message == nil {
+				succeed++
+			}
+
+			resultsChan <- res
+		}(check)
+	}
+
 	wg.Wait()
 	close(resultsChan)
 
-	log.Infof("%d/%d checks succeed in %.1f sec", succeed, len(input.ServiceChecks)+len(input.WebChecks), time.Since(startedAt).Seconds())
+	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
+	log.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }
 
 // HostInfoResults fetches information about the host itself which can be
