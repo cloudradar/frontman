@@ -56,10 +56,10 @@ type SNMPCheck struct {
 
 type SNMPCheckData struct {
 	Connect   string   `json:"connect"`
-	Port      int      `json:"port"`
+	Port      uint16   `json:"port"`
 	Timeout   float64  `json:"timeout"`
 	Protocol  string   `json:"protocol"`
-	Community string   `json:"comunity"`
+	Community string   `json:"community"`
 	Preset    string   `json:"preset"`
 	Oids      []string `json:"oids,omitempty"`
 }

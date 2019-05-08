@@ -137,6 +137,16 @@
     "check": { "connect": "google.com", "protocol": "ssl", "service": "unknown"}
   }],
   "snmpChecks": [{
+    "checkUUID": "snmp_basedata_v1",
+    "check": {
+      "connect": "192.168.178.220",
+      "port": 161,
+      "timeout": 1.0,
+      "protocol": "v1",
+      "community": "public",
+      "preset": "basedata",
+      "oids": []
+  }},{
     "checkUUID": "snmp_basedata_v2",
     "check": {
       "connect": "192.168.178.220",
