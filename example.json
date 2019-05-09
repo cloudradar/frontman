@@ -157,13 +157,23 @@
       "preset": "basedata",
       "oids": []
   }},{
+    "checkUUID": "snmp_basedata_v3_noauth",
+    "check": {
+      "connect": "172.16.72.143",
+      "port": 161,
+      "timeout": 1.0,
+      "protocol": "v3",
+      "preset": "basedata",
+      "oids": [],
+      "security_level": "noauth",
+      "username": "noAuthNoPrivUser"
+  }},{
     "checkUUID": "snmp_basedata_v3_auth",
     "check": {
       "connect": "172.16.72.143",
       "port": 161,
       "timeout": 1.0,
       "protocol": "v3",
-      "community": "public",
       "preset": "basedata",
       "oids": [],
       "security_level": "auth",
@@ -176,7 +186,6 @@
       "port": 161,
       "timeout": 1.0,
       "protocol": "v3",
-      "community": "public",
       "preset": "basedata",
       "oids": [],
       "security_level": "priv",

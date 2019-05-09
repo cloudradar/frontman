@@ -44,17 +44,18 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	m := make(map[string]interface{})
 
 	params := &gosnmp.GoSNMP{
-		Target:    check.Connect,
-		Port:      check.Port,
-		Community: check.Community,
-		Timeout:   time.Duration(check.Timeout) * time.Second,
+		Target:  check.Connect,
+		Port:    check.Port,
+		Timeout: time.Duration(check.Timeout) * time.Second,
 	}
 
 	switch check.Protocol {
 	case ProtocolSNMPv1:
 		params.Version = gosnmp.Version1
+		params.Community = check.Community
 	case ProtocolSNMPv2:
 		params.Version = gosnmp.Version2c
+		params.Community = check.Community
 	case ProtocolSNMPv3:
 		params.Version = gosnmp.Version3
 		params.SecurityModel = gosnmp.UserSecurityModel
@@ -108,6 +109,9 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		if err := snmpOidCheckErrorCode(variable.Name); err != nil {
 			return m, err
 		}
+		if snmpSkipOid(variable.Name) {
+			continue
+		}
 		prefix, err := snmpOidHumanName(variable.Name)
 		if err != nil {
 			log.Debug(err)
@@ -125,6 +129,16 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		}
 	}
 	return m, nil
+}
+
+// returns true if oid should be skipped
+func snmpSkipOid(name string) bool {
+	switch name {
+	case ".1.3.6.1.2.1.1.2.0", // sysObjectID
+		".1.3.6.1.2.1.1.7.0": // sysServices
+		return true
+	}
+	return false
 }
 
 // returns human readable error if OID is a error
