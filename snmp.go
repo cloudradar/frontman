@@ -9,11 +9,13 @@ import (
 	"github.com/soniah/gosnmp"
 )
 
-const ProtocolSNMPv1 = "v1"
-const ProtocolSNMPv2 = "v2"
-const ProtocolSNMPv3 = "v3"
+const (
+	protocolSNMPv1 = "v1"
+	protocolSNMPv2 = "v2"
+	protocolSNMPv3 = "v3"
+)
 
-func (fm *Frontman) runSNMPCheck(check SNMPCheck) (map[string]interface{}, error) {
+func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
 	var done = make(chan struct{})
 	var err error
 	var results map[string]interface{}
@@ -43,6 +45,55 @@ func (fm *Frontman) runSNMPCheck(check SNMPCheck) (map[string]interface{}, error
 func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
 
+	params, err := buildSNMPParameters(check)
+	if err != nil {
+		return m, err
+	}
+
+	err = params.Connect()
+	if err != nil {
+		return m, fmt.Errorf("Connect err: %v", err)
+	}
+	defer params.Conn.Close()
+
+	oids, err := presetToOids(check.Preset)
+	if err != nil {
+		return m, err
+	}
+
+	result, err := params.GetBulk(oids, uint8(len(oids)), 255)
+	if err != nil {
+		return m, fmt.Errorf("Get err: %v", err)
+	}
+
+	for _, variable := range result.Variables {
+		if err := oidToError(variable.Name); err != nil {
+			return m, err
+		}
+		if ignoreSNMPOid(variable.Name) {
+			continue
+		}
+		prefix, err := oidToHumanReadable(variable.Name)
+		if err != nil {
+			log.Debug(err)
+			continue
+		}
+		switch variable.Type {
+		case gosnmp.OctetString:
+			m[prefix] = string(variable.Value.([]byte))
+
+		case gosnmp.TimeTicks:
+			m[prefix] = variable.Value
+
+		default:
+			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
+		}
+	}
+	return m, nil
+}
+
+// generates gosnmp parameters for the given check configuration
+func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 	params := &gosnmp.GoSNMP{
 		Target:  check.Connect,
 		Port:    check.Port,
@@ -50,13 +101,13 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 
 	switch check.Protocol {
-	case ProtocolSNMPv1:
+	case protocolSNMPv1:
 		params.Version = gosnmp.Version1
 		params.Community = check.Community
-	case ProtocolSNMPv2:
+	case protocolSNMPv2:
 		params.Version = gosnmp.Version2c
 		params.Community = check.Community
-	case ProtocolSNMPv3:
+	case protocolSNMPv3:
 		params.Version = gosnmp.Version3
 		params.SecurityModel = gosnmp.UserSecurityModel
 		switch check.SecurityLevel {
@@ -82,57 +133,16 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 				PrivacyPassphrase:        check.Password,
 			}
 		default:
-			return m, fmt.Errorf("Invalid security_level configuration value '%s'", check.SecurityLevel)
+			return nil, fmt.Errorf("Invalid security_level configuration value '%s'", check.SecurityLevel)
 		}
 	default:
-		log.Errorf("snmpCheck: unknown check.protocol: '%s'", check.Protocol)
-		return m, errors.New("Unknown check.protocol")
+		return nil, fmt.Errorf("Invalid protocol '%s'", check.Protocol)
 	}
-
-	err := params.Connect()
-	if err != nil {
-		return m, fmt.Errorf("Connect err: %v", err)
-	}
-	defer params.Conn.Close()
-
-	oids, err := mapSnmpPreset(check.Preset)
-	if err != nil {
-		return m, err
-	}
-
-	result, err := params.GetBulk(oids, uint8(len(oids)), 255)
-	if err != nil {
-		return m, fmt.Errorf("Get err: %v", err)
-	}
-
-	for _, variable := range result.Variables {
-		if err := snmpOidCheckErrorCode(variable.Name); err != nil {
-			return m, err
-		}
-		if snmpIgnoreOid(variable.Name) {
-			continue
-		}
-		prefix, err := snmpOidHumanName(variable.Name)
-		if err != nil {
-			log.Debug(err)
-			continue
-		}
-		switch variable.Type {
-		case gosnmp.OctetString:
-			m[prefix] = string(variable.Value.([]byte))
-
-		case gosnmp.TimeTicks:
-			m[prefix] = variable.Value
-
-		default:
-			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
-		}
-	}
-	return m, nil
+	return params, nil
 }
 
 // returns true if oid should be ignored
-func snmpIgnoreOid(name string) bool {
+func ignoreSNMPOid(name string) bool {
 	switch name {
 	case ".1.3.6.1.2.1.1.2.0", // sysObjectID
 		".1.3.6.1.2.1.1.7.0": // sysServices
@@ -142,7 +152,7 @@ func snmpIgnoreOid(name string) bool {
 }
 
 // returns human readable error if OID is a error
-func snmpOidCheckErrorCode(name string) (err error) {
+func oidToError(name string) (err error) {
 	switch name {
 	case ".1.3.6.1.6.3.15.1.1.3.0":
 		err = errors.New("Unknown user name")
@@ -151,7 +161,7 @@ func snmpOidCheckErrorCode(name string) (err error) {
 }
 
 // map OID to a human readable key
-func snmpOidHumanName(name string) (prefix string, err error) {
+func oidToHumanReadable(name string) (prefix string, err error) {
 	switch name {
 	case ".1.3.6.1.2.1.1.1.0":
 		prefix = "system.description"
@@ -164,12 +174,13 @@ func snmpOidHumanName(name string) (prefix string, err error) {
 	case ".1.3.6.1.2.1.1.5.0":
 		prefix = "system.hostname"
 	default:
-		err = fmt.Errorf("Unrecognized SNMP variable %s", name)
+		err = fmt.Errorf("Unrecognized OID %s", name)
 	}
 	return
 }
-func mapSnmpPreset(preset string) (oids []string, err error) {
 
+// returns a collection of oids for the given preset
+func presetToOids(preset string) (oids []string, err error) {
 	switch preset {
 	case "basedata":
 		oids = []string{
@@ -182,6 +193,5 @@ func mapSnmpPreset(preset string) (oids []string, err error) {
 	default:
 		err = fmt.Errorf("Unrecognized preset %s", preset)
 	}
-
 	return
 }

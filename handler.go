@@ -713,7 +713,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				res.Message = "Missing check.connect key"
 			} else {
 				var err error
-				res.Measurements, err = fm.runSNMPCheck(check)
+				res.Measurements, err = fm.runSNMPCheck(&check)
 				if err != nil {
 					log.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
