@@ -74,7 +74,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		return m, err
 	}
 
-	result, err := params.Get(oids) // XXX "Bulk Get" ????
+	result, err := params.GetBulk(oids, uint8(len(oids)), 255)
 	if err != nil {
 		return m, fmt.Errorf("Get err: %v", err)
 	}
@@ -96,7 +96,6 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
 	}
-
 	return m, nil
 }
 

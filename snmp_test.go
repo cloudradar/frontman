@@ -12,13 +12,12 @@ import (
 func TestSNMP(t *testing.T) {
 
 	params := &gosnmp.GoSNMP{
-		Target: "10.10.30.175",
-		Port:   161,
-		//Version:   gosnmp.Version2c,
-		Version:   gosnmp.Version1,
+		Target:    "172.16.72.143",
+		Port:      161,
+		Version:   gosnmp.Version3,
 		Community: "public",
 		Timeout:   time.Duration(1) * time.Second,
-		/* v3 stuff:
+		// v3 stuff:
 		SecurityModel: gosnmp.UserSecurityModel,
 		MsgFlags:      gosnmp.AuthPriv,
 		SecurityParameters: &gosnmp.UsmSecurityParameters{UserName: "user",
@@ -27,7 +26,6 @@ func TestSNMP(t *testing.T) {
 			PrivacyProtocol:          gosnmp.DES,
 			PrivacyPassphrase:        "password",
 		},
-		*/
 	}
 
 	err := params.Connect()
