@@ -59,21 +59,27 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		params.Version = gosnmp.Version3
 		params.SecurityModel = gosnmp.UserSecurityModel
 		switch check.SecurityLevel {
+		case "noauth":
+			params.MsgFlags = gosnmp.NoAuthNoPriv
+			params.SecurityParameters = &gosnmp.UsmSecurityParameters{
+				UserName: check.Username,
+			}
 		case "auth":
 			params.MsgFlags = gosnmp.AuthNoPriv
-			params.SecurityParameters = &gosnmp.UsmSecurityParameters{UserName: check.Username,
+			params.SecurityParameters = &gosnmp.UsmSecurityParameters{
+				UserName:                 check.Username,
 				AuthenticationProtocol:   gosnmp.SHA,
 				AuthenticationPassphrase: check.Password,
 			}
 		case "priv":
 			params.MsgFlags = gosnmp.AuthPriv
-			params.SecurityParameters = &gosnmp.UsmSecurityParameters{UserName: check.Username,
+			params.SecurityParameters = &gosnmp.UsmSecurityParameters{
+				UserName:                 check.Username,
 				AuthenticationProtocol:   gosnmp.SHA,
 				AuthenticationPassphrase: check.Password,
 				PrivacyProtocol:          gosnmp.DES,
 				PrivacyPassphrase:        check.Password,
 			}
-		// case "noauth": // XXX  NoAuthNoPriv
 		default:
 			return m, fmt.Errorf("Invalid security_level configuration value '%s'", check.SecurityLevel)
 		}
@@ -99,6 +105,9 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 
 	for _, variable := range result.Variables {
+		if err := snmpOidCheckErrorCode(variable.Name); err != nil {
+			return m, err
+		}
 		prefix, err := snmpOidHumanName(variable.Name)
 		if err != nil {
 			log.Debug(err)
@@ -116,6 +125,15 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		}
 	}
 	return m, nil
+}
+
+// returns human readable error if OID is a error
+func snmpOidCheckErrorCode(name string) (err error) {
+	switch name {
+	case ".1.3.6.1.6.3.15.1.1.3.0":
+		err = errors.New("Unknown user name")
+	}
+	return
 }
 
 // map OID to a human readable key
