@@ -1,83 +1,179 @@
 package frontman
 
 import (
-	"fmt"
-	"log"
 	"testing"
-	"time"
 
-	"github.com/soniah/gosnmp"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestSNMP(t *testing.T) {
+const snmpdIP = "172.16.72.143"
 
-	params := &gosnmp.GoSNMP{
-		Target:  "172.16.72.143",
-		Port:    161,
-		Version: gosnmp.Version3,
-		//Community: "public",
-		Timeout: time.Duration(1) * time.Second,
-		/*
-			// v3 - auth + priv:
-			SecurityModel: gosnmp.UserSecurityModel,
-			MsgFlags:      gosnmp.AuthPriv,
-			SecurityParameters: &gosnmp.UsmSecurityParameters{
-				UserName: "authPrivUser",
-				AuthenticationProtocol:   gosnmp.SHA,
-				AuthenticationPassphrase: "password",
-				PrivacyProtocol:          gosnmp.DES,
-				PrivacyPassphrase:        "password",
+// test SNMP v1 against snmpd
+func TestSNMPv1(t *testing.T) {
+	// necessary snmpd.conf changes:
+	// agentAddress udp:161,udp6:[::1]:161
+
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v1",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   1.0,
+				Protocol:  "v1",
+				Community: "public",
+				Preset:    "basedata",
 			},
-		*/
-		/*
-			// v3 - auth + no priv:
-			SecurityModel: gosnmp.UserSecurityModel,
-			MsgFlags:      gosnmp.AuthNoPriv,
-			SecurityParameters: &gosnmp.UsmSecurityParameters{
-				UserName: "authOnlyUser",
-				AuthenticationProtocol:   gosnmp.SHA,
-				AuthenticationPassphrase: "password",
+		}},
+	}
+
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	// test against default values from ubuntu snmpd.conf
+	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
+	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
+	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	assert.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
+}
+
+// test SNMP v2 against snmpd
+func TestSNMPv2(t *testing.T) {
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   1.0,
+				Protocol:  "v2",
+				Community: "public",
+				Preset:    "basedata",
 			},
-		*/
-		// v3 - noauth:
-		SecurityModel: gosnmp.UserSecurityModel,
-		MsgFlags:      gosnmp.NoAuthNoPriv,
-		SecurityParameters: &gosnmp.UsmSecurityParameters{
-			UserName: "noAuthNoPrivUser",
-		},
+		}},
 	}
 
-	err := params.Connect()
-	if err != nil {
-		log.Fatalf("SNMP Connect() err: %v", err)
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	// test against default values from ubuntu snmpd.conf
+	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
+	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
+	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	assert.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
+}
+
+// test SNMP v3 noauth against snmpd
+func TestSNMPv3NoAuth(t *testing.T) {
+	// necessary snmpd.conf changes:
+	// createUser noAuthNoPrivUser
+	// rouser     noAuthNoPrivUser noauth
+
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v3_noauth",
+			Check: SNMPCheckData{
+				Connect:       snmpdIP,
+				Port:          161,
+				Timeout:       1.0,
+				Protocol:      "v3",
+				Preset:        "basedata",
+				SecurityLevel: "noauth",
+				Username:      "noAuthNoPrivUser",
+			},
+		}},
 	}
-	defer params.Conn.Close()
 
-	// preset "basedata"
-	basedataOids := []string{
-		"1.3.6.1.2.1.1.1.0", // STRING: SG350-10 10-Port Gigabit Managed Switch
-		"1.3.6.1.2.1.1.3.0", // Timeticks: (575618700) 66 days, 14:56:27.00
-		"1.3.6.1.2.1.1.4.0", // STRING: ops@cloudradar.io
-		"1.3.6.1.2.1.1.5.0", // STRING: switch-cloudradar
-		"1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	// test against default values from ubuntu snmpd.conf
+	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
+	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
+	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	assert.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
+}
+
+// test SNMP v3 auth against snmpd
+func TestSNMPv3Auth(t *testing.T) {
+	// necessary snmpd.conf changes:
+	// createUser authOnlyUser  SHA "password" DES
+	// rouser     authOnlyUser
+
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v3_auth",
+			Check: SNMPCheckData{
+				Connect:       snmpdIP,
+				Port:          161,
+				Timeout:       1.0,
+				Protocol:      "v3",
+				Preset:        "basedata",
+				SecurityLevel: "auth",
+				Username:      "authOnlyUser",
+				Password:      "password",
+			},
+		}},
 	}
-	result, err2 := params.Get(basedataOids)
-	if err2 != nil {
-		log.Fatalf("SNMP Get() err: %v", err2)
+
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	// test against default values from ubuntu snmpd.conf
+	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
+	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
+	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	assert.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
+}
+
+// test SNMP v3 priv against snmpd
+func TestSNMPv3Priv(t *testing.T) {
+	// necessary snmpd.conf changes:
+	// createUser authPrivUser  SHA "password" DES
+	// rwuser   authPrivUser   priv
+
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v3_priv",
+			Check: SNMPCheckData{
+				Connect:       snmpdIP,
+				Port:          161,
+				Timeout:       1.0,
+				Protocol:      "v3",
+				Preset:        "basedata",
+				SecurityLevel: "priv",
+				Username:      "authPrivUser",
+				Password:      "password",
+			},
+		}},
 	}
 
-	for _, variable := range result.Variables {
-		fmt.Printf("oid: %s ", variable.Name)
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
 
-		switch variable.Type {
-		case gosnmp.OctetString:
-			fmt.Printf("string: %s\n", string(variable.Value.([]byte)))
-
-		case gosnmp.TimeTicks:
-			fmt.Printf("TimeTicks: %d\n", variable.Value)
-
-		default:
-			fmt.Printf("XXX %#v: %d\n", variable.Type, gosnmp.ToBigInt(variable.Value))
-		}
-	}
+	// test against default values from ubuntu snmpd.conf
+	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
+	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
+	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	assert.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 }

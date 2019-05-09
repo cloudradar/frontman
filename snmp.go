@@ -109,7 +109,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		if err := snmpOidCheckErrorCode(variable.Name); err != nil {
 			return m, err
 		}
-		if snmpSkipOid(variable.Name) {
+		if snmpIgnoreOid(variable.Name) {
 			continue
 		}
 		prefix, err := snmpOidHumanName(variable.Name)
@@ -131,8 +131,8 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	return m, nil
 }
 
-// returns true if oid should be skipped
-func snmpSkipOid(name string) bool {
+// returns true if oid should be ignored
+func snmpIgnoreOid(name string) bool {
 	switch name {
 	case ".1.3.6.1.2.1.1.2.0", // sysObjectID
 		".1.3.6.1.2.1.1.7.0": // sysServices
