@@ -17,14 +17,23 @@ func TestSNMP(t *testing.T) {
 		Version:   gosnmp.Version3,
 		Community: "public",
 		Timeout:   time.Duration(1) * time.Second,
-		// v3 stuff:
+		/*
+			// v3 stuff - auth + priv:
+			SecurityModel: gosnmp.UserSecurityModel,
+			MsgFlags:      gosnmp.AuthPriv,
+			SecurityParameters: &gosnmp.UsmSecurityParameters{UserName: "authPrivUser",
+				AuthenticationProtocol:   gosnmp.SHA,
+				AuthenticationPassphrase: "password",
+				PrivacyProtocol:          gosnmp.DES,
+				PrivacyPassphrase:        "password",
+			},
+		*/
+		// v3 stuff - auth + no priv:
 		SecurityModel: gosnmp.UserSecurityModel,
-		MsgFlags:      gosnmp.AuthPriv,
-		SecurityParameters: &gosnmp.UsmSecurityParameters{UserName: "user",
+		MsgFlags:      gosnmp.AuthNoPriv,
+		SecurityParameters: &gosnmp.UsmSecurityParameters{UserName: "authOnlyUser",
 			AuthenticationProtocol:   gosnmp.SHA,
 			AuthenticationPassphrase: "password",
-			PrivacyProtocol:          gosnmp.DES,
-			PrivacyPassphrase:        "password",
 		},
 	}
 

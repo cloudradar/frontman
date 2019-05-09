@@ -56,8 +56,27 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	case ProtocolSNMPv2:
 		params.Version = gosnmp.Version2c
 	case ProtocolSNMPv3:
-		// XXX auth stuff
-		return m, errors.New("SNMP v3 not implemented")
+		params.Version = gosnmp.Version3
+		params.SecurityModel = gosnmp.UserSecurityModel
+		switch check.SecurityLevel {
+		case "auth":
+			params.MsgFlags = gosnmp.AuthNoPriv
+			params.SecurityParameters = &gosnmp.UsmSecurityParameters{UserName: check.Username,
+				AuthenticationProtocol:   gosnmp.SHA,
+				AuthenticationPassphrase: check.Password,
+			}
+		case "priv":
+			params.MsgFlags = gosnmp.AuthPriv
+			params.SecurityParameters = &gosnmp.UsmSecurityParameters{UserName: check.Username,
+				AuthenticationProtocol:   gosnmp.SHA,
+				AuthenticationPassphrase: check.Password,
+				PrivacyProtocol:          gosnmp.DES,
+				PrivacyPassphrase:        check.Password,
+			}
+		// case "noauth": // XXX  NoAuthNoPriv
+		default:
+			return m, fmt.Errorf("Invalid security_level configuration value '%s'", check.SecurityLevel)
+		}
 	default:
 		log.Errorf("snmpCheck: unknown check.protocol: '%s'", check.Protocol)
 		return m, errors.New("Unknown check.protocol")
