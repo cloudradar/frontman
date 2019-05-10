@@ -52,7 +52,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 
 	err = params.Connect()
 	if err != nil {
-		return m, fmt.Errorf("Connect err: %v", err)
+		return m, fmt.Errorf("connect err: %v", err)
 	}
 	defer params.Conn.Close()
 
@@ -63,7 +63,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 
 	result, err := params.GetBulk(oids, uint8(len(oids)), 255)
 	if err != nil {
-		return m, fmt.Errorf("Get err: %v", err)
+		return m, fmt.Errorf("get err: %v", err)
 	}
 
 	for _, variable := range result.Variables {
@@ -133,10 +133,10 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 				PrivacyPassphrase:        check.Password,
 			}
 		default:
-			return nil, fmt.Errorf("Invalid security_level configuration value '%s'", check.SecurityLevel)
+			return nil, fmt.Errorf("invalid security_level configuration value '%s'", check.SecurityLevel)
 		}
 	default:
-		return nil, fmt.Errorf("Invalid protocol '%s'", check.Protocol)
+		return nil, fmt.Errorf("invalid protocol '%s'", check.Protocol)
 	}
 	return params, nil
 }
@@ -155,7 +155,7 @@ func ignoreSNMPOid(name string) bool {
 func oidToError(name string) (err error) {
 	switch name {
 	case ".1.3.6.1.6.3.15.1.1.3.0":
-		err = errors.New("Unknown user name")
+		err = errors.New("unknown user name")
 	}
 	return
 }
@@ -174,7 +174,7 @@ func oidToHumanReadable(name string) (prefix string, err error) {
 	case ".1.3.6.1.2.1.1.5.0":
 		prefix = "system.hostname"
 	default:
-		err = fmt.Errorf("Unrecognized OID %s", name)
+		err = fmt.Errorf("unrecognized OID %s", name)
 	}
 	return
 }
@@ -191,7 +191,7 @@ func presetToOids(preset string) (oids []string, err error) {
 			"1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
 		}
 	default:
-		err = fmt.Errorf("Unrecognized preset %s", preset)
+		err = fmt.Errorf("unrecognized preset %s", preset)
 	}
 	return
 }
