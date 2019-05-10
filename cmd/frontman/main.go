@@ -314,29 +314,30 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 }
 
 func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile string, output *os.File, interruptChan chan struct{}) {
-	if oneRunOnlyMode {
-		if err := fm.HealthCheck(); err != nil {
-			fm.HealthCheckPassedPreviously = false
-			log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
-			return
-		} else if !fm.HealthCheckPassedPreviously {
-			fm.HealthCheckPassedPreviously = true
-			log.Infoln("All health checks are positive. Resuming normal operation.")
-		}
-
-		input, err := fm.FetchInput(inputFile)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		err = fm.RunOnce(input, output, interruptChan, false)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+	if !oneRunOnlyMode {
+		return
 	}
+	if err := fm.HealthCheck(); err != nil {
+		fm.HealthCheckPassedPreviously = false
+		log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
+		return
+	} else if !fm.HealthCheckPassedPreviously {
+		fm.HealthCheckPassedPreviously = true
+		log.Infoln("All health checks are positive. Resuming normal operation.")
+	}
+
+	input, err := fm.FetchInput(inputFile)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = fm.RunOnce(input, output, interruptChan, false)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
 
 func handleFlagDaemonizeMode(daemonizeMode bool) {

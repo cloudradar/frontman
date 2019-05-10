@@ -391,7 +391,7 @@ func (fm *Frontman) HealthCheck() error {
 		// use the default timeout
 		timeout = 500 * time.Millisecond
 	}
-	failC := make(chan bool, len(hcfg.ReferencePingHosts))
+	failC := make(chan string, len(hcfg.ReferencePingHosts))
 
 	wg := new(sync.WaitGroup)
 	for _, addr := range hcfg.ReferencePingHosts {
@@ -403,23 +403,25 @@ func (fm *Frontman) HealthCheck() error {
 		p.Timeout = timeout
 		p.Count = hcfg.ReferencePingCount
 		wg.Add(1)
-		go func() {
+		go func(addr string) {
 			defer wg.Done()
 			p.Run()
 			if p.Statistics().PacketLoss > 0 {
-				failC <- true
+				failC <- addr
 			}
-		}()
+		}(addr)
 	}
 	go func() {
 		wg.Wait()
 		close(failC)
 	}()
-	for hasLostPackets := range failC {
-		if hasLostPackets {
-			err := errors.New("host failed to respond to ICMP ping")
-			return err
-		}
+
+	failedHosts := []string{}
+	for host := range failC {
+		failedHosts = append(failedHosts, host)
+	}
+	if len(failedHosts) > 0 {
+		return fmt.Errorf("host(s) failed to respond to ICMP ping: %s", strings.Join(failedHosts, ", "))
 	}
 	return nil
 }
