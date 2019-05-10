@@ -63,7 +63,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 
 	result, err := params.GetBulk(oids, uint8(len(oids)), 255)
 	if err != nil {
-		return m, fmt.Errorf("get err: %v", err)
+		return m, fmt.Errorf("get bulk err: %v", err)
 	}
 
 	for _, variable := range result.Variables {
@@ -155,7 +155,11 @@ func ignoreSNMPOid(name string) bool {
 func oidToError(name string) (err error) {
 	switch name {
 	case ".1.3.6.1.6.3.15.1.1.3.0":
+		// usmStatsUnknownUserNames
 		err = errors.New("unknown user name")
+	case ".1.3.6.1.6.3.15.1.1.5.0":
+		// usmStatsWrongDigests
+		err = errors.New("wrong digests, possibly wrong password")
 	}
 	return
 }
