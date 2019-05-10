@@ -321,7 +321,8 @@ func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputF
 		fm.HealthCheckPassedPreviously = false
 		log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
 		return
-	} else if !fm.HealthCheckPassedPreviously {
+	}
+	if !fm.HealthCheckPassedPreviously {
 		fm.HealthCheckPassedPreviously = true
 		log.Infoln("All health checks are positive. Resuming normal operation.")
 	}
