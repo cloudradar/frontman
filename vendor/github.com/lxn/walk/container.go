@@ -61,13 +61,13 @@ func performScheduledLayouts() {
 	if formResizeScheduled {
 		formResizeScheduled = false
 
-		bounds := appSingleton.activeForm.Bounds()
+		bounds := appSingleton.activeForm.BoundsPixels()
 
 		if appSingleton.activeForm.AsFormBase().fixedSize() {
 			bounds.Width, bounds.Height = 0, 0
 		}
 
-		appSingleton.activeForm.SetBounds(bounds)
+		appSingleton.activeForm.SetBoundsPixels(bounds)
 	} else {
 		for _, layout := range layouts {
 			if widget, ok := layout.Container().(Widget); ok && widget.Form() != appSingleton.activeForm {
@@ -100,6 +100,126 @@ type Layout interface {
 	Update(reset bool) error
 }
 
+type LayoutBase struct {
+	layout             Layout
+	container          Container
+	sizeAndDPI2MinSize map[sizeAndDPI]Size
+	margins96dpi       Margins
+	margins            Margins
+	spacing96dpi       int
+	spacing            int
+	alignment          Alignment2D
+	resetNeeded        bool
+}
+
+func (l *LayoutBase) sizeAndDPIToMinSize() map[sizeAndDPI]Size {
+	return l.sizeAndDPI2MinSize
+}
+
+func (l *LayoutBase) Container() Container {
+	return l.container
+}
+
+func (l *LayoutBase) SetContainer(value Container) {
+	if value == l.container {
+		return
+	}
+
+	if l.container != nil {
+		l.container.SetLayout(nil)
+	}
+
+	l.container = value
+
+	if value != nil && value.Layout() != l.layout {
+		value.SetLayout(l.layout)
+	}
+
+	l.updateMargins()
+	l.updateSpacing()
+
+	l.layout.Update(true)
+}
+
+func (l *LayoutBase) Margins() Margins {
+	return l.margins96dpi
+}
+
+func (l *LayoutBase) SetMargins(value Margins) error {
+	if value == l.margins96dpi {
+		return nil
+	}
+
+	if value.HNear < 0 || value.VNear < 0 || value.HFar < 0 || value.VFar < 0 {
+		return newError("margins must be positive")
+	}
+
+	l.margins96dpi = value
+
+	l.updateMargins()
+
+	l.layout.Update(false)
+
+	return nil
+}
+
+func (l *LayoutBase) Spacing() int {
+	return l.spacing96dpi
+}
+
+func (l *LayoutBase) SetSpacing(value int) error {
+	if value == l.spacing96dpi {
+		return nil
+	}
+
+	if value < 0 {
+		return newError("spacing cannot be negative")
+	}
+
+	l.spacing96dpi = value
+
+	l.updateSpacing()
+
+	l.layout.Update(false)
+
+	return nil
+}
+
+func (l *LayoutBase) updateMargins() {
+	if l.container != nil {
+		l.margins = l.container.AsWindowBase().MarginsFrom96DPI(l.margins96dpi)
+	}
+}
+
+func (l *LayoutBase) updateSpacing() {
+	if l.container != nil {
+		l.spacing = l.container.AsWindowBase().IntFrom96DPI(l.spacing96dpi)
+	}
+}
+
+func (l *LayoutBase) Alignment() Alignment2D {
+	return l.alignment
+}
+
+func (l *LayoutBase) SetAlignment(alignment Alignment2D) error {
+	if alignment != l.alignment {
+		if alignment < AlignHVDefault || alignment > AlignHFarVFar {
+			return newError("invalid Alignment value")
+		}
+
+		l.alignment = alignment
+
+		l.layout.Update(false)
+	}
+
+	return nil
+}
+
+type sizeAndDPI struct {
+	size Size
+	dpi  int
+}
+
 type HeightForWidther interface {
 	HeightForWidth(width int) int
 }
@@ -126,7 +246,7 @@ func applyLayoutResults(container Container, items []layoutResultItem) error {
 		widget := item.widget
 		x, y, w, h := item.bounds.X, item.bounds.Y, item.bounds.Width, item.bounds.Height
 
-		b := widget.Bounds()
+		b := widget.BoundsPixels()
 
 		if b.X == x && b.Y == y && b.Width == w {
 			if _, ok := widget.(*ComboBox); ok {
@@ -311,6 +431,24 @@ func (cb *ContainerBase) applyFont(font *Font) {
 	applyFontToDescendants(cb.window.(Widget), font)
 }
 
+func (cb *ContainerBase) ApplyDPI(dpi int) {
+	cb.WidgetBase.ApplyDPI(dpi)
+
+	applyDPIToDescendants(cb.window.(Widget), dpi)
+
+	if cb.layout != nil {
+		if ums, ok := cb.layout.(interface {
+			updateMargins()
+			updateSpacing()
+		}); ok {
+			ums.updateMargins()
+			ums.updateSpacing()
+		}
+
+		cb.layout.Update(false)
+	}
+}
+
 func (cb *ContainerBase) Children() *WidgetList {
 	return cb.children
 }
@@ -457,7 +595,7 @@ func (cb *ContainerBase) doPaint() error {
 				continue
 			}
 
-			b := widget.Bounds().toRECT()
+			b := widget.BoundsPixels().toRECT()
 			win.ExcludeClipRect(hdc, b.Left, b.Top, b.Right, b.Bottom)
 
 			if err := effect.Draw(widget, canvas); err != nil {
@@ -482,7 +620,7 @@ func (cb *ContainerBase) doPaint() error {
 		if widget != nil && widget.Parent() != nil && widget.Parent().Handle() == cb.hWnd {
 			for _, effect := range widget.GraphicsEffects().items {
 				if effect == FocusEffect {
-					b := widget.Bounds().toRECT()
+					b := widget.BoundsPixels().toRECT()
 					win.ExcludeClipRect(hdc, b.Left, b.Top, b.Right, b.Bottom)
 
 					if err := FocusEffect.Draw(widget, canvas); err != nil {

@@ -1,3 +1,8 @@
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
+
 [[constraint]]
   branch = "master"
   name = "golang.org/x/net"
@@ -11,20 +16,16 @@
   version = "2.5.1"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/kardianos/service"
-  revision = "4c239ee84e7bb93441b1b6a3f2db62d40e0e6cbd"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/sparrc/go-ping"
-  revision = "ef3ab45e41b017889941ea5bb796dd502d2b5a1b"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "1.0.6"
-
-[prune]
-  go-tests = true
-  unused-packages = true
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"
@@ -35,8 +36,8 @@
   version = "1.2.2"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/lxn/walk"
-  revision = "79c445caf3e94a21822d70e80d021c20fdb704fa"
 
 [[constraint]]
   branch = "v1"

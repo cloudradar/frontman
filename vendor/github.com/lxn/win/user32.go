@@ -7,35 +7,46 @@
 package win
 
 import (
-	"golang.org/x/sys/windows"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 const CW_USEDEFAULT = ^0x7fffffff
 
 // MessageBox constants
 const (
-	MB_OK                = 0x00000000
-	MB_OKCANCEL          = 0x00000001
-	MB_ABORTRETRYIGNORE  = 0x00000002
-	MB_YESNOCANCEL       = 0x00000003
-	MB_YESNO             = 0x00000004
-	MB_RETRYCANCEL       = 0x00000005
-	MB_CANCELTRYCONTINUE = 0x00000006
-	MB_ICONHAND          = 0x00000010
-	MB_ICONQUESTION      = 0x00000020
-	MB_ICONEXCLAMATION   = 0x00000030
-	MB_ICONASTERISK      = 0x00000040
-	MB_USERICON          = 0x00000080
-	MB_ICONWARNING       = MB_ICONEXCLAMATION
-	MB_ICONERROR         = MB_ICONHAND
-	MB_ICONINFORMATION   = MB_ICONASTERISK
-	MB_ICONSTOP          = MB_ICONHAND
-	MB_DEFBUTTON1        = 0x00000000
-	MB_DEFBUTTON2        = 0x00000100
-	MB_DEFBUTTON3        = 0x00000200
-	MB_DEFBUTTON4        = 0x00000300
+	MB_OK                   = 0x00000000
+	MB_OKCANCEL             = 0x00000001
+	MB_ABORTRETRYIGNORE     = 0x00000002
+	MB_YESNOCANCEL          = 0x00000003
+	MB_YESNO                = 0x00000004
+	MB_RETRYCANCEL          = 0x00000005
+	MB_CANCELTRYCONTINUE    = 0x00000006
+	MB_ICONHAND             = 0x00000010
+	MB_ICONQUESTION         = 0x00000020
+	MB_ICONEXCLAMATION      = 0x00000030
+	MB_ICONASTERISK         = 0x00000040
+	MB_USERICON             = 0x00000080
+	MB_ICONWARNING          = MB_ICONEXCLAMATION
+	MB_ICONERROR            = MB_ICONHAND
+	MB_ICONINFORMATION      = MB_ICONASTERISK
+	MB_ICONSTOP             = MB_ICONHAND
+	MB_DEFBUTTON1           = 0x00000000
+	MB_DEFBUTTON2           = 0x00000100
+	MB_DEFBUTTON3           = 0x00000200
+	MB_DEFBUTTON4           = 0x00000300
+	MB_APPLMODAL            = 0x00000000
+	MB_SYSTEMMODAL          = 0x00001000
+	MB_TASKMODAL            = 0x00002000
+	MB_HELP                 = 0x00004000
+	MB_SETFOREGROUND        = 0x00010000
+	MB_DEFAULT_DESKTOP_ONLY = 0x00020000
+	MB_TOPMOST              = 0x00040000
+	MB_RIGHT                = 0x00080000
+	MB_RTLREADING           = 0x00100000
+	MB_SERVICE_NOTIFICATION = 0x00200000
 )
 
 // Dialog box command ids
@@ -665,6 +676,7 @@ const (
 	WS_EX_LAYERED          = 0X00080000
 	WS_EX_NOINHERITLAYOUT  = 0X00100000
 	WS_EX_LAYOUTRTL        = 0X00400000
+	WS_EX_COMPOSITED       = 0X02000000
 	WS_EX_NOACTIVATE       = 0X08000000
 )
 
@@ -708,6 +720,7 @@ const (
 	WM_DEVICECHANGE           = 537
 	WM_DEVMODECHANGE          = 27
 	WM_DISPLAYCHANGE          = 126
+	WM_DPICHANGED             = 0x02E0
 	WM_DRAWCLIPBOARD          = 776
 	WM_DRAWITEM               = 43
 	WM_DROPFILES              = 563
@@ -1314,6 +1327,13 @@ const (
 	AW_VER_NEGATIVE = 0x00000008
 )
 
+// Session ending constants
+const (
+	ENDSESSION_CLOSEAPP = 0x00000001
+	ENDSESSION_CRITICAL = 0x40000000
+	ENDSESSION_LOGOFF   = 0x80000000
+)
+
 type NMBCDROPDOWN struct {
 	Hdr      NMHDR
 	RcButton RECT
@@ -1597,6 +1617,7 @@ var (
 	// Functions
 	addClipboardFormatListener *windows.LazyProc
 	adjustWindowRect           *windows.LazyProc
+	attachThreadInput          *windows.LazyProc
 	animateWindow              *windows.LazyProc
 	beginDeferWindowPos        *windows.LazyProc
 	beginPaint                 *windows.LazyProc
@@ -1637,8 +1658,10 @@ var (
 	getCursorPos               *windows.LazyProc
 	getDC                      *windows.LazyProc
 	getDesktopWindow           *windows.LazyProc
+	getDpiForWindow            *windows.LazyProc
 	getFocus                   *windows.LazyProc
 	getForegroundWindow        *windows.LazyProc
+	getIconInfo                *windows.LazyProc
 	getKeyState                *windows.LazyProc
 	getMenuInfo                *windows.LazyProc
 	getMessage                 *windows.LazyProc
@@ -1649,18 +1672,22 @@ var (
 	getSysColor                *windows.LazyProc
 	getSysColorBrush           *windows.LazyProc
 	getSystemMetrics           *windows.LazyProc
+	getSystemMetricsForDpi     *windows.LazyProc
 	getWindow                  *windows.LazyProc
 	getWindowLong              *windows.LazyProc
 	getWindowLongPtr           *windows.LazyProc
 	getWindowPlacement         *windows.LazyProc
 	getWindowRect              *windows.LazyProc
+	getWindowThreadProcessId   *windows.LazyProc
 	insertMenuItem             *windows.LazyProc
 	invalidateRect             *windows.LazyProc
 	isChild                    *windows.LazyProc
 	isClipboardFormatAvailable *windows.LazyProc
 	isDialogMessage            *windows.LazyProc
+	isIconic                   *windows.LazyProc
 	isWindowEnabled            *windows.LazyProc
 	isWindowVisible            *windows.LazyProc
+	isZoomed                   *windows.LazyProc
 	killTimer                  *windows.LazyProc
 	loadCursor                 *windows.LazyProc
 	loadIcon                   *windows.LazyProc
@@ -1694,6 +1721,7 @@ var (
 	setFocus                   *windows.LazyProc
 	setForegroundWindow        *windows.LazyProc
 	setMenu                    *windows.LazyProc
+	setMenuDefaultItem         *windows.LazyProc
 	setMenuInfo                *windows.LazyProc
 	setMenuItemInfo            *windows.LazyProc
 	setParent                  *windows.LazyProc
@@ -1724,6 +1752,7 @@ func init() {
 	// Functions
 	addClipboardFormatListener = libuser32.NewProc("AddClipboardFormatListener")
 	adjustWindowRect = libuser32.NewProc("AdjustWindowRect")
+	attachThreadInput = libuser32.NewProc("AttachThreadInput")
 	animateWindow = libuser32.NewProc("AnimateWindow")
 	beginDeferWindowPos = libuser32.NewProc("BeginDeferWindowPos")
 	beginPaint = libuser32.NewProc("BeginPaint")
@@ -1764,8 +1793,10 @@ func init() {
 	getCursorPos = libuser32.NewProc("GetCursorPos")
 	getDC = libuser32.NewProc("GetDC")
 	getDesktopWindow = libuser32.NewProc("GetDesktopWindow")
+	getDpiForWindow = libuser32.NewProc("GetDpiForWindow")
 	getFocus = libuser32.NewProc("GetFocus")
 	getForegroundWindow = libuser32.NewProc("GetForegroundWindow")
+	getIconInfo = libuser32.NewProc("GetIconInfo")
 	getKeyState = libuser32.NewProc("GetKeyState")
 	getMenuInfo = libuser32.NewProc("GetMenuInfo")
 	getMessage = libuser32.NewProc("GetMessageW")
@@ -1776,6 +1807,7 @@ func init() {
 	getSysColor = libuser32.NewProc("GetSysColor")
 	getSysColorBrush = libuser32.NewProc("GetSysColorBrush")
 	getSystemMetrics = libuser32.NewProc("GetSystemMetrics")
+	getSystemMetricsForDpi = libuser32.NewProc("GetSystemMetricsForDpi")
 	getWindow = libuser32.NewProc("GetWindow")
 	getWindowLong = libuser32.NewProc("GetWindowLongW")
 	// On 32 bit GetWindowLongPtrW is not available
@@ -1786,13 +1818,16 @@ func init() {
 	}
 	getWindowPlacement = libuser32.NewProc("GetWindowPlacement")
 	getWindowRect = libuser32.NewProc("GetWindowRect")
+	getWindowThreadProcessId = libuser32.NewProc("GetWindowThreadProcessId")
 	insertMenuItem = libuser32.NewProc("InsertMenuItemW")
 	invalidateRect = libuser32.NewProc("InvalidateRect")
 	isChild = libuser32.NewProc("IsChild")
 	isClipboardFormatAvailable = libuser32.NewProc("IsClipboardFormatAvailable")
 	isDialogMessage = libuser32.NewProc("IsDialogMessageW")
+	isIconic = libuser32.NewProc("IsIconic")
 	isWindowEnabled = libuser32.NewProc("IsWindowEnabled")
 	isWindowVisible = libuser32.NewProc("IsWindowVisible")
+	isZoomed = libuser32.NewProc("IsZoomed")
 	killTimer = libuser32.NewProc("KillTimer")
 	loadCursor = libuser32.NewProc("LoadCursorW")
 	loadIcon = libuser32.NewProc("LoadIconW")
@@ -1826,6 +1861,7 @@ func init() {
 	setFocus = libuser32.NewProc("SetFocus")
 	setForegroundWindow = libuser32.NewProc("SetForegroundWindow")
 	setMenu = libuser32.NewProc("SetMenu")
+	setMenuDefaultItem = libuser32.NewProc("SetMenuDefaultItem")
 	setMenuInfo = libuser32.NewProc("SetMenuInfo")
 	setMenuItemInfo = libuser32.NewProc("SetMenuItemInfoW")
 	setRect = libuser32.NewProc("SetRect")
@@ -1874,6 +1910,15 @@ func AdjustWindowRect(lpRect *RECT, dwStyle uint32, bMenu bool) bool {
 	return ret != 0
 }
 
+func AttachThreadInput(idAttach int32, idAttachTo int32, fAttach bool) bool {
+	ret, _, _ := syscall.Syscall(attachThreadInput.Addr(), 3,
+		uintptr(idAttach),
+		uintptr(idAttachTo),
+		uintptr(BoolToBOOL(fAttach)))
+
+	return ret != 0
+}
+
 func AnimateWindow(hwnd HWND, dwTime, dwFlags uint32) bool {
 	ret, _, _ := syscall.Syscall(animateWindow.Addr(), 3,
 		uintptr(hwnd),
@@ -1890,6 +1935,15 @@ func BeginDeferWindowPos(nNumWindows int32) HDWP {
 		0)
 
 	return HDWP(ret)
+}
+
+func GetWindowThreadProcessId(hwnd HWND, processId *uint32) uint32 {
+	ret, _, _ := syscall.Syscall(getWindowThreadProcessId.Addr(), 2,
+		uintptr(hwnd),
+		uintptr(unsafe.Pointer(processId)),
+		0)
+
+	return uint32(ret)
 }
 
 func BeginPaint(hwnd HWND, lpPaint *PAINTSTRUCT) HDC {
@@ -2275,6 +2329,22 @@ func GetDC(hWnd HWND) HDC {
 	return HDC(ret)
 }
 
+func GetDpiForWindow(hwnd HWND) uint32 {
+	if getDpiForWindow.Find() != nil {
+		hdc := GetDC(hwnd)
+		defer ReleaseDC(hwnd, hdc)
+
+		return uint32(GetDeviceCaps(hdc, LOGPIXELSY))
+	}
+
+	ret, _, _ := syscall.Syscall(getDpiForWindow.Addr(), 1,
+		uintptr(hwnd),
+		0,
+		0)
+
+	return uint32(ret)
+}
+
 func GetFocus() HWND {
 	ret, _, _ := syscall.Syscall(getFocus.Addr(), 0,
 		0,
@@ -2291,6 +2361,15 @@ func GetForegroundWindow() HWND {
 		0)
 
 	return HWND(ret)
+}
+
+func GetIconInfo(hicon HICON, piconinfo *ICONINFO) bool {
+	ret, _, _ := syscall.Syscall(getIconInfo.Addr(), 2,
+		uintptr(hicon),
+		uintptr(unsafe.Pointer(piconinfo)),
+		0)
+
+	return ret != 0
 }
 
 func GetKeyState(nVirtKey int32) int16 {
@@ -2389,6 +2468,19 @@ func GetSystemMetrics(nIndex int32) int32 {
 	return int32(ret)
 }
 
+func GetSystemMetricsForDpi(nIndex int32, dpi uint32) int32 {
+	if getSystemMetricsForDpi.Find() != nil {
+		return GetSystemMetrics(nIndex)
+	}
+
+	ret, _, _ := syscall.Syscall(getSystemMetricsForDpi.Addr(), 2,
+		uintptr(nIndex),
+		uintptr(dpi),
+		0)
+
+	return int32(ret)
+}
+
 func GetWindow(hWnd HWND, uCmd uint32) HWND {
 	ret, _, _ := syscall.Syscall(getWindow.Addr(), 2,
 		uintptr(hWnd),
@@ -2482,6 +2574,15 @@ func IsDialogMessage(hWnd HWND, msg *MSG) bool {
 	return ret != 0
 }
 
+func IsIconic(hWnd HWND) bool {
+	ret, _, _ := syscall.Syscall(isIconic.Addr(), 1,
+		uintptr(hWnd),
+		0,
+		0)
+
+	return ret != 0
+}
+
 func IsWindowEnabled(hWnd HWND) bool {
 	ret, _, _ := syscall.Syscall(isWindowEnabled.Addr(), 1,
 		uintptr(hWnd),
@@ -2493,6 +2594,15 @@ func IsWindowEnabled(hWnd HWND) bool {
 
 func IsWindowVisible(hWnd HWND) bool {
 	ret, _, _ := syscall.Syscall(isWindowVisible.Addr(), 1,
+		uintptr(hWnd),
+		0,
+		0)
+
+	return ret != 0
+}
+
+func IsZoomed(hWnd HWND) bool {
+	ret, _, _ := syscall.Syscall(isZoomed.Addr(), 1,
 		uintptr(hWnd),
 		0,
 		0)
@@ -2830,6 +2940,15 @@ func SetMenu(hWnd HWND, hMenu HMENU) bool {
 		uintptr(hWnd),
 		uintptr(hMenu),
 		0)
+
+	return ret != 0
+}
+
+func SetMenuDefaultItem(hMenu HMENU, uItem uint32, fByPosition bool) bool {
+	ret, _, _ := syscall.Syscall(setMenuDefaultItem.Addr(), 3,
+		uintptr(hMenu),
+		uintptr(uItem),
+		uintptr(BoolToBOOL(fByPosition)))
 
 	return ret != 0
 }

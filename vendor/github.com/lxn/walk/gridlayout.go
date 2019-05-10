@@ -30,95 +30,25 @@ type gridLayoutWidgetInfo struct {
 }
 
 type GridLayout struct {
-	container            Container
-	margins              Margins
-	spacing              int
-	alignment            Alignment2D
-	resetNeeded          bool
+	LayoutBase
 	rowStretchFactors    []int
 	columnStretchFactors []int
 	widgetBase2Info      map[*WidgetBase]*gridLayoutWidgetInfo
 	cells                [][]gridLayoutCell
-	size2MinSize         map[Size]Size
 }
 
 func NewGridLayout() *GridLayout {
 	l := &GridLayout{
+		LayoutBase: LayoutBase{
+			sizeAndDPI2MinSize: make(map[sizeAndDPI]Size),
+			margins96dpi:       Margins{9, 9, 9, 9},
+			spacing96dpi:       6,
+		},
 		widgetBase2Info: make(map[*WidgetBase]*gridLayoutWidgetInfo),
-		size2MinSize:    make(map[Size]Size),
 	}
+	l.layout = l
 
 	return l
-}
-
-func (l *GridLayout) Container() Container {
-	return l.container
-}
-
-func (l *GridLayout) SetContainer(value Container) {
-	if value != l.container {
-		if l.container != nil {
-			l.container.SetLayout(nil)
-		}
-
-		l.container = value
-
-		if value != nil && value.Layout() != Layout(l) {
-			value.SetLayout(l)
-
-			l.Update(true)
-		}
-	}
-}
-
-func (l *GridLayout) Margins() Margins {
-	return l.margins
-}
-
-func (l *GridLayout) SetMargins(value Margins) error {
-	if value.HNear < 0 || value.VNear < 0 || value.HFar < 0 || value.VFar < 0 {
-		return newError("margins must be positive")
-	}
-
-	l.margins = value
-
-	return nil
-}
-
-func (l *GridLayout) Spacing() int {
-	return l.spacing
-}
-
-func (l *GridLayout) SetSpacing(value int) error {
-	if value != l.spacing {
-		if value < 0 {
-			return newError("spacing cannot be negative")
-		}
-
-		l.spacing = value
-
-		l.Update(false)
-	}
-
-	return nil
-}
-
-func (l *GridLayout) Alignment() Alignment2D {
-	return l.alignment
-}
-
-func (l *GridLayout) SetAlignment(alignment Alignment2D) error {
-	if alignment != l.alignment {
-		if alignment < AlignHVDefault || alignment > AlignHFarVFar {
-			return newError("invalid Alignment value")
-		}
-
-		l.alignment = alignment
-
-		l.Update(false)
-	}
-
-	return nil
 }
 
 func (l *GridLayout) sufficientStretchFactors(stretchFactors []int, required int) []int {
@@ -370,10 +300,10 @@ func (l *GridLayout) LayoutFlags() LayoutFlags {
 
 			wf := widget.LayoutFlags()
 
-			if wf&GreedyHorz != 0 && widget.MaxSize().Width > 0 {
+			if wf&GreedyHorz != 0 && widget.MaxSizePixels().Width > 0 {
 				wf &^= GreedyHorz
 			}
-			if wf&GreedyVert != 0 && widget.MaxSize().Height > 0 {
+			if wf&GreedyVert != 0 && widget.MaxSizePixels().Height > 0 {
 				wf &^= GreedyVert
 			}
 
@@ -389,7 +319,7 @@ func (l *GridLayout) MinSize() Size {
 		return Size{}
 	}
 
-	return l.MinSizeForSize(l.container.ClientBounds().Size())
+	return l.MinSizeForSize(l.container.ClientBoundsPixels().Size())
 }
 
 func (l *GridLayout) MinSizeForSize(size Size) Size {
@@ -397,7 +327,9 @@ func (l *GridLayout) MinSizeForSize(size Size) Size {
 		return Size{}
 	}
 
-	if min, ok := l.size2MinSize[size]; ok {
+	dpi := l.container.DPI()
+
+	if min, ok := l.sizeAndDPI2MinSize[sizeAndDPI{size, dpi}]; ok {
 		return min
 	}
 
@@ -486,7 +418,7 @@ func (l *GridLayout) MinSizeForSize(size Size) Size {
 	}
 
 	if width > 0 && height > 0 {
-		l.size2MinSize[size] = Size{width, height}
+		l.sizeAndDPI2MinSize[sizeAndDPI{size, dpi}] = Size{width, height}
 	}
 
 	return Size{width, height}
@@ -564,7 +496,7 @@ func (l *GridLayout) Update(reset bool) error {
 		return nil
 	}
 
-	l.size2MinSize = make(map[Size]Size)
+	l.sizeAndDPI2MinSize = make(map[sizeAndDPI]Size)
 
 	if reset {
 		l.resetNeeded = true
@@ -586,7 +518,7 @@ func (l *GridLayout) Update(reset bool) error {
 
 	ifContainerIsScrollViewDoCoolSpecialLayoutStuff(l)
 
-	cb := l.container.ClientBounds()
+	cb := l.container.ClientBoundsPixels()
 
 	widths := l.sectionSizesForSpace(Horizontal, cb.Width, nil)
 	heights := l.sectionSizesForSpace(Vertical, cb.Height, widths)
@@ -622,7 +554,7 @@ func (l *GridLayout) Update(reset bool) error {
 
 		if lf := widget.LayoutFlags(); lf&GrowableHorz == 0 || lf&GrowableVert == 0 {
 			s := widget.SizeHint()
-			max := widget.MaxSize()
+			max := widget.MaxSizePixels()
 			if max.Width > 0 && s.Width > max.Width {
 				s.Width = max.Width
 			}
@@ -666,7 +598,11 @@ func (l *GridLayout) Update(reset bool) error {
 		items = append(items, layoutResultItem{widget: widget, bounds: Rectangle{X: x, Y: y, Width: w, Height: h}})
 	}
 
-	return applyLayoutResults(l.container, items)
+	if err := applyLayoutResults(l.container, items); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l *GridLayout) sectionSizesForSpace(orientation Orientation, space int, widths []int) []int {
@@ -715,7 +651,7 @@ func (l *GridLayout) sectionSizesForSpace(orientation Orientation, space int, wi
 			info := l.widgetBase2Info[wb]
 			flags := widget.LayoutFlags()
 
-			max := widget.MaxSize()
+			max := widget.MaxSizePixels()
 			pref := widget.SizeHint()
 
 			if orientation == Horizontal {

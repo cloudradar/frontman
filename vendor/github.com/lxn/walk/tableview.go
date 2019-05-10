@@ -366,7 +366,7 @@ func (tv *TableView) applyEnabled(enabled bool) {
 func (tv *TableView) applyFont(font *Font) {
 	tv.WidgetBase.applyFont(font)
 
-	hFont := uintptr(font.handleForDPI(0))
+	hFont := uintptr(font.handleForDPI(tv.DPI()))
 
 	win.SendMessage(tv.hwndFrozenLV, win.WM_SETFONT, hFont, 0)
 	win.SendMessage(tv.hwndNormalLV, win.WM_SETFONT, hFont, 0)
@@ -1025,6 +1025,16 @@ func (tv *TableView) CurrentIndexChanged() *Event {
 	return tv.currentIndexChangedPublisher.Event()
 }
 
+// ItemVisible returns whether the item at position index is visible.
+func (tv *TableView) ItemVisible(index int) bool {
+	return 0 != win.SendMessage(tv.hwndNormalLV, win.LVM_ISITEMVISIBLE, uintptr(index), 0)
+}
+
+// EnsureItemVisible ensures the item at position index is visible, scrolling if necessary.
+func (tv *TableView) EnsureItemVisible(index int) {
+	win.SendMessage(tv.hwndNormalLV, win.LVM_ENSUREVISIBLE, uintptr(index), 0)
+}
+
 // SelectionHiddenWithoutFocus returns whether selection indicators are visible when the TableView does not have the keyboard input focus.
 func (tv *TableView) SelectionHiddenWithoutFocus() bool {
 	style := uint(win.GetWindowLong(tv.hwndNormalLV, win.GWL_STYLE))
@@ -1096,23 +1106,38 @@ func (tv *TableView) SetSelectedIndexes(indexes []int) error {
 		return newError("SendMessage(LVM_SETITEMSTATE)")
 	}
 
+	selectAll := false
 	lvi.State = win.LVIS_FOCUSED | win.LVIS_SELECTED
 	for _, i := range indexes {
-		if win.FALSE == win.SendMessage(tv.hwndFrozenLV, win.LVM_SETITEMSTATE, uintptr(i), lp) {
+		val := uintptr(i)
+		if i == -1 {
+			selectAll = true
+			val = ^uintptr(0)
+		}
+		if win.FALSE == win.SendMessage(tv.hwndFrozenLV, win.LVM_SETITEMSTATE, val, lp) && i != -1 {
 			return newError("SendMessage(LVM_SETITEMSTATE)")
 		}
-		if win.FALSE == win.SendMessage(tv.hwndNormalLV, win.LVM_SETITEMSTATE, uintptr(i), lp) {
+		if win.FALSE == win.SendMessage(tv.hwndNormalLV, win.LVM_SETITEMSTATE, val, lp) && i != -1 {
 			return newError("SendMessage(LVM_SETITEMSTATE)")
 		}
 	}
 
-	idxs := make([]int, len(indexes))
+	if !selectAll {
+		idxs := make([]int, len(indexes))
 
-	for i, j := range indexes {
-		idxs[i] = j
+		for i, j := range indexes {
+			idxs[i] = j
+		}
+
+		tv.selectedIndexes = idxs
+	} else {
+		count := int(win.SendMessage(tv.hwndNormalLV, win.LVM_GETSELECTEDCOUNT, 0, 0))
+		idxs := make([]int, count)
+		for i := range idxs {
+			idxs[i] = i
+		}
+		tv.selectedIndexes = idxs
 	}
-
-	tv.selectedIndexes = idxs
 
 	return nil
 }
@@ -2234,7 +2259,7 @@ func (tv *TableView) WndProc(hwnd win.HWND, msg uint32, wp, lp uintptr) uintptr 
 }
 
 func (tv *TableView) updateLVSizes() {
-	cb := tv.ClientBounds()
+	cb := tv.ClientBoundsPixels()
 
 	var width int
 	for i := tv.columns.Len() - 1; i >= 0; i-- {
@@ -2242,6 +2267,8 @@ func (tv *TableView) updateLVSizes() {
 			width += col.Width()
 		}
 	}
+
+	width = tv.IntFrom96DPI(width)
 
 	win.MoveWindow(tv.hwndNormalLV, int32(width), 0, int32(cb.Width-width), int32(cb.Height), true)
 

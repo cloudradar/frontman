@@ -52,6 +52,8 @@ func NewImageView(parent Container) (*ImageView, error) {
 
 	iv.SetInvalidatesOnResize(true)
 
+	iv.SetBackground(NullBrush())
+
 	iv.MustRegisterProperty("Image", NewProperty(
 		func() interface{} {
 			return iv.Image()
@@ -194,7 +196,7 @@ func (iv *ImageView) drawImage(canvas *Canvas, updateBounds Rectangle) error {
 		return nil
 	}
 
-	cb := iv.ClientBounds()
+	cb := iv.ClientBoundsPixels()
 
 	cb.Width -= iv.margin * 2
 	cb.Height -= iv.margin * 2
