@@ -1,7 +1,7 @@
 package frontman
 
 // In order to run tests, set up snmpd somewhere and
-// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
+// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v
 
 import (
 	"os"
