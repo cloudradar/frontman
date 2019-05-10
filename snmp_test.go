@@ -1,16 +1,28 @@
 package frontman
 
+// In order to run tests, set up snmpd somewhere and
+// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
+
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const snmpdIP = "172.16.72.144"
+var snmpdIP = ""
+
+func skipSNMP(t *testing.T) {
+	snmpdIP = os.Getenv("FRONTMAN_SNMPD_IP")
+	if snmpdIP == "" {
+		t.Skip("Skipping testing SNMP")
+	}
+}
 
 // test SNMP v1 against snmpd
 func TestSNMPv1(t *testing.T) {
+	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// agentAddress udp:161,udp6:[::1]:161
 
@@ -44,6 +56,7 @@ func TestSNMPv1(t *testing.T) {
 
 // test SNMP v2 against snmpd
 func TestSNMPv2(t *testing.T) {
+	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
@@ -72,8 +85,36 @@ func TestSNMPv2(t *testing.T) {
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
+// test SNMP v2 invalid community against snmpd
+func TestSNMPv2InvalidCommunity(t *testing.T) {
+	skipSNMP(t)
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_invalid_community",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   1.0,
+				Protocol:  "v2",
+				Community: "invalidCommunityName",
+				Preset:    "basedata",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	// NOTE: the only error we get on invalid community name is a timeout
+	require.Equal(t, "get bulk err: Request timeout (after 0 retries)", res.Message)
+	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
+}
+
 // test SNMP v3 noauth against snmpd
 func TestSNMPv3NoAuth(t *testing.T) {
+	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// createUser noAuthNoPrivUser
 	// rouser     noAuthNoPrivUser noauth
@@ -109,6 +150,7 @@ func TestSNMPv3NoAuth(t *testing.T) {
 
 // test SNMP v3 noauth against snmpd with unknown username
 func TestSNMPv3NoAuthUnknownUser(t *testing.T) {
+	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
@@ -135,6 +177,7 @@ func TestSNMPv3NoAuthUnknownUser(t *testing.T) {
 
 // test SNMP v3 auth against snmpd
 func TestSNMPv3Auth(t *testing.T) {
+	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// createUser authOnlyUser  SHA "password"
 	// rouser     authOnlyUser
@@ -171,6 +214,7 @@ func TestSNMPv3Auth(t *testing.T) {
 
 // test SNMP v3 auth against snmpd with wrong password
 func TestSNMPv3AuthWrongPassword(t *testing.T) {
+	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
@@ -192,12 +236,14 @@ func TestSNMPv3AuthWrongPassword(t *testing.T) {
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
+	// NOTE: snmp protocol doesn't have a specific error message for wrong password
 	require.Equal(t, "wrong digests, possibly wrong password", res.Message)
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
 }
 
 // test SNMP v3 priv against snmpd
 func TestSNMPv3Priv(t *testing.T) {
+	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// createUser authPrivUser  SHA "password" DES
 	// rwuser   authPrivUser   priv
