@@ -138,6 +138,14 @@
   version = "v1.21.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:b023b1d485886b5add9df943d0ffc33b91fe84c87d87570b3d3f71f7692952d9"
+  name = "github.com/sparrc/go-ping"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ef3ab45e41b017889941ea5bb796dd502d2b5a1b"
+
+[[projects]]
   digest = "1:85adecf1dbfae5769cc62a8bcea6498f8e9f0e2452e4e6686eb36fa4428a5a6e"
   name = "github.com/stretchr/testify"
   packages = [
@@ -236,6 +244,7 @@
     "github.com/sirupsen/logrus",
     "github.com/sirupsen/logrus/hooks/syslog",
     "github.com/soniah/gosnmp",
+    "github.com/sparrc/go-ping",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "github.com/troian/toml",
