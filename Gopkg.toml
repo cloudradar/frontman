@@ -11,8 +11,12 @@
   version = "2.5.1"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/kardianos/service"
+  revision = "4c239ee84e7bb93441b1b6a3f2db62d40e0e6cbd"
+
+[[constraint]]
+  name = "github.com/sparrc/go-ping"
+  revision = "ef3ab45e41b017889941ea5bb796dd502d2b5a1b"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
@@ -32,7 +36,7 @@
 
 [[constraint]]
   name = "github.com/lxn/walk"
-  version = "79c445caf3e94a21822d70e80d021c20fdb704fa"
+  revision = "79c445caf3e94a21822d70e80d021c20fdb704fa"
 
 [[constraint]]
   branch = "v1"
