@@ -42,8 +42,11 @@ type GoSNMP struct {
 	// Target is an ipv4 address
 	Target string
 
-	// Port is a udp port
+	// Port is a port
 	Port uint16
+
+	// Transport is the transport protocol to use ("udp" or "tcp"); if unset "udp" will be used.
+	Transport string
 
 	// Community is an SNMP Community string
 	Community string
@@ -117,6 +120,7 @@ type GoSNMP struct {
 // Default connection settings
 var Default = &GoSNMP{
 	Port:               161,
+	Transport:          "udp",
 	Community:          "public",
 	Version:            Version2c,
 	Timeout:            time.Duration(2) * time.Second,
@@ -214,17 +218,17 @@ const (
 // For historical reasons (ie this is part of the public API), the method won't
 // be renamed to Dial().
 func (x *GoSNMP) Connect() error {
-	return x.connect("udp")
+	return x.connect("")
 }
 
 // ConnectIPv4 forces an IPv4-only connection
 func (x *GoSNMP) ConnectIPv4() error {
-	return x.connect("udp4")
+	return x.connect("4")
 }
 
 // ConnectIPv6 forces an IPv6-only connection
 func (x *GoSNMP) ConnectIPv6() error {
-	return x.connect("udp6")
+	return x.connect("6")
 }
 
 // connect to address addr on the given network
@@ -232,18 +236,18 @@ func (x *GoSNMP) ConnectIPv6() error {
 // https://golang.org/pkg/net/#Dial gives acceptable network values as:
 //   "tcp", "tcp4" (IPv4-only), "tcp6" (IPv6-only), "udp", "udp4" (IPv4-only),"udp6" (IPv6-only), "ip",
 //   "ip4" (IPv4-only), "ip6" (IPv6-only), "unix", "unixgram" and "unixpacket"
-func (x *GoSNMP) connect(network string) error {
-	var err error
-	err = x.validateParameters()
+func (x *GoSNMP) connect(networkSuffix string) error {
+	err := x.validateParameters()
 	if err != nil {
 		return err
 	}
 
-	addr := net.JoinHostPort(x.Target, strconv.Itoa(int(x.Port)))
-	x.Conn, err = net.DialTimeout(network, addr, x.Timeout)
+	x.Transport = x.Transport + networkSuffix
+	err = x.netConnect()
 	if err != nil {
-		return fmt.Errorf("Error establishing connection to host: %s\n", err.Error())
+		return fmt.Errorf("error establishing connection to host: %s", err.Error())
 	}
+
 	if x.random == nil {
 		x.random = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 	}
@@ -259,11 +263,24 @@ func (x *GoSNMP) connect(network string) error {
 	return nil
 }
 
+// Performs the real socket opening network operation. This can be used to do a
+// reconnect (needed for TCP)
+func (x *GoSNMP) netConnect() error {
+	var err error
+	addr := net.JoinHostPort(x.Target, strconv.Itoa(int(x.Port)))
+	x.Conn, err = net.DialTimeout(x.Transport, addr, x.Timeout)
+	return err
+}
+
 func (x *GoSNMP) validateParameters() error {
 	if x.Logger == nil {
 		x.Logger = log.New(ioutil.Discard, "", 0)
 	} else {
 		x.loggingEnabled = true
+	}
+
+	if x.Transport == "" {
+		x.Transport = "udp"
 	}
 
 	if x.MaxOids == 0 {
@@ -385,9 +402,7 @@ func (x *GoSNMP) GetBulk(oids []string, nonRepeaters uint8, maxRepetitions uint8
 // This is useful for generating traffic for use over separate transport
 // stacks and creating traffic samples for test purposes.
 func (x *GoSNMP) SnmpEncodePacket(pdutype PDUType, pdus []SnmpPDU, nonRepeaters uint8, maxRepetitions uint8) ([]byte, error) {
-	var err error = nil
-
-	err = x.validateParameters()
+	err := x.validateParameters()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -421,7 +436,7 @@ func (x *GoSNMP) SnmpEncodePacket(pdutype PDUType, pdus []SnmpPDU, nonRepeaters 
 // This is useful for processing traffic from other sources and
 // building test harnesses.
 func (x *GoSNMP) SnmpDecodePacket(resp []byte) (*SnmpPacket, error) {
-	var err error = nil
+	var err error
 
 	result := new(SnmpPacket)
 

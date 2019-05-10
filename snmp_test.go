@@ -16,7 +16,7 @@ var snmpdIP = ""
 func skipSNMP(t *testing.T) {
 	snmpdIP = os.Getenv("FRONTMAN_SNMPD_IP")
 	if snmpdIP == "" {
-		t.Skip("Skipping testing SNMP")
+		t.Skip("Skipping test of SNMP")
 	}
 }
 

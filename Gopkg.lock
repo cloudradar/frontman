@@ -37,7 +37,6 @@
   version = "1.3.1"
 
 [[projects]]
-  branch = "master"
   digest = "1:46da7427e7bed7f7cbf5ff8df4c8f588a5e680dc0e0b4fe524fd5b68c846b47f"
   name = "github.com/kardianos/service"
   packages = ["."]
@@ -53,7 +52,6 @@
   version = "v1.0.2"
 
 [[projects]]
-  branch = "master"
   digest = "1:7729a64cc52970fab3a5201631d79c4725d5686951bb5b506b793207d81dd43a"
   name = "github.com/lxn/walk"
   packages = [
@@ -130,15 +128,13 @@
   version = "v1.4.1"
 
 [[projects]]
-  digest = "1:f00fe2d8b019e1195020add7a9b8369c9d16d603fab58e1f1de93325edc8d20d"
+  digest = "1:7b6dafc236fdd00c9f08c6a0c27ceebc3504d1a1b5cd3ecb671b329454ac4eec"
   name = "github.com/soniah/gosnmp"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "ea8c875f6b1fd364ae84e6e06333eee11947daa9"
-  version = "v1.21.0"
+  revision = "1b12be15031c65438aa78efb424e8e335f16f539"
 
 [[projects]]
-  branch = "master"
   digest = "1:b023b1d485886b5add9df943d0ffc33b91fe84c87d87570b3d3f71f7692952d9"
   name = "github.com/sparrc/go-ping"
   packages = ["."]

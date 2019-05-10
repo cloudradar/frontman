@@ -13,6 +13,8 @@ const (
 	protocolSNMPv1 = "v1"
 	protocolSNMPv2 = "v2"
 	protocolSNMPv3 = "v3"
+
+	maxRepetitions = 255
 )
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -61,7 +63,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		return m, err
 	}
 
-	result, err := params.GetBulk(oids, uint8(len(oids)), 255)
+	result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
 	if err != nil {
 		return m, fmt.Errorf("get bulk err: %v", err)
 	}
