@@ -48,9 +48,8 @@ func TestSNMPv1(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
@@ -79,14 +78,15 @@ func TestSNMPv2(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
 // test SNMP v2 against snmpd
 func TestSNMPv2Bandwidth(t *testing.T) {
+	// necessary snmpd.conf changes:
+	// view   systemonly  included   .1
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
@@ -170,9 +170,8 @@ func TestSNMPv3NoAuth(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
@@ -235,9 +234,8 @@ func TestSNMPv3Auth(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
@@ -304,9 +302,8 @@ func TestSNMPv3Priv(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 

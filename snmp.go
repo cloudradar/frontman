@@ -46,28 +46,26 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 }
 
 func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, error) {
-	m := make(map[string]interface{})
-
 	params, err := buildSNMPParameters(check)
 	if err != nil {
-		return m, err
+		return nil, err
 	}
 
 	err = params.Connect()
 	if err != nil {
-		return m, fmt.Errorf("connect err: %v", err)
+		return nil, fmt.Errorf("connect err: %v", err)
 	}
 	defer params.Conn.Close()
 
 	oids, form, err := presetToOids(check.Preset)
 	if err != nil {
-		return m, err
+		return nil, err
 	}
 	var packets []gosnmp.SnmpPDU
 	if form == "bulk" {
 		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
 		if err != nil {
-			return m, fmt.Errorf("get bulk err: %v", err)
+			return nil, fmt.Errorf("get bulk err: %v", err)
 		}
 		packets = result.Variables
 	} else {
@@ -75,13 +73,17 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		for _, oid := range oids {
 			pdus, err := params.BulkWalkAll(oid)
 			if err != nil {
-				return m, fmt.Errorf("get bulk err: %v", err)
+				return nil, fmt.Errorf("get bulk err: %v", err)
 			}
 			packets = append(packets, pdus...)
 		}
 	}
 
-	fmt.Printf("res %+v\n", packets)
+	return prepareSNMPResult(packets)
+}
+
+func prepareSNMPResult(packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
 
 	for _, variable := range packets {
 		fmt.Print(variable.Name, " = ")
@@ -91,12 +93,12 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		if ignoreSNMPOid(variable.Name) {
 			continue
 		}
-		prefix, _, err := oidToHumanReadable(variable.Name)
+		prefix, suffix, err := oidToHumanReadable(variable.Name)
 		if err != nil {
 			log.Debug(err)
 			continue
 		}
-		fmt.Print(prefix, " = ")
+		fmt.Print(prefix, suffix, " = ")
 		switch variable.Type {
 		case gosnmp.OctetString:
 			m[prefix] = string(variable.Value.([]byte))
