@@ -73,6 +73,8 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 		}
 	}
 
+	fm.SetLogLevel(fm.Config.LogLevel)
+
 	fm.initHttpTransport()
 
 	// Add hook to logrus that updates our LastInternalError statistics
