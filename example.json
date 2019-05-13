@@ -173,6 +173,7 @@
       "protocol": "v3",
       "preset": "basedata",
       "security_level": "auth",
+      "authentication_protocol": "sha",
       "username": "authOnlyUser",
       "password": "password"
   }},{
@@ -184,6 +185,8 @@
       "protocol": "v3",
       "preset": "basedata",
       "security_level": "priv",
+      "authentication_protocol": "sha",
+      "privacy_protocol": "des",
       "username": "authPrivUser",
       "password": "password"
   }}]

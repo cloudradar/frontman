@@ -110,30 +110,20 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 		params.Version = gosnmp.Version2c
 		params.Community = check.Community
 	case protocolSNMPv3:
+		var err error
 		params.Version = gosnmp.Version3
 		params.SecurityModel = gosnmp.UserSecurityModel
+		params.SecurityParameters, err = buildSNMPSecurityParameters(check)
+		if err != nil {
+			return nil, err
+		}
 		switch check.SecurityLevel {
 		case "noauth":
 			params.MsgFlags = gosnmp.NoAuthNoPriv
-			params.SecurityParameters = &gosnmp.UsmSecurityParameters{
-				UserName: check.Username,
-			}
 		case "auth":
 			params.MsgFlags = gosnmp.AuthNoPriv
-			params.SecurityParameters = &gosnmp.UsmSecurityParameters{
-				UserName:                 check.Username,
-				AuthenticationProtocol:   gosnmp.SHA,
-				AuthenticationPassphrase: check.Password,
-			}
 		case "priv":
 			params.MsgFlags = gosnmp.AuthPriv
-			params.SecurityParameters = &gosnmp.UsmSecurityParameters{
-				UserName:                 check.Username,
-				AuthenticationProtocol:   gosnmp.SHA,
-				AuthenticationPassphrase: check.Password,
-				PrivacyProtocol:          gosnmp.DES,
-				PrivacyPassphrase:        check.Password,
-			}
 		default:
 			return nil, fmt.Errorf("invalid security_level configuration value '%s'", check.SecurityLevel)
 		}
@@ -141,6 +131,44 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 		return nil, fmt.Errorf("invalid protocol '%s'", check.Protocol)
 	}
 	return params, nil
+}
+
+func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityParameters, err error) {
+	sp = &gosnmp.UsmSecurityParameters{
+		UserName: check.Username,
+	}
+	switch check.AuthenticationProtocol {
+	case "sha", "sha1":
+		sp.AuthenticationProtocol = gosnmp.SHA
+	case "md5":
+		sp.AuthenticationProtocol = gosnmp.MD5
+	case "":
+		sp.AuthenticationProtocol = gosnmp.NoAuth
+	default:
+		return sp, fmt.Errorf("invalid authentication_protocol '%s'", check.AuthenticationProtocol)
+	}
+
+	switch check.PrivacyProtocol {
+	case "des":
+		sp.PrivacyProtocol = gosnmp.DES
+	case "":
+		sp.PrivacyProtocol = gosnmp.NoPriv
+	default:
+		return sp, fmt.Errorf("invalid privacy_protocol '%s'", check.PrivacyProtocol)
+	}
+
+	switch check.SecurityLevel {
+	case "noauth":
+		sp.AuthenticationProtocol = gosnmp.NoAuth
+	case "auth":
+		sp.AuthenticationPassphrase = check.Password
+	case "priv":
+		sp.AuthenticationPassphrase = check.Password
+		sp.PrivacyPassphrase = check.Password
+	default:
+		err = fmt.Errorf("invalid security_level configuration value '%s'", check.SecurityLevel)
+	}
+	return
 }
 
 // returns true if oid should be ignored
