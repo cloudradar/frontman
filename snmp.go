@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,7 +91,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		if ignoreSNMPOid(variable.Name) {
 			continue
 		}
-		prefix, err := oidToHumanReadable(variable.Name)
+		prefix, _, err := oidToHumanReadable(variable.Name)
 		if err != nil {
 			log.Debug(err)
 			continue
@@ -213,10 +214,15 @@ func oidToError(name string) (err error) {
 }
 
 // map OID to a human readable key
-func oidToHumanReadable(name string) (prefix string, err error) {
+func oidToHumanReadable(name string) (prefix string, suffix int, err error) {
 	idx := strings.LastIndex(name, ".")
 	if idx == -1 {
-		return "", errors.New("separator missing from input")
+		err = errors.New("separator missing from input")
+		return
+	}
+	suffix, err = strconv.Atoi(name[idx+1:])
+	if err != nil {
+		return
 	}
 	name = name[0:idx]
 

@@ -311,11 +311,13 @@ func TestSNMPv3Priv(t *testing.T) {
 }
 
 func TestOidToHumanReadable(t *testing.T) {
-	v, err := oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.1")
+	v, suffix, err := oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.1")
 	assert.Equal(t, nil, err)
+	assert.Equal(t, 1, suffix)
 	assert.Equal(t, "ifOperStatus", v)
 
-	v, err = oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.2")
+	v, suffix, err = oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.2")
 	assert.Equal(t, nil, err)
+	assert.Equal(t, 2, suffix)
 	assert.Equal(t, "ifOperStatus", v)
 }
