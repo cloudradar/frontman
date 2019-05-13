@@ -25,7 +25,6 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 		results, err = fm.runSNMPProbe(&check.Check)
 		successKey := "snmpCheck." + check.Check.Preset + ".success"
 		if err != nil {
-			log.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
 			results[successKey] = 0
 		} else {
 			results[successKey] = 1
