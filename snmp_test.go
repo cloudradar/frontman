@@ -1,7 +1,7 @@
 package frontman
 
 // In order to run tests, set up snmpd somewhere and
-// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v
+// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
 
 import (
 	"os"
@@ -83,6 +83,34 @@ func TestSNMPv2(t *testing.T) {
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
 	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+}
+
+// test SNMP v2 against snmpd
+func TestSNMPv2Bandwidth(t *testing.T) {
+	skipSNMP(t)
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_bandwidth",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   1.0,
+				Protocol:  "v2",
+				Community: "public",
+				Preset:    "bandwidth",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
+
+	// XXX
 }
 
 // test SNMP v2 invalid community against snmpd

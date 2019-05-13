@@ -224,6 +224,18 @@ func presetToOids(preset string) (oids []string, err error) {
 			"1.3.6.1.2.1.1.5.0", // STRING: switch-cloudradar
 			"1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
 		}
+	case "bandwidth":
+		oids = []string{
+			".1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
+			".1.3.6.1.2.1.2.2.1.3",     // IF-MIB::ifType (6=ethernetCsmacd)
+			".1.3.6.1.2.1.31.1.1.1.1",  // IF-MIB::ifName
+			".1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
+			".1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
+			".1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
+			".1.3.6.1.2.1.31.1.1.1.15", // IF-MIB::ifHighSpeed
+			".1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
+			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
+		}
 	default:
 		err = fmt.Errorf("unrecognized preset %s", preset)
 	}
