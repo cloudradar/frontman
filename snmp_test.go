@@ -309,3 +309,13 @@ func TestSNMPv3Priv(t *testing.T) {
 	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
+
+func TestOidToHumanReadable(t *testing.T) {
+	v, err := oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.1")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "ifOperStatus", v)
+
+	v, err = oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.2")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "ifOperStatus", v)
+}

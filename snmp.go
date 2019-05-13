@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -57,19 +58,31 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 	defer params.Conn.Close()
 
-	oids, err := presetToOids(check.Preset)
+	oids, form, err := presetToOids(check.Preset)
 	if err != nil {
 		return m, err
 	}
-
-	result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
-	if err != nil {
-		return m, fmt.Errorf("get bulk err: %v", err)
+	var packets []gosnmp.SnmpPDU
+	if form == "bulk" {
+		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
+		if err != nil {
+			return m, fmt.Errorf("get bulk err: %v", err)
+		}
+		packets = result.Variables
+	} else {
+		// walk
+		for _, oid := range oids {
+			pdus, err := params.BulkWalkAll(oid)
+			if err != nil {
+				return m, fmt.Errorf("get bulk err: %v", err)
+			}
+			packets = append(packets, pdus...)
+		}
 	}
 
-	// fmt.Printf("res %+v\n", result.Variables)
+	fmt.Printf("res %+v\n", packets)
 
-	for _, variable := range result.Variables {
+	for _, variable := range packets {
 		fmt.Print(variable.Name, " = ")
 		if err := oidToError(variable.Name); err != nil {
 			return m, err
@@ -201,36 +214,42 @@ func oidToError(name string) (err error) {
 
 // map OID to a human readable key
 func oidToHumanReadable(name string) (prefix string, err error) {
+	idx := strings.LastIndex(name, ".")
+	if idx == -1 {
+		return "", errors.New("separator missing from input")
+	}
+	name = name[0:idx]
+
 	switch name {
-	case ".1.3.6.1.2.1.1.1.0":
+	case ".1.3.6.1.2.1.1.1":
 		prefix = "system.description"
-	case ".1.3.6.1.2.1.1.4.0":
+	case ".1.3.6.1.2.1.1.4":
 		prefix = "system.contact"
-	case ".1.3.6.1.2.1.1.6.0":
+	case ".1.3.6.1.2.1.1.6":
 		prefix = "system.location"
-	case ".1.3.6.1.2.1.1.3.0":
+	case ".1.3.6.1.2.1.1.3":
 		prefix = "system.uptime_s"
-	case ".1.3.6.1.2.1.1.5.0":
+	case ".1.3.6.1.2.1.1.5":
 		prefix = "system.hostname"
 
 	// IF-MIB
-	case ".1.3.6.1.2.1.2.2.1.8.1":
+	case ".1.3.6.1.2.1.2.2.1.8":
 		prefix = "ifOperStatus"
-	case ".1.3.6.1.2.1.2.2.1.3.1":
+	case ".1.3.6.1.2.1.2.2.1.3":
 		prefix = "ifType"
-	case ".1.3.6.1.2.1.31.1.1.1.1.1":
+	case ".1.3.6.1.2.1.31.1.1.1.1":
 		prefix = "ifName"
-	case ".1.3.6.1.2.1.2.2.1.2.1":
+	case ".1.3.6.1.2.1.2.2.1.2":
 		prefix = "ifDescr"
-	case ".1.3.6.1.2.1.2.2.1.5.1":
+	case ".1.3.6.1.2.1.2.2.1.5":
 		prefix = "ifSpeed"
-	case ".1.3.6.1.2.1.31.1.1.1.18.1":
+	case ".1.3.6.1.2.1.31.1.1.1.18":
 		prefix = "ifAlias"
-	case ".1.3.6.1.2.1.31.1.1.1.15.1":
+	case ".1.3.6.1.2.1.31.1.1.1.15":
 		prefix = "ifHighSpeed"
-	case ".1.3.6.1.2.1.2.2.1.10.1":
+	case ".1.3.6.1.2.1.2.2.1.10":
 		prefix = "ifInOctets"
-	case ".1.3.6.1.2.1.2.2.1.16.1":
+	case ".1.3.6.1.2.1.2.2.1.16":
 		prefix = "ifOutOctets"
 
 	default:
@@ -240,7 +259,7 @@ func oidToHumanReadable(name string) (prefix string, err error) {
 }
 
 // returns a collection of oids for the given preset
-func presetToOids(preset string) (oids []string, err error) {
+func presetToOids(preset string) (oids []string, form string, err error) {
 	switch preset {
 	case "basedata":
 		oids = []string{
@@ -250,6 +269,7 @@ func presetToOids(preset string) (oids []string, err error) {
 			"1.3.6.1.2.1.1.5.0", // STRING: switch-cloudradar
 			"1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
 		}
+		form = "bulk"
 	case "bandwidth":
 		oids = []string{
 			".1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
@@ -262,6 +282,7 @@ func presetToOids(preset string) (oids []string, err error) {
 			".1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
 			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
 		}
+		form = "walk"
 	default:
 		err = fmt.Errorf("unrecognized preset %s", preset)
 	}
