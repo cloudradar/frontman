@@ -82,13 +82,18 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	return prepareSNMPResult(packets)
 }
 
+type snmpResult struct {
+	key string
+	val interface{}
+}
+
 func prepareSNMPResult(packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
-	m := make(map[string]interface{})
+	m := make(map[int]snmpResult)
 
 	for _, variable := range packets {
 		fmt.Print(variable.Name, " = ")
 		if err := oidToError(variable.Name); err != nil {
-			return m, err
+			return nil, err
 		}
 		if ignoreSNMPOid(variable.Name) {
 			continue
@@ -98,21 +103,25 @@ func prepareSNMPResult(packets []gosnmp.SnmpPDU) (map[string]interface{}, error)
 			log.Debug(err)
 			continue
 		}
+		// XXX collect result grouped by suffix
 		fmt.Print(prefix, suffix, " = ")
 		switch variable.Type {
 		case gosnmp.OctetString:
-			m[prefix] = string(variable.Value.([]byte))
+			m[suffix] = snmpResult{key: prefix, val: string(variable.Value.([]byte))}
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
-			m[prefix] = variable.Value
+			m[suffix] = snmpResult{key: prefix, val: variable.Value}
 
 		default:
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
 
-		fmt.Println(m[prefix])
+		fmt.Println(m[suffix])
 	}
-	return m, nil
+
+	m2 := make(map[string]interface{})
+	// XXX map results after filter
+	return m2, nil
 }
 
 // generates gosnmp parameters for the given check configuration
