@@ -68,7 +68,10 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		return m, fmt.Errorf("get bulk err: %v", err)
 	}
 
+	// fmt.Printf("res %+v\n", result.Variables)
+
 	for _, variable := range result.Variables {
+		fmt.Print(variable.Name, " = ")
 		if err := oidToError(variable.Name); err != nil {
 			return m, err
 		}
@@ -80,16 +83,19 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			log.Debug(err)
 			continue
 		}
+		fmt.Print(prefix, " = ")
 		switch variable.Type {
 		case gosnmp.OctetString:
 			m[prefix] = string(variable.Value.([]byte))
 
-		case gosnmp.TimeTicks:
+		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
 			m[prefix] = variable.Value
 
 		default:
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
+
+		fmt.Println(m[prefix])
 	}
 	return m, nil
 }
@@ -207,6 +213,27 @@ func oidToHumanReadable(name string) (prefix string, err error) {
 		prefix = "system.uptime_s"
 	case ".1.3.6.1.2.1.1.5.0":
 		prefix = "system.hostname"
+
+	// IF-MIB
+	case ".1.3.6.1.2.1.2.2.1.8.1":
+		prefix = "ifOperStatus"
+	case ".1.3.6.1.2.1.2.2.1.3.1":
+		prefix = "ifType"
+	case ".1.3.6.1.2.1.31.1.1.1.1.1":
+		prefix = "ifName"
+	case ".1.3.6.1.2.1.2.2.1.2.1":
+		prefix = "ifDescr"
+	case ".1.3.6.1.2.1.2.2.1.5.1":
+		prefix = "ifSpeed"
+	case ".1.3.6.1.2.1.31.1.1.1.18.1":
+		prefix = "ifAlias"
+	case ".1.3.6.1.2.1.31.1.1.1.15.1":
+		prefix = "ifHighSpeed"
+	case ".1.3.6.1.2.1.2.2.1.10.1":
+		prefix = "ifInOctets"
+	case ".1.3.6.1.2.1.2.2.1.16.1":
+		prefix = "ifOutOctets"
+
 	default:
 		err = fmt.Errorf("unrecognized OID %s", name)
 	}
