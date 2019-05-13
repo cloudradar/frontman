@@ -1,3 +1,8 @@
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
+
 [[constraint]]
   branch = "master"
   name = "golang.org/x/net"
@@ -12,7 +17,7 @@
 
 [[constraint]]
   name = "github.com/kardianos/service"
-  revision = "4c239ee84e7bb93441b1b6a3f2db62d40e0e6cbd"
+  revision = "0e5bec1b9eec14f9070a6f49ad7e0242f1545d66"
 
 [[constraint]]
   name = "github.com/sparrc/go-ping"
@@ -21,10 +26,6 @@
 [[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "1.0.6"
-
-[prune]
-  go-tests = true
-  unused-packages = true
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"
@@ -36,8 +37,12 @@
 
 [[constraint]]
   name = "github.com/lxn/walk"
-  revision = "79c445caf3e94a21822d70e80d021c20fdb704fa"
+  revision = "99ca2b506b4733c6997986dc4523c95c124f2633"
 
 [[constraint]]
   branch = "v1"
   name = "gopkg.in/toast.v1"
+
+[[constraint]]
+  name = "github.com/soniah/gosnmp"
+  revision = "1b12be15031c65438aa78efb424e8e335f16f539"

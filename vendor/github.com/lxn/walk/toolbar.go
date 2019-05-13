@@ -124,6 +124,15 @@ func (tb *ToolBar) SizeHint() Size {
 
 	return Size{width, height}
 }
+
+func (tb *ToolBar) applyFont(font *Font) {
+	tb.WidgetBase.applyFont(font)
+
+	tb.applyDefaultButtonWidth()
+
+	tb.updateParentLayout()
+}
+
 func (tb *ToolBar) Orientation() Orientation {
 	style := win.GetWindowLong(tb.hWnd, win.GWL_STYLE)
 
@@ -143,8 +152,9 @@ func (tb *ToolBar) applyDefaultButtonWidth() error {
 		return nil
 	}
 
-	lParam := uintptr(
-		win.MAKELONG(uint16(tb.defaultButtonWidth), uint16(tb.defaultButtonWidth)))
+	width := tb.IntFrom96DPI(tb.defaultButtonWidth)
+
+	lParam := uintptr(win.MAKELONG(uint16(width), uint16(width)))
 	if 0 == tb.SendMessage(win.TB_SETBUTTONWIDTH, 0, lParam) {
 		return newError("SendMessage(TB_SETBUTTONWIDTH)")
 	}
@@ -248,8 +258,8 @@ func (tb *ToolBar) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr) ui
 	case win.WM_MOUSEMOVE, win.WM_MOUSELEAVE, win.WM_LBUTTONDOWN:
 		tb.Invalidate()
 
-	case win.WM_PAINT:
-		tb.Invalidate()
+	// case win.WM_PAINT:
+	// 	tb.Invalidate()
 
 	case win.WM_COMMAND:
 		switch win.HIWORD(uint32(wParam)) {
@@ -319,7 +329,7 @@ func (tb *ToolBar) initButtonForAction(action *Action, state, style *byte, image
 		*style |= win.BTNS_GROUP
 	}
 
-	if tb.buttonStyle != ToolBarButtonImageOnly {
+	if tb.buttonStyle != ToolBarButtonImageOnly && len(action.text) > 0 {
 		*style |= win.BTNS_SHOWTEXT
 	}
 
@@ -348,7 +358,11 @@ func (tb *ToolBar) initButtonForAction(action *Action, state, style *byte, image
 		actionText = action.Text()
 	}
 
-	*text = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(actionText)))
+	if len(actionText) != 0 {
+		*text = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(actionText)))
+	} else if len(action.toolTip) != 0 {
+		*text = uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(action.toolTip)))
+	}
 
 	return
 }
@@ -356,6 +370,7 @@ func (tb *ToolBar) initButtonForAction(action *Action, state, style *byte, image
 func (tb *ToolBar) onActionChanged(action *Action) error {
 	tbbi := win.TBBUTTONINFO{
 		DwMask: win.TBIF_IMAGE | win.TBIF_STATE | win.TBIF_STYLE | win.TBIF_TEXT,
+		IImage: win.I_IMAGENONE,
 	}
 
 	tbbi.CbSize = uint32(unsafe.Sizeof(tbbi))

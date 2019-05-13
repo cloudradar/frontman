@@ -20,24 +20,24 @@ const (
 )
 
 type BoxLayout struct {
-	container          Container
-	margins            Margins
-	spacing            int
+	LayoutBase
 	orientation        Orientation
-	alignment          Alignment2D
 	hwnd2StretchFactor map[win.HWND]int
-	size2MinSize       map[Size]Size
-	resetNeeded        bool
 }
 
 func newBoxLayout(orientation Orientation) *BoxLayout {
-	return &BoxLayout{
+	l := &BoxLayout{
+		LayoutBase: LayoutBase{
+			sizeAndDPI2MinSize: make(map[sizeAndDPI]Size),
+			margins96dpi:       Margins{9, 9, 9, 9},
+			spacing96dpi:       6,
+		},
 		orientation:        orientation,
 		hwnd2StretchFactor: make(map[win.HWND]int),
-		size2MinSize:       make(map[Size]Size),
-		margins:            Margins{9, 9, 9, 9},
-		spacing:            6,
 	}
+	l.layout = l
+
+	return l
 }
 
 func NewHBoxLayout() *BoxLayout {
@@ -46,42 +46,6 @@ func NewHBoxLayout() *BoxLayout {
 
 func NewVBoxLayout() *BoxLayout {
 	return newBoxLayout(Vertical)
-}
-
-func (l *BoxLayout) Container() Container {
-	return l.container
-}
-
-func (l *BoxLayout) SetContainer(value Container) {
-	if value != l.container {
-		if l.container != nil {
-			l.container.SetLayout(nil)
-		}
-
-		l.container = value
-
-		if value != nil && value.Layout() != Layout(l) {
-			value.SetLayout(l)
-
-			l.Update(true)
-		}
-	}
-}
-
-func (l *BoxLayout) Margins() Margins {
-	return l.margins
-}
-
-func (l *BoxLayout) SetMargins(value Margins) error {
-	if value.HNear < 0 || value.VNear < 0 || value.HFar < 0 || value.VFar < 0 {
-		return newError("margins must be positive")
-	}
-
-	l.margins = value
-
-	l.Update(false)
-
-	return nil
 }
 
 func (l *BoxLayout) Orientation() Orientation {
@@ -98,42 +62,6 @@ func (l *BoxLayout) SetOrientation(value Orientation) error {
 		}
 
 		l.orientation = value
-
-		l.Update(false)
-	}
-
-	return nil
-}
-
-func (l *BoxLayout) Alignment() Alignment2D {
-	return l.alignment
-}
-
-func (l *BoxLayout) SetAlignment(alignment Alignment2D) error {
-	if alignment != l.alignment {
-		if alignment < AlignHVDefault || alignment > AlignHFarVFar {
-			return newError("invalid Alignment value")
-		}
-
-		l.alignment = alignment
-
-		l.Update(false)
-	}
-
-	return nil
-}
-
-func (l *BoxLayout) Spacing() int {
-	return l.spacing
-}
-
-func (l *BoxLayout) SetSpacing(value int) error {
-	if value != l.spacing {
-		if value < 0 {
-			return newError("spacing cannot be negative")
-		}
-
-		l.spacing = value
 
 		l.Update(false)
 	}
@@ -235,7 +163,7 @@ func (l *BoxLayout) MinSize() Size {
 		return Size{}
 	}
 
-	return l.MinSizeForSize(l.container.ClientBounds().Size())
+	return l.MinSizeForSize(l.container.ClientBoundsPixels().Size())
 }
 
 func (l *BoxLayout) MinSizeForSize(size Size) Size {
@@ -243,7 +171,9 @@ func (l *BoxLayout) MinSizeForSize(size Size) Size {
 		return Size{}
 	}
 
-	if min, ok := l.size2MinSize[size]; ok {
+	dpi := l.container.DPI()
+
+	if min, ok := l.sizeAndDPI2MinSize[sizeAndDPI{size, dpi}]; ok {
 		return min
 	}
 
@@ -288,7 +218,7 @@ func (l *BoxLayout) MinSizeForSize(size Size) Size {
 	}
 
 	if s.Width > 0 && s.Height > 0 {
-		l.size2MinSize[size] = s
+		l.sizeAndDPI2MinSize[sizeAndDPI{size, dpi}] = s
 	}
 
 	return s
@@ -299,7 +229,7 @@ func (l *BoxLayout) Update(reset bool) error {
 		return nil
 	}
 
-	l.size2MinSize = make(map[Size]Size)
+	l.sizeAndDPI2MinSize = make(map[sizeAndDPI]Size)
 
 	if reset {
 		l.resetNeeded = true
@@ -321,12 +251,16 @@ func (l *BoxLayout) Update(reset bool) error {
 
 	ifContainerIsScrollViewDoCoolSpecialLayoutStuff(l)
 
-	items, err := boxLayoutItems(widgetsToLayout(l.Container().Children()), l.orientation, l.alignment, l.container.ClientBounds(), l.margins, l.spacing, l.hwnd2StretchFactor)
+	items, err := boxLayoutItems(widgetsToLayout(l.Container().Children()), l.orientation, l.alignment, l.container.ClientBoundsPixels(), l.margins, l.spacing, l.hwnd2StretchFactor)
 	if err != nil {
 		return err
 	}
 
-	return applyLayoutResults(l.container, items)
+	if err := applyLayoutResults(l.container, items); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func boxLayoutFlags(orientation Orientation, children *WidgetList) LayoutFlags {
@@ -405,7 +339,7 @@ func boxLayoutItems(widgets []Widget, orientation Orientation, alignment Alignme
 
 		flags := widget.LayoutFlags()
 
-		max := widget.MaxSize()
+		max := widget.MaxSizePixels()
 		pref := widget.SizeHint()
 
 		if orientation == Horizontal {

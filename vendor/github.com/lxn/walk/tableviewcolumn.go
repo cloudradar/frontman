@@ -298,7 +298,7 @@ func (tvc *TableViewColumn) Width() int {
 		return tvc.width
 	}
 
-	return int(tvc.sendMessage(win.LVM_GETCOLUMNWIDTH, uintptr(tvc.indexInListView()), 0))
+	return tvc.tv.IntTo96DPI(int(tvc.sendMessage(win.LVM_GETCOLUMNWIDTH, uintptr(tvc.indexInListView()), 0)))
 }
 
 // SetWidth sets the width of the column in pixels.
@@ -380,6 +380,7 @@ func (tvc *TableViewColumn) create() error {
 	} else {
 		lvc.Cx = 100
 	}
+	lvc.Cx = int32(tvc.tv.IntFrom96DPI(int(lvc.Cx)))
 
 	switch tvc.alignment {
 	case AlignCenter:
@@ -431,10 +432,15 @@ func (tvc *TableViewColumn) update() error {
 func (tvc *TableViewColumn) getLVCOLUMN() *win.LVCOLUMN {
 	var lvc win.LVCOLUMN
 
+	width := tvc.width
+	if tvc.tv != nil {
+		width = tvc.tv.IntFrom96DPI(width)
+	}
+
 	lvc.Mask = win.LVCF_FMT | win.LVCF_WIDTH | win.LVCF_TEXT | win.LVCF_SUBITEM
 	lvc.ISubItem = int32(tvc.indexInListView())
 	lvc.PszText = syscall.StringToUTF16Ptr(tvc.TitleEffective())
-	lvc.Cx = int32(tvc.width)
+	lvc.Cx = int32(width)
 
 	switch tvc.alignment {
 	case AlignCenter:

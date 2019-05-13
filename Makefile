@@ -8,13 +8,13 @@ BINARY_NAME=frontman
 # BINARY_UNIX=$(BINARY_NAME)_unix
 
 all: test build
-build: 
+build:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./cmd/frontman/...
 
-test: 
+test:
 	$(GOTEST) -v ./...
 
-clean: 
+clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
 	# rm -f $(BINARY_UNIX)
@@ -22,6 +22,10 @@ clean:
 run:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./cmd/frontman/...
 	./$(BINARY_NAME)
+
+ update-vendor:
+	dep ensure
+	dep ensure -update
 
 goimports:
 	goimports -l $$(find . -type f -name '*.go' -not -path "./vendor/*")

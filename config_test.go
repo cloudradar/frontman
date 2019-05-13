@@ -26,7 +26,9 @@ func TestNewMinimumConfig(t *testing.T) {
 	assert.Equal(t, envPass, mvc.HubPassword, "HubPassword should be set from env")
 
 	// Unset in the end for cleanup
-	defer os.Clearenv()
+	os.Unsetenv("FRONTMAN_HUB_URL")
+	os.Unsetenv("FRONTMAN_HUB_USER")
+	os.Unsetenv("FRONTMAN_HUB_PASSWORD")
 }
 
 func TestTryUpdateConfigFromFile(t *testing.T) {
