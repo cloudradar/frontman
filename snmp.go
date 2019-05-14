@@ -21,6 +21,7 @@ const (
 
 // used to calculate delta from last snmp bandwidth measure
 type snmpBandwidthMeasure struct {
+	timestamp   time.Time
 	ifName      string
 	ifOutOctets uint
 	ifInOctets  uint
@@ -176,21 +177,23 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 			// calculate delta from previous measure
 			for _, measure := range prevMeasures {
 				if measure.ifName == ifName && ifSpeedInBytes > 0 {
-					inDelta := delta(measure.ifInOctets, ifIn)
-					m3["ifInUtilization_percent"] = inDelta / (ifSpeedInBytes * 60)
+					delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+					inDelta := float64(delta(measure.ifInOctets, ifIn))
+					m3["ifInUtilization_percent"] = inDelta / (float64(ifSpeedInBytes) * delaySeconds)
 
-					outDelta := delta(measure.ifOutOctets, ifOut)
-					m3["ifOutUtilization_percent"] = outDelta / (ifSpeedInBytes * 60)
+					outDelta := float64(delta(measure.ifOutOctets, ifOut))
+					m3["ifOutUtilization_percent"] = outDelta / (float64(ifSpeedInBytes) * delaySeconds)
 
-					log.Debug("   speed in bytes", ifSpeedInBytes)
-					log.Debug("   in  delta", inDelta)
-					log.Debug("   out delta", outDelta)
-					log.Debug("delta", ifName, "in % ", m3["ifInUtilization_percent"], "out % ", m3["ifOutUtilization_percent"])
+					fmt.Println("   speed in bytes", ifSpeedInBytes, " delay", delaySeconds)
+					fmt.Println("   in  delta", inDelta)
+					fmt.Println("   out delta", outDelta)
+					fmt.Println("delta", ifName, "in % ", m3["ifInUtilization_percent"], "out % ", m3["ifOutUtilization_percent"])
 				}
 			}
 			m2[fmt.Sprint(idx)] = m3
 
 			fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
+				timestamp:   time.Now(),
 				ifName:      ifName,
 				ifOutOctets: ifOut,
 				ifInOctets:  ifIn,
