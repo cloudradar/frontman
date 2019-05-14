@@ -162,7 +162,6 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				case "ifSpeed":
 					// convert to megabits per seconds
 					key = "ifHighSpeed"
-					x.val = uint(100000000) // XXX HACK  100 mbit
 					if x.val.(uint) > 0 {
 						x.val = x.val.(uint) / 1000000 // in megabits (10, 100, 1000)
 						ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
@@ -179,15 +178,15 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				if measure.ifName == ifName && ifSpeedInBytes > 0 {
 					delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
 					inDelta := float64(delta(measure.ifInOctets, ifIn))
-					m3["ifInUtilization_percent"] = inDelta / (float64(ifSpeedInBytes) * delaySeconds)
+					m3["ifInUtilization_percent"] = (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
 
 					outDelta := float64(delta(measure.ifOutOctets, ifOut))
-					m3["ifOutUtilization_percent"] = outDelta / (float64(ifSpeedInBytes) * delaySeconds)
+					m3["ifOutUtilization_percent"] = (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
 
-					fmt.Println("   speed in bytes", ifSpeedInBytes, " delay", delaySeconds)
-					fmt.Println("   in  delta", inDelta)
-					fmt.Println("   out delta", outDelta)
-					fmt.Println("delta", ifName, "in % ", m3["ifInUtilization_percent"], "out % ", m3["ifOutUtilization_percent"])
+					//fmt.Println("   speed in bytes", ifSpeedInBytes, " delay", delaySeconds)
+					//fmt.Println("   in  delta", uint(inDelta))
+					//fmt.Println("   out delta", uint(outDelta))
+					//fmt.Printf("delta %s: in %.2f out %.2f\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
 				}
 			}
 			m2[fmt.Sprint(idx)] = m3
