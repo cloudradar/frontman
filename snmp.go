@@ -135,7 +135,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				}
 				if kv.key == "ifType" && kv.val.(int) != 6 {
 					// type is not ethernetCsmacd
-					//skip = true
+					skip = true
 				}
 			}
 			if skip {
@@ -146,6 +146,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 			ifIn := uint(0)
 			ifOut := uint(0)
 			ifName := ""
+			ifSpeedInBytes := uint(0)
 			for _, x := range iface {
 				key := ""
 				switch x.key {
@@ -160,8 +161,10 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				case "ifSpeed":
 					// convert to megabits per seconds
 					key = "ifHighSpeed"
+					x.val = uint(100000000) // XXX HACK  100 mbit
 					if x.val.(uint) > 0 {
-						x.val = x.val.(uint) / 1000000
+						x.val = x.val.(uint) / 1000000 // in megabits (10, 100, 1000)
+						ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
 					}
 				default:
 					key = x.key
@@ -169,19 +172,23 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				m3[key] = x.val
 			}
 			m3["ifIndex"] = idx
-			m2[fmt.Sprint(idx)] = m3
 
 			// calculate delta from previous measure
 			for _, measure := range prevMeasures {
-				if measure.ifName == ifName {
-					// XXX calc delta etc
+				if measure.ifName == ifName && ifSpeedInBytes > 0 {
 					inDelta := delta(measure.ifInOctets, ifIn)
-					outDelta := delta(measure.ifOutOctets, ifOut)
+					m3["ifInUtilization_percent"] = inDelta / (ifSpeedInBytes * 60)
 
-					fmt.Println("XXX in  delta", measure.ifInOctets, inDelta)
-					fmt.Println("XXX out delta", measure.ifOutOctets, outDelta)
+					outDelta := delta(measure.ifOutOctets, ifOut)
+					m3["ifOutUtilization_percent"] = outDelta / (ifSpeedInBytes * 60)
+
+					log.Debug("   speed in bytes", ifSpeedInBytes)
+					log.Debug("   in  delta", inDelta)
+					log.Debug("   out delta", outDelta)
+					log.Debug("delta", ifName, "in % ", m3["ifInUtilization_percent"], "out % ", m3["ifOutUtilization_percent"])
 				}
 			}
+			m2[fmt.Sprint(idx)] = m3
 
 			fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
 				ifName:      ifName,
