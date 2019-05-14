@@ -19,6 +19,13 @@ const (
 	maxRepetitions = 255
 )
 
+// used to calculate delta from last snmp bandwidth measure
+type snmpBandwidthMeasure struct {
+	ifName      string
+	ifOutOctets uint
+	ifInOctets  uint
+}
+
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
 	var done = make(chan struct{})
 	var err error
@@ -79,7 +86,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		}
 	}
 
-	return prepareSNMPResult(check.Preset, packets)
+	return fm.prepareSNMPResult(check.Preset, packets)
 }
 
 type snmpResult struct {
@@ -87,7 +94,7 @@ type snmpResult struct {
 	val interface{}
 }
 
-func prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
+func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
 	m := make(map[int][]snmpResult)
 
 	for _, variable := range packets {
@@ -117,7 +124,8 @@ func prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]inte
 
 	m2 := make(map[string]interface{})
 	if preset == "bandwidth" {
-		// apply filter
+		prevMeasures := fm.previousSNMPBandwidthMeasure
+		fm.previousSNMPBandwidthMeasure = nil
 		for idx, iface := range m {
 			skip := false
 			for _, kv := range iface {
@@ -127,18 +135,55 @@ func prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]inte
 				}
 				if kv.key == "ifType" && kv.val.(int) != 6 {
 					// type is not ethernetCsmacd
-					skip = true
+					//skip = true
 				}
 			}
-			if !skip {
-				m3 := make(map[string]interface{})
+			if skip {
+				continue
+			}
+			m3 := make(map[string]interface{})
 
-				for _, x := range iface {
-					m3[x.key] = x.val
+			ifIn := uint(0)
+			ifOut := uint(0)
+			ifName := ""
+			for _, x := range iface {
+				key := ""
+				switch x.key {
+				case "ifOperStatus", "ifType":
+					continue
+				case "ifName":
+					ifName = x.val.(string)
+				case "ifInOctets":
+					ifIn = x.val.(uint)
+				case "ifOutOctets":
+					ifOut = x.val.(uint)
+				case "ifSpeed":
+					// convert to megabits per seconds
+					key = "ifHighSpeed"
+					if x.val.(uint) > 0 {
+						x.val = x.val.(uint) / 1000000
+					}
+				default:
+					key = x.key
 				}
-				// XXX format values as desired
-				m2[fmt.Sprint(idx)] = m3
+				m3[key] = x.val
 			}
+			m3["ifIndex"] = idx
+			m2[fmt.Sprint(idx)] = m3
+
+			// XXX use old value to calc delta now
+			for _, measure := range prevMeasures {
+				if measure.ifName == ifName {
+					// XXX calc delta etc
+					fmt.Println("XXX calc deltas", measure)
+				}
+			}
+
+			fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
+				ifName:      ifName,
+				ifOutOctets: ifOut,
+				ifInOctets:  ifIn,
+			})
 		}
 	} else {
 		// flatten
@@ -323,7 +368,6 @@ func presetToOids(preset string) (oids []string, form string, err error) {
 			".1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
 			".1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
 			".1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
-			".1.3.6.1.2.1.31.1.1.1.15", // IF-MIB::ifHighSpeed
 			".1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
 			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
 		}

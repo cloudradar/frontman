@@ -31,6 +31,8 @@ type Frontman struct {
 
 	rootCAs *x509.CertPool
 	version string
+
+	previousSNMPBandwidthMeasure []snmpBandwidthMeasure
 }
 
 func New(cfg *Config, cfgPath, version string) *Frontman {
