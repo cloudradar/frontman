@@ -320,3 +320,8 @@ func TestOidToHumanReadable(t *testing.T) {
 	assert.Equal(t, 2, suffix)
 	assert.Equal(t, "ifOperStatus", v)
 }
+
+func TestDelta(t *testing.T) {
+	assert.Equal(t, uint(1), delta(1, 2))
+	assert.Equal(t, uint(1), delta(2, 1))
+}

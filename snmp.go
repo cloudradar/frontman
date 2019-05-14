@@ -171,11 +171,15 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 			m3["ifIndex"] = idx
 			m2[fmt.Sprint(idx)] = m3
 
-			// XXX use old value to calc delta now
+			// calculate delta from previous measure
 			for _, measure := range prevMeasures {
 				if measure.ifName == ifName {
 					// XXX calc delta etc
-					fmt.Println("XXX calc deltas", measure)
+					inDelta := delta(measure.ifInOctets, ifIn)
+					outDelta := delta(measure.ifOutOctets, ifOut)
+
+					fmt.Println("XXX in  delta", measure.ifInOctets, inDelta)
+					fmt.Println("XXX out delta", measure.ifOutOctets, outDelta)
 				}
 			}
 
@@ -195,6 +199,13 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		}
 	}
 	return m2, nil
+}
+
+func delta(v1, v2 uint) uint {
+	if v1 < v2 {
+		return v2 - v1
+	}
+	return v1 - v2
 }
 
 // generates gosnmp parameters for the given check configuration
