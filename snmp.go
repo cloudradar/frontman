@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/soniah/gosnmp"
@@ -79,7 +80,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		}
 	}
 
-	return prepareSNMPResult(packets)
+	return prepareSNMPResult(check.Preset, packets)
 }
 
 type snmpResult struct {
@@ -87,11 +88,10 @@ type snmpResult struct {
 	val interface{}
 }
 
-func prepareSNMPResult(packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
-	m := make(map[int]snmpResult)
+func prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
+	m := make(map[int][]snmpResult)
 
 	for _, variable := range packets {
-		fmt.Print(variable.Name, " = ")
 		if err := oidToError(variable.Name); err != nil {
 			return nil, err
 		}
@@ -103,24 +103,50 @@ func prepareSNMPResult(packets []gosnmp.SnmpPDU) (map[string]interface{}, error)
 			log.Debug(err)
 			continue
 		}
-		// XXX collect result grouped by suffix
-		fmt.Print(prefix, suffix, " = ")
+
 		switch variable.Type {
 		case gosnmp.OctetString:
-			m[suffix] = snmpResult{key: prefix, val: string(variable.Value.([]byte))}
+			m[suffix] = append(m[suffix], snmpResult{key: prefix, val: string(variable.Value.([]byte))})
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
-			m[suffix] = snmpResult{key: prefix, val: variable.Value}
+			m[suffix] = append(m[suffix], snmpResult{key: prefix, val: variable.Value})
 
 		default:
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
-
-		fmt.Println(m[suffix])
 	}
 
+	spew.Dump(m)
+
 	m2 := make(map[string]interface{})
-	// XXX map results after filter
+	if preset == "bandwidth" {
+		// apply filter
+		for _, iface := range m {
+			skip := false
+			for _, kv := range iface {
+				if kv.key == "ifOperStatus" && kv.val.(int) != 1 {
+					// status is not up
+					skip = true
+				}
+				if kv.key == "ifType" && kv.val.(int) != 6 {
+					// type is not ethernetCsmacd
+					skip = true
+				}
+			}
+			if !skip {
+				fmt.Println("XXX include me!")
+				spew.Dump(iface)
+			}
+		}
+	} else {
+		// flatten
+		if len(m) != 1 {
+			return nil, fmt.Errorf("unexpected index count %d", len(m))
+		}
+		for _, x := range m[0] {
+			m2[x.key] = x.val
+		}
+	}
 	return m2, nil
 }
 
