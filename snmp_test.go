@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,9 +109,10 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
-	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
+	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
 
 	// XXX
+	spew.Dump(res.Measurements)
 }
 
 // test SNMP v2 invalid community against snmpd

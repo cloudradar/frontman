@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/soniah/gosnmp"
@@ -116,12 +115,10 @@ func prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]inte
 		}
 	}
 
-	spew.Dump(m)
-
 	m2 := make(map[string]interface{})
 	if preset == "bandwidth" {
 		// apply filter
-		for _, iface := range m {
+		for idx, iface := range m {
 			skip := false
 			for _, kv := range iface {
 				if kv.key == "ifOperStatus" && kv.val.(int) != 1 {
@@ -134,8 +131,13 @@ func prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]inte
 				}
 			}
 			if !skip {
-				fmt.Println("XXX include me!")
-				spew.Dump(iface)
+				m3 := make(map[string]interface{})
+
+				for _, x := range iface {
+					m3[x.key] = x.val
+				}
+				// XXX format values as desired
+				m2[fmt.Sprint(idx)] = m3
 			}
 		}
 	} else {
