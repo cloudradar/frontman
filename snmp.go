@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -177,15 +178,22 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 			for _, measure := range prevMeasures {
 				if measure.ifName == ifName && ifSpeedInBytes > 0 {
 					delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
-					inDelta := float64(delta(measure.ifInOctets, ifIn))
-					m3["ifInUtilization_percent"] = (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
 
+					inDelta := float64(delta(measure.ifInOctets, ifIn))
 					outDelta := float64(delta(measure.ifOutOctets, ifOut))
-					m3["ifOutUtilization_percent"] = (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+					inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+					outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+					m3["ifInUtilization_percent"] = math.Round(inPct*100) / 100
+					m3["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
+
+					m3["ifIn_Bps"] = uint(math.Round(inDelta / delaySeconds))
+					m3["ifOut_Bps"] = uint(math.Round(outDelta / delaySeconds))
 
 					//fmt.Println("   speed in bytes", ifSpeedInBytes, "delay", delaySeconds)
 					//fmt.Println("   delta in", uint(inDelta), "out", uint(outDelta))
-					//fmt.Printf("delta %s: in %.2f out %.2f\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
+					fmt.Printf("   %s bytes in/sec %d, out/sec %d\n", ifName, m3["ifIn_Bps"], m3["ifOut_Bps"])
+					fmt.Printf("   %s delta: in %.2f, out %.2f\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
+					break
 				}
 			}
 			m2[fmt.Sprint(idx)] = m3
