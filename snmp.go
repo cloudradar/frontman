@@ -181,7 +181,7 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 	ifName := ""
 	ifSpeedInBytes := uint(0)
 	for _, x := range iface {
-		key := ""
+		key := x.key
 		switch x.key {
 		case "ifOperStatus", "ifType":
 			continue
@@ -197,8 +197,6 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 				x.val = x.val.(uint) / 1000000 // megabits
 				ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
 			}
-		default:
-			key = x.key
 		}
 		m[key] = x.val
 	}
