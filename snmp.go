@@ -162,7 +162,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				case "ifOutOctets":
 					ifOut = x.val.(uint)
 				case "ifSpeed":
-					key = "ifHighSpeed"
+					key = "ifSpeed_mbps"
 					if x.val.(uint) > 0 {
 						x.val = x.val.(uint) / 1000000 // megabits
 						ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
