@@ -8,17 +8,17 @@ package main
 
 import (
 	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	decl "github.com/lxn/walk/declarative"
 )
 
 type MultiPageMainWindowConfig struct {
 	Name                 string
-	Enabled              Property
-	Visible              Property
-	Font                 Font
-	MinSize              Size
-	MaxSize              Size
-	ContextMenuItems     []MenuItem
+	Enabled              decl.Property
+	Visible              decl.Property
+	Font                 decl.Font
+	MinSize              decl.Size
+	MaxSize              decl.Size
+	ContextMenuItems     []decl.MenuItem
 	OnKeyDown            walk.KeyEventHandler
 	OnKeyPress           walk.KeyEventHandler
 	OnKeyUp              walk.KeyEventHandler
@@ -28,11 +28,11 @@ type MultiPageMainWindowConfig struct {
 	OnSizeChanged        walk.EventHandler
 	OnCurrentPageChanged walk.EventHandler
 	Title                string
-	Size                 Size
-	MenuItems            []MenuItem
-	ToolBar              ToolBar
+	Size                 decl.Size
+	MenuItems            []decl.MenuItem
+	ToolBar              decl.ToolBar
 	PageCfgs             []PageConfig
-	StatusBarItems       []StatusBarItem
+	StatusBarItems       []decl.StatusBarItem
 }
 
 type PageConfig struct {
@@ -66,7 +66,7 @@ func NewMultiPageMainWindow(cfg *MultiPageMainWindowConfig) (*MultiPageMainWindo
 		action2NewPage: make(map[*walk.Action]PageFactoryFunc),
 	}
 
-	if err := (MainWindow{
+	if err := (decl.MainWindow{
 		AssignTo:         &mpmw.MainWindow,
 		Name:             cfg.Name,
 		Title:            cfg.Title,
@@ -85,20 +85,20 @@ func NewMultiPageMainWindow(cfg *MultiPageMainWindowConfig) (*MultiPageMainWindo
 		OnMouseMove:      cfg.OnMouseMove,
 		OnMouseUp:        cfg.OnMouseUp,
 		OnSizeChanged:    cfg.OnSizeChanged,
-		Layout:           HBox{MarginsZero: true, SpacingZero: true},
-		Children: []Widget{
-			ScrollView{
+		Layout:           decl.HBox{MarginsZero: true, SpacingZero: true},
+		Children: []decl.Widget{
+			decl.ScrollView{
 				HorizontalFixed: true,
-				Layout:          VBox{MarginsZero: true},
-				Children: []Widget{
-					Composite{
-						Layout: VBox{MarginsZero: true},
-						Children: []Widget{
+				Layout:          decl.VBox{MarginsZero: true},
+				Children: []decl.Widget{
+					decl.Composite{
+						Layout: decl.VBox{MarginsZero: true},
+						Children: []decl.Widget{
 							PagesToolBar{
-								ToolBar: ToolBar{
+								ToolBar: decl.ToolBar{
 									AssignTo:    &mpmw.navTB,
-									Orientation: Vertical,
-									ButtonStyle: ToolBarButtonImageAboveText,
+									Orientation: decl.Vertical,
+									ButtonStyle: decl.ToolBarButtonImageAboveText,
 									MaxTextRows: 2,
 								},
 								IconSize: walk.Size{40, 40},
@@ -107,10 +107,10 @@ func NewMultiPageMainWindow(cfg *MultiPageMainWindowConfig) (*MultiPageMainWindo
 					},
 				},
 			},
-			Composite{
+			decl.Composite{
 				AssignTo: &mpmw.pageCom,
 				Name:     "pageCom",
-				Layout:   HBox{MarginsZero: true, SpacingZero: true},
+				Layout:   decl.HBox{MarginsZero: true, SpacingZero: true},
 			},
 		},
 		StatusBarItems: cfg.StatusBarItems,
@@ -258,11 +258,11 @@ func (mpmw *MultiPageMainWindow) updateNavigationToolBar() error {
 }
 
 type PagesToolBar struct {
-	ToolBar
+	decl.ToolBar
 	IconSize walk.Size
 }
 
-func (tb PagesToolBar) Create(builder *Builder) error {
+func (tb PagesToolBar) Create(builder *decl.Builder) error {
 	w, err := walk.NewToolBarWithOrientationAndButtonStyle(
 		builder.Parent(),
 		walk.Orientation(tb.Orientation),
