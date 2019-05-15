@@ -54,26 +54,27 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 }
 
 func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
 	params, err := buildSNMPParameters(check)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 
 	err = params.Connect()
 	if err != nil {
-		return nil, fmt.Errorf("connect err: %v", err)
+		return m, fmt.Errorf("connect err: %v", err)
 	}
 	defer params.Conn.Close()
 
 	oids, form, err := presetToOids(check.Preset)
 	if err != nil {
-		return nil, err
+		return m, err
 	}
 	var packets []gosnmp.SnmpPDU
 	if form == "bulk" {
 		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
 		if err != nil {
-			return nil, fmt.Errorf("get bulk err: %v", err)
+			return m, fmt.Errorf("get bulk err: %v", err)
 		}
 		packets = result.Variables
 	} else {
@@ -81,7 +82,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		for _, oid := range oids {
 			pdus, err := params.BulkWalkAll(oid)
 			if err != nil {
-				return nil, fmt.Errorf("get bulk err: %v", err)
+				return m, fmt.Errorf("bulk walk all err: %v", err)
 			}
 			packets = append(packets, pdus...)
 		}
@@ -160,10 +161,9 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 				case "ifOutOctets":
 					ifOut = x.val.(uint)
 				case "ifSpeed":
-					// convert to megabits per seconds
 					key = "ifHighSpeed"
 					if x.val.(uint) > 0 {
-						x.val = x.val.(uint) / 1000000 // in megabits (10, 100, 1000)
+						x.val = x.val.(uint) / 1000000 // megabits
 						ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
 					}
 				default:
@@ -183,9 +183,8 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 					outDelta := float64(delta(measure.ifOutOctets, ifOut))
 					m3["ifOutUtilization_percent"] = (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
 
-					//fmt.Println("   speed in bytes", ifSpeedInBytes, " delay", delaySeconds)
-					//fmt.Println("   in  delta", uint(inDelta))
-					//fmt.Println("   out delta", uint(outDelta))
+					//fmt.Println("   speed in bytes", ifSpeedInBytes, "delay", delaySeconds)
+					//fmt.Println("   delta in", uint(inDelta), "out", uint(outDelta))
 					//fmt.Printf("delta %s: in %.2f out %.2f\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
 				}
 			}
