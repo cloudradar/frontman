@@ -9,9 +9,12 @@ package walk
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"syscall"
 	"unsafe"
+)
+
+import (
+	"image/color"
 
 	"github.com/lxn/win"
 )
@@ -20,7 +23,6 @@ type Bitmap struct {
 	hBmp       win.HBITMAP
 	hPackedDIB win.HGLOBAL
 	size       Size
-	dpi        int
 }
 
 func NewBitmap(size Size) (*Bitmap, error) {
@@ -32,18 +34,18 @@ func NewBitmapWithTransparentPixels(size Size) (*Bitmap, error) {
 }
 
 func newBitmap(size Size, transparent bool) (bmp *Bitmap, err error) {
+	bufSize := size.Width * size.Height * 4
+
+	var hdr win.BITMAPINFOHEADER
+	hdr.BiSize = uint32(unsafe.Sizeof(hdr))
+	hdr.BiBitCount = 32
+	hdr.BiCompression = win.BI_RGB
+	hdr.BiPlanes = 1
+	hdr.BiWidth = int32(size.Width)
+	hdr.BiHeight = int32(size.Height)
+	hdr.BiSizeImage = uint32(bufSize)
+
 	err = withCompatibleDC(func(hdc win.HDC) error {
-		bufSize := size.Width * size.Height * 4
-
-		var hdr win.BITMAPINFOHEADER
-		hdr.BiSize = uint32(unsafe.Sizeof(hdr))
-		hdr.BiBitCount = 32
-		hdr.BiCompression = win.BI_RGB
-		hdr.BiPlanes = 1
-		hdr.BiWidth = int32(size.Width)
-		hdr.BiHeight = int32(size.Height)
-		hdr.BiSizeImage = uint32(bufSize)
-
 		var bitsPtr unsafe.Pointer
 
 		hBmp := win.CreateDIBSection(hdc, &hdr, win.DIB_RGB_COLORS, &bitsPtr, 0, 0)
@@ -123,38 +125,6 @@ func newBitmapFromResource(res *uint16) (bm *Bitmap, err error) {
 	}
 
 	return
-}
-
-func NewBitmapFromImageWithSize(image Image, size Size) (*Bitmap, error) {
-	var disposables Disposables
-	defer disposables.Treat()
-
-	bmp, err := NewBitmapWithTransparentPixels(size)
-	if err != nil {
-		return nil, err
-	}
-	disposables.Add(bmp)
-
-	dpi := int(float64(size.Width) / float64(image.Size().Width) * 96.0)
-
-	canvas, err := NewCanvasFromImage(bmp)
-	if err != nil {
-		return nil, err
-	}
-	defer canvas.Dispose()
-
-	canvas.dpix = dpi
-	canvas.dpiy = dpi
-
-	size = SizeTo96DPI(size, dpi)
-
-	if err := canvas.DrawImageStretched(image, Rectangle{0, 0, size.Width, size.Height}); err != nil {
-		return nil, err
-	}
-
-	disposables.Spare()
-
-	return bmp, nil
 }
 
 func NewBitmapFromWindow(window Window) (*Bitmap, error) {

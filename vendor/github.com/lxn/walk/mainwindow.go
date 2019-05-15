@@ -28,8 +28,6 @@ type MainWindow struct {
 	statusBar       *StatusBar
 }
 
-var mw Form = (*MainWindow)(nil)
-
 func NewMainWindow() (*MainWindow, error) {
 	return NewMainWindowWithName("")
 }
@@ -59,7 +57,7 @@ func NewMainWindowWithName(name string) (*MainWindow, error) {
 
 	var err error
 
-	if mw.menu, err = newMenuBar(mw); err != nil {
+	if mw.menu, err = newMenuBar(mw.hWnd); err != nil {
 		return nil, err
 	}
 	if !win.SetMenu(mw.hWnd, mw.menu.hMenu) {
@@ -223,9 +221,6 @@ func (mw *MainWindow) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr)
 		}
 
 		mw.statusBar.SetBoundsPixels(Rectangle{0, cb.Y + cb.Height, cb.Width, mw.statusBar.HeightPixels()})
-
-	case win.WM_INITMENUPOPUP:
-		mw.menu.updateItemsWithImageForWindow(mw)
 	}
 
 	return mw.FormBase.WndProc(hwnd, msg, wParam, lParam)

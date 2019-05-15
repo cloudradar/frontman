@@ -15,23 +15,18 @@ import (
 )
 
 type Menu struct {
-	hMenu         win.HMENU
-	window        Window
-	actions       *ActionList
-	action2bitmap map[*Action]*Bitmap
+	hMenu   win.HMENU
+	hWnd    win.HWND
+	actions *ActionList
 }
 
-func newMenuBar(window Window) (*Menu, error) {
+func newMenuBar(hWnd win.HWND) (*Menu, error) {
 	hMenu := win.CreateMenu()
 	if hMenu == 0 {
 		return nil, lastError("CreateMenu")
 	}
 
-	m := &Menu{
-		hMenu:         hMenu,
-		window:        window,
-		action2bitmap: make(map[*Action]*Bitmap),
-	}
+	m := &Menu{hMenu: hMenu, hWnd: hWnd}
 	m.actions = newActionList(m)
 
 	return m, nil
@@ -57,10 +52,7 @@ func NewMenu() (*Menu, error) {
 		return nil, lastError("SetMenuInfo")
 	}
 
-	m := &Menu{
-		hMenu:         hMenu,
-		action2bitmap: make(map[*Action]*Bitmap),
-	}
+	m := &Menu{hMenu: hMenu}
 	m.actions = newActionList(m)
 
 	return m, nil
@@ -70,11 +62,6 @@ func (m *Menu) Dispose() {
 	if m.hMenu != 0 {
 		win.DestroyMenu(m.hMenu)
 		m.hMenu = 0
-
-		for action, bmp := range m.action2bitmap {
-			bmp.Dispose()
-			delete(m.action2bitmap, action)
-		}
 	}
 }
 
@@ -86,38 +73,12 @@ func (m *Menu) Actions() *ActionList {
 	return m.actions
 }
 
-func (m *Menu) updateItemsWithImageForWindow(window Window) {
-	if m.window == nil {
-		m.window = window
-		defer func() {
-			m.window = nil
-		}()
-	}
-
-	for _, action := range m.actions.actions {
-		if action.image != nil {
-			m.onActionChanged(action)
-		}
-		if action.menu != nil {
-			action.menu.updateItemsWithImageForWindow(window)
-		}
-	}
-}
-
 func (m *Menu) initMenuItemInfoFromAction(mii *win.MENUITEMINFO, action *Action) {
 	mii.CbSize = uint32(unsafe.Sizeof(*mii))
 	mii.FMask = win.MIIM_FTYPE | win.MIIM_ID | win.MIIM_STATE | win.MIIM_STRING
 	if action.image != nil {
 		mii.FMask |= win.MIIM_BITMAP
-		dpi := 96
-		if m.window != nil {
-			if mw, ok := m.window.(*MainWindow); ok && mw != nil {
-				dpi = mw.DPI()
-			}
-		}
-		if bmp, err := iconCache.Bitmap(action.image, dpi); err == nil {
-			mii.HbmpItem = bmp.hBmp
-		}
+		mii.HbmpItem = action.image.handle()
 	}
 	if action.IsSeparator() {
 		mii.FType |= win.MFT_SEPARATOR
@@ -259,10 +220,12 @@ func (m *Menu) insertAction(action *Action, visibleChanged bool) (err error) {
 
 	menu := action.menu
 	if menu != nil {
-		menu.window = m.window
+		menu.hWnd = m.hWnd
 	}
 
-	m.ensureMenuBarRedrawn()
+	if m.hWnd != 0 {
+		win.DrawMenuBar(m.hWnd)
+	}
 
 	return
 }
@@ -278,17 +241,11 @@ func (m *Menu) removeAction(action *Action, visibleChanged bool) error {
 		action.removeChangedHandler(m)
 	}
 
-	m.ensureMenuBarRedrawn()
+	if m.hWnd != 0 {
+		win.DrawMenuBar(m.hWnd)
+	}
 
 	return nil
-}
-
-func (m *Menu) ensureMenuBarRedrawn() {
-	if m.window != nil {
-		if mw, ok := m.window.(*MainWindow); ok && mw != nil {
-			win.DrawMenuBar(mw.Handle())
-		}
-	}
 }
 
 func (m *Menu) onInsertedAction(action *Action) error {

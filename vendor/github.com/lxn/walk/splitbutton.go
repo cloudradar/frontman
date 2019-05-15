@@ -22,8 +22,10 @@ type SplitButton struct {
 func NewSplitButton(parent Container) (*SplitButton, error) {
 	sb := new(SplitButton)
 
-	var disposables Disposables
-	defer disposables.Treat()
+	menu, err := NewMenu()
+	if err != nil {
+		return nil, err
+	}
 
 	if err := InitWidget(
 		sb,
@@ -33,22 +35,13 @@ func NewSplitButton(parent Container) (*SplitButton, error) {
 		0); err != nil {
 		return nil, err
 	}
-	disposables.Add(sb)
 
 	sb.Button.init()
 
-	menu, err := NewMenu()
-	if err != nil {
-		return nil, err
-	}
-	disposables.Add(menu)
-	menu.window = sb
 	sb.menu = menu
 
 	sb.GraphicsEffects().Add(InteractionEffect)
 	sb.GraphicsEffects().Add(FocusEffect)
-
-	disposables.Spare()
 
 	return sb, nil
 }
