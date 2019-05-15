@@ -272,7 +272,7 @@ func (sbi *StatusBarItem) update(index int) error {
 func (sbi *StatusBarItem) updateIcon(index int) error {
 	var hIcon win.HICON
 	if sbi.icon != nil {
-		hIcon = sbi.icon.handleForDPI(sbi.sb.DPI())
+		hIcon = sbi.icon.hIcon
 	}
 
 	if 0 == sbi.sb.SendMessage(

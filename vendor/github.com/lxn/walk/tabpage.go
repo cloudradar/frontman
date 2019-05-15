@@ -24,7 +24,7 @@ func init() {
 
 type TabPage struct {
 	ContainerBase
-	image                 Image
+	image                 *Bitmap
 	title                 string
 	tabWidget             *TabWidget
 	titleChangedPublisher EventPublisher
@@ -120,11 +120,11 @@ func (tp *TabPage) Font() *Font {
 	return defaultFont
 }
 
-func (tp *TabPage) Image() Image {
+func (tp *TabPage) Image() *Bitmap {
 	return tp.image
 }
 
-func (tp *TabPage) SetImage(value Image) error {
+func (tp *TabPage) SetImage(value *Bitmap) error {
 	tp.image = value
 
 	if tp.tabWidget == nil {

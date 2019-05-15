@@ -8,7 +8,6 @@ package walk
 
 import (
 	"fmt"
-	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -71,8 +70,8 @@ type Form interface {
 	Title() string
 	SetTitle(title string) error
 	TitleChanged() *Event
-	Icon() Image
-	SetIcon(icon Image) error
+	Icon() *Icon
+	SetIcon(icon *Icon)
 	IconChanged() *Event
 	Owner() Form
 	SetOwner(owner Form) error
@@ -98,7 +97,7 @@ type FormBase struct {
 	titleChangedPublisher EventPublisher
 	iconChangedPublisher  EventPublisher
 	progressIndicator     *ProgressIndicator
-	icon                  Image
+	icon                  *Icon
 	prevFocusHWnd         win.HWND
 	proposedSize          Size
 	isInRestoreState      bool
@@ -157,11 +156,6 @@ func (fb *FormBase) init(form Form) error {
 			return fb.SetTitle(assertStringOr(v, ""))
 		},
 		fb.titleChangedPublisher.Event()))
-
-	version := win.GetVersion()
-	if (version & 0xFF) > 6 || ((version & 0xFF) == 6 && (version & 0xFF00 >> 8) > 0) {
-		win.ChangeWindowMessageFilterEx(fb.hWnd, taskbarButtonCreatedMsgId, win.MSGFLT_ALLOW, nil)
-	}
 
 	return nil
 }
@@ -356,9 +350,6 @@ func (fb *FormBase) SetRightToLeftLayout(rtl bool) error {
 }
 
 func (fb *FormBase) Run() int {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
 	if fb.owner != nil {
 		win.EnableWindow(fb.owner.Handle(), false)
 
@@ -493,36 +484,22 @@ func (fb *FormBase) SetOwner(value Form) error {
 	return nil
 }
 
-func (fb *FormBase) Icon() Image {
+func (fb *FormBase) Icon() *Icon {
 	return fb.icon
 }
 
-func (fb *FormBase) SetIcon(icon Image) error {
-	var hIconSmall, hIconBig uintptr
-
-	if icon != nil {
-		smallIcon, err := iconCache.Icon(icon, fb.DPI())
-		if err != nil {
-			return err
-		}
-		hIconSmall = uintptr(smallIcon.handleForDPI(fb.DPI()))
-
-		bigDPI := int(48.0 / float64(icon.Size().Width) * 96.0)
-		bigIcon, err := iconCache.Icon(icon, bigDPI)
-		if err != nil {
-			return err
-		}
-		hIconBig = uintptr(bigIcon.handleForDPI(bigDPI))
-	}
-
-	fb.SendMessage(win.WM_SETICON, 0, hIconSmall)
-	fb.SendMessage(win.WM_SETICON, 1, hIconBig)
-
+func (fb *FormBase) SetIcon(icon *Icon) {
 	fb.icon = icon
 
-	fb.iconChangedPublisher.Publish()
+	var hIcon uintptr
+	if icon != nil {
+		hIcon = uintptr(icon.hIcon)
+	}
 
-	return nil
+	fb.SendMessage(win.WM_SETICON, 0, hIcon)
+	fb.SendMessage(win.WM_SETICON, 1, hIcon)
+
+	fb.iconChangedPublisher.Publish()
 }
 
 func (fb *FormBase) IconChanged() *Event {
@@ -732,16 +709,12 @@ func (fb *FormBase) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr) u
 		fb.SetSuspended(true)
 		defer fb.SetSuspended(wasSuspended)
 
-		dpi := int(win.HIWORD(uint32(wParam)))
+		fb.ApplyDPI(int(win.HIWORD(uint32(wParam))))
 
-		fb.clientComposite.dpi = dpi
-		fb.ApplyDPI(dpi)
-		applyDPIToDescendants(fb.window, dpi)
+		applyDPIToDescendants(fb.window, int(win.HIWORD(uint32(wParam))))
 
 		rc := (*win.RECT)(unsafe.Pointer(lParam))
 		fb.window.SetBoundsPixels(rectangleFromRECT(*rc))
-
-		fb.SetIcon(fb.icon)
 
 	case win.WM_SYSCOMMAND:
 		if wParam == win.SC_CLOSE {
@@ -753,7 +726,7 @@ func (fb *FormBase) WndProc(hwnd win.HWND, msg uint32, wParam, lParam uintptr) u
 		major := version & 0xFF
 		minor := version & 0xFF00 >> 8
 		// Check that the OS is Win 7 or later (Win 7 is v6.1).
-		if fb.progressIndicator == nil && (major > 6 || (major == 6 && minor > 0)) {
+		if major > 6 || (major == 6 && minor > 0) {
 			fb.progressIndicator, _ = newTaskbarList3(fb.hWnd)
 		}
 	}

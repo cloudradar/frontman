@@ -29,19 +29,15 @@
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"
-  version = "2.19.03"
+  version = "2.18.7"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.3.0"
-
-[[constraint]]
-  name = "github.com/lxn/win"
-  revision = "6f00d814e89c2442495334cdd91bb6ff3003eeb7"
+  version = "1.2.2"
 
 [[constraint]]
   name = "github.com/lxn/walk"
-  revision = "6cf0bf1359a5d99a8160321be78b61e7b635e324"
+  revision = "99ca2b506b4733c6997986dc4523c95c124f2633"
 
 [[constraint]]
   branch = "v1"

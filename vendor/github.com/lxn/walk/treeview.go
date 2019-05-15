@@ -302,8 +302,7 @@ func (tv *TreeView) setTVITEMImageInfo(tvi *win.TVITEM, item TreeItem) {
 			tv.hIml,
 			tv.usingSysIml,
 			tv.imageUintptr2Index,
-			tv.filePath2IconIndex,
-			tv.DPI())
+			tv.filePath2IconIndex)
 
 		tvi.ISelectedImage = tvi.IImage
 	}

@@ -7,9 +7,14 @@
 package win
 
 import (
+	"runtime"
 	"syscall"
 	"unsafe"
 )
+
+func init() {
+	runtime.LockOSThread()
+}
 
 const (
 	S_OK           = 0x00000000
