@@ -161,66 +161,7 @@ func (fm *Frontman) filterSNMPResult(preset string, m map[int][]snmpResult) (map
 			if skip {
 				continue
 			}
-			m3 := make(map[string]interface{})
-
-			ifIn := uint(0)
-			ifOut := uint(0)
-			ifName := ""
-			ifSpeedInBytes := uint(0)
-			for _, x := range iface {
-				key := ""
-				switch x.key {
-				case "ifOperStatus", "ifType":
-					continue
-				case "ifName":
-					ifName = x.val.(string)
-				case "ifInOctets":
-					ifIn = x.val.(uint)
-				case "ifOutOctets":
-					ifOut = x.val.(uint)
-				case "ifSpeed":
-					key = "ifSpeed_mbps"
-					if x.val.(uint) > 0 {
-						x.val = x.val.(uint) / 1000000 // megabits
-						ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
-					}
-				default:
-					key = x.key
-				}
-				m3[key] = x.val
-			}
-			m3["ifIndex"] = idx
-
-			// calculate delta from previous measure
-			for _, measure := range prevMeasures {
-				if measure.ifName == ifName && ifSpeedInBytes > 0 {
-					delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
-
-					inDelta := float64(delta(measure.ifInOctets, ifIn))
-					outDelta := float64(delta(measure.ifOutOctets, ifOut))
-					inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-					outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-					m3["ifInUtilization_percent"] = math.Round(inPct*100) / 100
-					m3["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
-
-					m3["ifIn_Bps"] = uint(math.Round(inDelta / delaySeconds))
-					m3["ifOut_Bps"] = uint(math.Round(outDelta / delaySeconds))
-
-					//fmt.Println("   speed in bytes", ifSpeedInBytes, "delay", delaySeconds)
-					//fmt.Println("   delta in", uint(inDelta), "out", uint(outDelta))
-					//fmt.Printf("   %s bytes in/sec %d, out/sec %d\n", ifName, m3["ifIn_Bps"], m3["ifOut_Bps"])
-					//fmt.Printf("   %s utilization in %.2f%%, out %.2f%%\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
-					break
-				}
-			}
-			m2[fmt.Sprint(idx)] = m3
-
-			fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
-				timestamp:   time.Now(),
-				ifName:      ifName,
-				ifOutOctets: ifOut,
-				ifInOctets:  ifIn,
-			})
+			m2[fmt.Sprint(idx)] = fm.filterSNMPBandwidthResult(idx, iface, prevMeasures)
 		}
 	} else {
 		// flatten
@@ -232,6 +173,63 @@ func (fm *Frontman) filterSNMPResult(preset string, m map[int][]snmpResult) (map
 		}
 	}
 	return m2, nil
+}
+
+func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevMeasures []snmpBandwidthMeasure) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	ifIn := uint(0)
+	ifOut := uint(0)
+	ifName := ""
+	ifSpeedInBytes := uint(0)
+	for _, x := range iface {
+		key := ""
+		switch x.key {
+		case "ifOperStatus", "ifType":
+			continue
+		case "ifName":
+			ifName = x.val.(string)
+		case "ifInOctets":
+			ifIn = x.val.(uint)
+		case "ifOutOctets":
+			ifOut = x.val.(uint)
+		case "ifSpeed":
+			key = "ifSpeed_mbps"
+			if x.val.(uint) > 0 {
+				x.val = x.val.(uint) / 1000000 // megabits
+				ifSpeedInBytes = (x.val.(uint) * 1000000) / 8
+			}
+		default:
+			key = x.key
+		}
+		m[key] = x.val
+	}
+	m["ifIndex"] = idx
+
+	// calculate delta from previous measure
+	for _, measure := range prevMeasures {
+		if measure.ifName == ifName && ifSpeedInBytes > 0 {
+			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+			inDelta := float64(delta(measure.ifInOctets, ifIn))
+			outDelta := float64(delta(measure.ifOutOctets, ifOut))
+			inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+			outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+			m["ifInUtilization_percent"] = math.Round(inPct*100) / 100
+			m["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
+			m["ifIn_Bps"] = uint(math.Round(inDelta / delaySeconds))
+			m["ifOut_Bps"] = uint(math.Round(outDelta / delaySeconds))
+			break
+		}
+	}
+
+	fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
+		timestamp:   time.Now(),
+		ifName:      ifName,
+		ifOutOctets: ifOut,
+		ifInOctets:  ifIn,
+	})
+
+	return m
 }
 
 func delta(v1, v2 uint) uint {
