@@ -35,10 +35,11 @@ func sendErrorNotification(title, message string) error {
 		Title:    title,
 		Message:  message,
 		Duration: toast.Long, // last for 25sec
-		Actions: []toast.Action{
-			{"protocol", "Open settings", "frontman:settings"},
-		},
-	}
+		Actions: []toast.Action{{
+			Type:      "protocol",
+			Label:     "Open settings",
+			Arguments: "frontman:settings",
+		}}}
 
 	iconPath := getExecutablePath() + "\\" + toastErrorIcon
 	if _, err := os.Stat(iconPath); err == nil {

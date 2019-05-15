@@ -52,22 +52,21 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:7729a64cc52970fab3a5201631d79c4725d5686951bb5b506b793207d81dd43a"
+  digest = "1:5d08d82612126806b97cae03c17b31f4c69afb2bc5fa6888242302bc25cf1ed1"
   name = "github.com/lxn/walk"
   packages = [
     ".",
     "declarative",
   ]
   pruneopts = "NUT"
-  revision = "99ca2b506b4733c6997986dc4523c95c124f2633"
+  revision = "6cf0bf1359a5d99a8160321be78b61e7b635e324"
 
 [[projects]]
-  branch = "master"
-  digest = "1:5edb2cf5bda5c9a43eae2547b05384ccbb0c1c723d7ebf81f626fca198377208"
+  digest = "1:9b813530f44abd991ac0789339dfcea4fd1eb46669531cf8cc6d467e10c115c5"
   name = "github.com/lxn/win"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "5d15a47a4bff225b55d3eacd9ac2fbadd9696a20"
+  revision = "6f00d814e89c2442495334cdd91bb6ff3003eeb7"
 
 [[projects]]
   branch = "master"
@@ -175,11 +174,11 @@
     "ipv6",
   ]
   pruneopts = "NUT"
-  revision = "a4d6f7feada510cc50e69a37b484cb0fdc6b7876"
+  revision = "3ec19112720433827bbce8be9342797f5a6aaaf9"
 
 [[projects]]
   branch = "master"
-  digest = "1:ce7f950880b52961c51c98d74168547ad353b56ae7ddd19188f83ac82f1325d7"
+  digest = "1:ed822ab59f461a62d9f718eacd21b6e8844b008872c3dd42b32c3987a57c5af3"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -190,7 +189,7 @@
     "windows/svc/mgr",
   ]
   pruneopts = "NUT"
-  revision = "a5b02f93d862f065920dd6a40dddc66b60d0dec4"
+  revision = "f91f9b37d0e9fd2002e73af3d2c862431c925769"
 
 [[projects]]
   digest = "1:a8bc08e25d94bdcbf8ea54ee8e4b2a00a8c3b6957501b4fdb1a6d303e5292f6d"
