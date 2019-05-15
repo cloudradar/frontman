@@ -125,6 +125,27 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		}
 	}
 
+	return fm.filterSNMPResult(preset, m)
+}
+
+const (
+	ifOperStatusUp       = 1
+	ifTypeEthernetCsmacd = 6
+)
+
+// returns true if snmpResult is part of a network interface that should be excluded
+func (kv snmpResult) shouldExcludeInterface() bool {
+	if kv.key == "ifOperStatus" && kv.val.(int) != ifOperStatusUp {
+		return true
+	}
+	if kv.key == "ifType" && kv.val.(int) != ifTypeEthernetCsmacd {
+		return true
+	}
+	return false
+}
+
+// filters the snmp results according to preset
+func (fm *Frontman) filterSNMPResult(preset string, m map[int][]snmpResult) (map[string]interface{}, error) {
 	m2 := make(map[string]interface{})
 	if preset == "bandwidth" {
 		prevMeasures := fm.previousSNMPBandwidthMeasure
@@ -132,13 +153,9 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		for idx, iface := range m {
 			skip := false
 			for _, kv := range iface {
-				if kv.key == "ifOperStatus" && kv.val.(int) != 1 {
-					// status is not up
+				if kv.shouldExcludeInterface() {
 					skip = true
-				}
-				if kv.key == "ifType" && kv.val.(int) != 6 {
-					// type is not ethernetCsmacd
-					skip = true
+					break
 				}
 			}
 			if skip {
@@ -191,8 +208,8 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 
 					//fmt.Println("   speed in bytes", ifSpeedInBytes, "delay", delaySeconds)
 					//fmt.Println("   delta in", uint(inDelta), "out", uint(outDelta))
-					fmt.Printf("   %s bytes in/sec %d, out/sec %d\n", ifName, m3["ifIn_Bps"], m3["ifOut_Bps"])
-					fmt.Printf("   %s delta: in %.2f, out %.2f\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
+					//fmt.Printf("   %s bytes in/sec %d, out/sec %d\n", ifName, m3["ifIn_Bps"], m3["ifOut_Bps"])
+					//fmt.Printf("   %s utilization in %.2f%%, out %.2f%%\n", ifName, m3["ifInUtilization_percent"], m3["ifOutUtilization_percent"])
 					break
 				}
 			}
