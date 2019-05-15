@@ -6,8 +6,8 @@ package frontman
 import (
 	"os"
 	"testing"
+	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,7 +89,10 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	// necessary snmpd.conf changes:
 	// view   systemonly  included   .1
 	skipSNMP(t)
+
+	delaySeconds := 1.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
@@ -111,8 +114,30 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
 
-	// XXX
-	spew.Dump(res.Measurements)
+	// NOTE: test makes some assumptions that may be hard to reproduce
+	iface := res.Measurements["2"].(map[string]interface{})
+	require.Equal(t, uint(1000), iface["ifSpeed_mbps"])
+	require.Equal(t, "enp0s31f6", iface["ifName"])
+	require.Equal(t, "enp0s31f6", iface["ifDescr"])
+	require.Equal(t, 2, iface["ifIndex"])
+
+	// do 2nd request and check delta values
+	time.Sleep(time.Duration(delaySeconds) * time.Second)
+
+	resultsChan = make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res = <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
+
+	iface = res.Measurements["2"].(map[string]interface{})
+
+	if _, ok := iface["ifIn_Bps"]; !ok {
+		t.Errorf("ifIn_Bps key missing")
+	}
+	if _, ok := iface["ifInUtilization_percent"]; !ok {
+		t.Errorf("ifInUtilization_percent key missing")
+	}
 }
 
 // test SNMP v2 invalid community against snmpd
