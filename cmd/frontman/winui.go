@@ -77,21 +77,21 @@ func (se *setupErrors) Describe() string {
 	if se.connectionError != nil {
 		fmt.Fprintf(buf, "Hub connection failed: %v", se.connectionError)
 		return buf.String()
-	} else {
-		fmt.Fprintln(buf, "Hub connection succeeded.")
 	}
+	fmt.Fprintln(buf, "Hub connection succeeded.")
+
 	if se.configError != nil {
 		fmt.Fprintf(buf, "Failed to save settings: %v", se.configError)
 		return buf.String()
-	} else {
-		fmt.Fprintln(buf, "Your settings are saved.")
 	}
+	fmt.Fprintln(buf, "Your settings are saved.")
+
 	if se.serviceError != nil {
 		fmt.Fprintf(buf, "Failed to start Frontman service: %v", se.serviceError)
 		return buf.String()
-	} else {
-		fmt.Fprint(buf, "Services restarted and you are all set up!")
 	}
+	fmt.Fprint(buf, "Services restarted and you are all set up!")
+
 	return buf.String()
 }
 
@@ -514,10 +514,8 @@ func (ui *UI) newLogsPage() PageFactoryFunc {
 					if _, err := io.CopyBuffer(lv, logFile, buf); err != nil {
 						lv.PostAppendText("log file read error: " + err.Error())
 						return
-					} else {
-						time.Sleep(500 * time.Millisecond)
-						continue
 					}
+					time.Sleep(500 * time.Millisecond)
 				}
 			}()
 		}
