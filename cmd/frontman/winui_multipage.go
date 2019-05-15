@@ -101,7 +101,7 @@ func NewMultiPageMainWindow(cfg *MultiPageMainWindowConfig) (*MultiPageMainWindo
 									ButtonStyle: decl.ToolBarButtonImageAboveText,
 									MaxTextRows: 2,
 								},
-								IconSize: walk.Size{40, 40},
+								IconSize: walk.Size{Width: 40, Height: 40},
 							},
 						},
 					},

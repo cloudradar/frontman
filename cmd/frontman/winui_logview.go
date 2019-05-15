@@ -48,11 +48,11 @@ func (*LogView) LayoutFlags() walk.LayoutFlags {
 }
 
 func (*LogView) MinSizeHint() walk.Size {
-	return walk.Size{20, 12}
+	return walk.Size{Width: 20, Height: 12}
 }
 
 func (*LogView) SizeHint() walk.Size {
-	return walk.Size{100, 100}
+	return walk.Size{Width: 100, Height: 100}
 }
 
 func (lv *LogView) setTextSelection(start, end int) {
