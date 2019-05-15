@@ -108,6 +108,7 @@ type TableView struct {
 	hasFrozenColumn                    bool
 	inEraseBkgnd                       bool
 	focused                            bool
+	ignoreNowhere                      bool
 }
 
 // NewTableView creates and returns a *TableView as child of the specified
@@ -1286,6 +1287,20 @@ func (tv *TableView) SetPersistent(value bool) {
 	tv.persistent = value
 }
 
+// IgnoreNowhere returns if the *TableView should ignore left mouse clicks in the
+// empty space. It forbids the user from unselecting the current index, or when
+// multi selection is enabled, disables click drag selection.
+func (tv *TableView) IgnoreNowhere() bool {
+	return tv.ignoreNowhere
+}
+
+// IgnoreNowhere sets if the *TableView should ignore left mouse clicks in the
+// empty space. It forbids the user from unselecting the current index, or when
+// multi selection is enabled, disables click drag selection.
+func (tv *TableView) SetIgnoreNowhere(value bool) {
+	tv.ignoreNowhere = value
+}
+
 type tableViewState struct {
 	SortColumnName     string
 	SortOrder          SortOrder
@@ -1665,6 +1680,10 @@ func (tv *TableView) lvWndProc(origWndProcPtr uintptr, hwnd win.HWND, msg uint32
 					return 0
 				}
 			}
+
+			if tv.IgnoreNowhere() {
+				return 0
+			}
 		}
 
 		switch msg {
@@ -1816,7 +1835,8 @@ func (tv *TableView) lvWndProc(origWndProcPtr uintptr, hwnd win.HWND, msg uint32
 						tv.hIml,
 						tv.usingSysIml,
 						tv.imageUintptr2Index,
-						tv.filePath2IconIndex)
+						tv.filePath2IconIndex,
+						tv.DPI())
 				}
 			}
 
