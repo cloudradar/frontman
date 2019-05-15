@@ -574,7 +574,6 @@ func waitServiceState(ctx context.Context, s *mgr.Service, expectedState svc.Sta
 			time.Sleep(300 * time.Millisecond)
 		}
 	}
-	return nil
 }
 
 func RunDialog(owner walk.Form, icon *walk.Icon, title, text string, callback func()) (int, error) {
