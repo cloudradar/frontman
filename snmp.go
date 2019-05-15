@@ -98,8 +98,7 @@ type snmpResult struct {
 }
 
 func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
-	m := make(map[int][]snmpResult)
-
+	res := make(map[int][]snmpResult)
 	for _, variable := range packets {
 		if err := oidToError(variable.Name); err != nil {
 			return nil, err
@@ -115,17 +114,16 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 
 		switch variable.Type {
 		case gosnmp.OctetString:
-			m[suffix] = append(m[suffix], snmpResult{key: prefix, val: string(variable.Value.([]byte))})
+			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: string(variable.Value.([]byte))})
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
-			m[suffix] = append(m[suffix], snmpResult{key: prefix, val: variable.Value})
+			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
 
 		default:
 			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
 	}
-
-	return fm.filterSNMPResult(preset, m)
+	return fm.filterSNMPResult(preset, res)
 }
 
 const (
@@ -145,12 +143,12 @@ func (kv snmpResult) shouldExcludeInterface() bool {
 }
 
 // filters the snmp results according to preset
-func (fm *Frontman) filterSNMPResult(preset string, m map[int][]snmpResult) (map[string]interface{}, error) {
-	m2 := make(map[string]interface{})
+func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
 	if preset == "bandwidth" {
 		prevMeasures := fm.previousSNMPBandwidthMeasure
 		fm.previousSNMPBandwidthMeasure = nil
-		for idx, iface := range m {
+		for idx, iface := range res {
 			skip := false
 			for _, kv := range iface {
 				if kv.shouldExcludeInterface() {
@@ -161,18 +159,18 @@ func (fm *Frontman) filterSNMPResult(preset string, m map[int][]snmpResult) (map
 			if skip {
 				continue
 			}
-			m2[fmt.Sprint(idx)] = fm.filterSNMPBandwidthResult(idx, iface, prevMeasures)
+			m[fmt.Sprint(idx)] = fm.filterSNMPBandwidthResult(idx, iface, prevMeasures)
 		}
 	} else {
 		// flatten
-		if len(m) != 1 {
-			return nil, fmt.Errorf("unexpected index count %d", len(m))
+		if len(res) != 1 {
+			return nil, fmt.Errorf("unexpected index count %d", len(res))
 		}
-		for _, x := range m[0] {
-			m2[x.key] = x.val
+		for _, x := range res[0] {
+			m[x.key] = x.val
 		}
 	}
-	return m2, nil
+	return m, nil
 }
 
 func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevMeasures []snmpBandwidthMeasure) map[string]interface{} {
