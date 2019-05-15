@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/lxn/walk"
-	. "github.com/lxn/walk/declarative"
+	decl "github.com/lxn/walk/declarative"
 	"github.com/lxn/win"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -48,7 +48,7 @@ type UI struct {
 	StatusBar   *walk.StatusBarItem
 	SaveButton  *walk.ToolButton
 
-	DefaultFont Font
+	DefaultFont decl.Font
 
 	frontman         *frontman.Frontman
 	installationMode bool
@@ -205,17 +205,17 @@ func windowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ui.DefaultFont = Font{
+	ui.DefaultFont = decl.Font{
 		Family:    "Segoe UI",
 		PointSize: 12,
 	}
 	wcfg := &MultiPageMainWindowConfig{
 		Title: "Frontman Settings",
-		MinSize: Size{
+		MinSize: decl.Size{
 			Width:  pt(200),
 			Height: pt(200),
 		},
-		MaxSize: Size{
+		MaxSize: decl.Size{
 			Width:  pt(200),
 			Height: pt(200),
 		},
@@ -224,7 +224,7 @@ func windowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
 			{"Proxy Setup", "proxy.png", ui.newProxyPage()},
 			{"Log View", "logs.png", ui.newLogsPage()},
 		},
-		StatusBarItems: []StatusBarItem{{
+		StatusBarItems: []decl.StatusBarItem{{
 			AssignTo:  &ui.StatusBar,
 			Width:     pt(40),
 			OnClicked: func() {},
@@ -254,60 +254,60 @@ func (ui *UI) newHubLoginPage() PageFactoryFunc {
 	return func(parent walk.Container) (Page, error) {
 		p := new(HubLoginPage)
 
-		if err := (Composite{
+		if err := (decl.Composite{
 			AssignTo: &p.Composite,
 			Name:     "Hub Settings",
-			DataBinder: DataBinder{
+			DataBinder: decl.DataBinder{
 				AssignTo:       &ui.DataBinder,
 				Name:           "config",
 				DataSource:     ui.frontman.Config,
-				ErrorPresenter: ToolTipErrorPresenter{},
+				ErrorPresenter: decl.ToolTipErrorPresenter{},
 			},
-			Layout: VBox{},
-			Children: []Widget{
-				GroupBox{
+			Layout: decl.VBox{},
+			Children: []decl.Widget{
+				decl.GroupBox{
 					Title: "Frontman > Hub Settings > Hub Connection Credentials",
-					Layout: Grid{
+					Layout: decl.Grid{
 						Columns: 2,
-						Margins: Margins{
+						Margins: decl.Margins{
 							Left:   pt(10),
 							Top:    pt(10),
 							Right:  pt(10),
 							Bottom: pt(10),
 						},
 					},
-					Children: []Widget{
-						Label{
+					Children: []decl.Widget{
+						decl.Label{
 							Text: "Hub URL:",
 							Font: ui.DefaultFont,
 						},
-						LineEdit{
-							Text: Bind("HubURL"),
+						decl.LineEdit{
+							Text: decl.Bind("HubURL"),
 							Font: ui.DefaultFont,
 						},
-						Label{
+						decl.Label{
 							Text: "Username:",
 							Font: ui.DefaultFont,
 						},
-						LineEdit{
-							Text: Bind("HubUser"),
+						decl.LineEdit{
+							Text: decl.Bind("HubUser"),
 							Font: ui.DefaultFont,
 						},
-						Label{
+						decl.Label{
 							Text: "Password:",
 							Font: ui.DefaultFont,
 						},
-						LineEdit{
-							Text: Bind("HubPassword"),
+						decl.LineEdit{
+							Text: decl.Bind("HubPassword"),
 							Font: ui.DefaultFont,
 						},
 					},
 				},
-				Composite{
-					Layout: HBox{},
-					Children: []Widget{
-						ToolButton{
-							MinSize: Size{
+				decl.Composite{
+					Layout: decl.HBox{},
+					Children: []decl.Widget{
+						decl.ToolButton{
+							MinSize: decl.Size{
 								Width:  pt(380),
 								Height: pt(35),
 							},
@@ -323,7 +323,7 @@ func (ui *UI) newHubLoginPage() PageFactoryFunc {
 					},
 				},
 			},
-		}).Create(NewBuilder(parent)); err != nil {
+		}).Create(decl.NewBuilder(parent)); err != nil {
 			err = errors.Wrap(err, "failed to create composite")
 			return nil, err
 		}
@@ -345,60 +345,60 @@ func (ui *UI) newProxyPage() PageFactoryFunc {
 	return func(parent walk.Container) (Page, error) {
 		p := new(ProxyPage)
 
-		if err := (Composite{
+		if err := (decl.Composite{
 			AssignTo: &p.Composite,
 			Name:     "Proxy Setup",
-			DataBinder: DataBinder{
+			DataBinder: decl.DataBinder{
 				AssignTo:       &ui.DataBinder,
 				Name:           "config",
 				DataSource:     ui.frontman.Config,
-				ErrorPresenter: ToolTipErrorPresenter{},
+				ErrorPresenter: decl.ToolTipErrorPresenter{},
 			},
-			Layout: VBox{},
-			Children: []Widget{
-				GroupBox{
+			Layout: decl.VBox{},
+			Children: []decl.Widget{
+				decl.GroupBox{
 					Title: "Frontman > Hub Settings > Hub Proxy Setup",
-					Layout: Grid{
+					Layout: decl.Grid{
 						Columns: 2,
-						Margins: Margins{
+						Margins: decl.Margins{
 							Left:   pt(10),
 							Top:    pt(10),
 							Right:  pt(10),
 							Bottom: pt(10),
 						},
 					},
-					Children: []Widget{
-						Label{
+					Children: []decl.Widget{
+						decl.Label{
 							Text: "Proxy Address:",
 							Font: ui.DefaultFont,
 						},
-						LineEdit{
-							Text: Bind("HubProxy"),
+						decl.LineEdit{
+							Text: decl.Bind("HubProxy"),
 							Font: ui.DefaultFont,
 						},
-						Label{
+						decl.Label{
 							Text: "Proxy User:",
 							Font: ui.DefaultFont,
 						},
-						LineEdit{
-							Text: Bind("HubProxyUser"),
+						decl.LineEdit{
+							Text: decl.Bind("HubProxyUser"),
 							Font: ui.DefaultFont,
 						},
-						Label{
+						decl.Label{
 							Text: "Proxy Password:",
 							Font: ui.DefaultFont,
 						},
-						LineEdit{
-							Text: Bind("HubProxyPassword"),
+						decl.LineEdit{
+							Text: decl.Bind("HubProxyPassword"),
 							Font: ui.DefaultFont,
 						},
 					},
 				},
-				Composite{
-					Layout: HBox{},
-					Children: []Widget{
-						ToolButton{
-							MinSize: Size{
+				decl.Composite{
+					Layout: decl.HBox{},
+					Children: []decl.Widget{
+						decl.ToolButton{
+							MinSize: decl.Size{
 								Width:  pt(380),
 								Height: pt(35),
 							},
@@ -414,7 +414,7 @@ func (ui *UI) newProxyPage() PageFactoryFunc {
 					},
 				},
 			},
-		}).Create(NewBuilder(parent)); err != nil {
+		}).Create(decl.NewBuilder(parent)); err != nil {
 			err = errors.Wrap(err, "failed to create composite")
 			return nil, err
 		}
@@ -436,22 +436,22 @@ func (ui *UI) newLogsPage() PageFactoryFunc {
 	return func(parent walk.Container) (Page, error) {
 		p := new(ProxyPage)
 
-		if err := (Composite{
+		if err := (decl.Composite{
 			AssignTo: &p.Composite,
 			Name:     "Logs View",
-			DataBinder: DataBinder{
+			DataBinder: decl.DataBinder{
 				AssignTo:       &ui.DataBinder,
 				Name:           "config",
 				DataSource:     ui.frontman.Config,
-				ErrorPresenter: ToolTipErrorPresenter{},
+				ErrorPresenter: decl.ToolTipErrorPresenter{},
 			},
-			Layout: VBox{},
-			Children: []Widget{
-				RadioButtonGroupBox{
+			Layout: decl.VBox{},
+			Children: []decl.Widget{
+				decl.RadioButtonGroupBox{
 					ColumnSpan: 1,
 					Title:      "Frontman > Logs Settings",
-					Layout: HBox{
-						Margins: Margins{
+					Layout: decl.HBox{
+						Margins: decl.Margins{
 							Left:   pt(10),
 							Top:    pt(10),
 							Right:  pt(10),
@@ -459,19 +459,19 @@ func (ui *UI) newLogsPage() PageFactoryFunc {
 						},
 					},
 					DataMember: "LogLevel",
-					Buttons: []RadioButton{
+					Buttons: []decl.RadioButton{
 						{Text: "Info", Value: frontman.LogLevelInfo},
 						{Text: "Debug", Value: frontman.LogLevelDebug},
 						{Text: "Errors only", Value: frontman.LogLevelError},
 					},
 				},
-				PushButton{
-					MinSize: Size{
+				decl.PushButton{
+					MinSize: decl.Size{
 						Width:  pt(30),
 						Height: pt(15),
 					},
 					Text: "Save Settings",
-					Font: Font{
+					Font: decl.Font{
 						Family:    "Segoe UI",
 						PointSize: 10,
 					},
@@ -481,7 +481,7 @@ func (ui *UI) newLogsPage() PageFactoryFunc {
 					},
 				},
 			},
-		}).Create(NewBuilder(parent)); err != nil {
+		}).Create(decl.NewBuilder(parent)); err != nil {
 			err = errors.Wrap(err, "failed to create composite")
 			return nil, err
 		}
@@ -579,29 +579,29 @@ func waitServiceState(ctx context.Context, s *mgr.Service, expectedState svc.Sta
 func RunDialog(owner walk.Form, icon *walk.Icon, title, text string, callback func()) (int, error) {
 	var dlg *walk.Dialog
 	var acceptPB *walk.PushButton
-	font := Font{PointSize: 12, Family: "Segoe UI"}
+	font := decl.Font{PointSize: 12, Family: "Segoe UI"}
 
-	return Dialog{
+	return decl.Dialog{
 		FixedSize:     true,
 		AssignTo:      &dlg,
 		Title:         title,
 		DefaultButton: &acceptPB,
-		MaxSize: Size{
+		MaxSize: decl.Size{
 			Width:  pt(320),
 			Height: pt(180),
 		},
 		Font:   font,
-		Layout: VBox{},
-		Children: []Widget{
-			Composite{
-				Layout: HBox{},
-				Children: []Widget{
-					ImageView{
+		Layout: decl.VBox{},
+		Children: []decl.Widget{
+			decl.Composite{
+				Layout: decl.HBox{},
+				Children: []decl.Widget{
+					decl.ImageView{
 						Image: icon,
 					},
-					VSpacer{},
-					TextLabel{
-						MaxSize: Size{
+					decl.VSpacer{},
+					decl.TextLabel{
+						MaxSize: decl.Size{
 							Width:  pt(320),
 							Height: pt(180),
 						},
@@ -610,11 +610,11 @@ func RunDialog(owner walk.Form, icon *walk.Icon, title, text string, callback fu
 					},
 				},
 			},
-			HSpacer{},
-			Composite{
-				Layout: VBox{},
-				Children: []Widget{
-					PushButton{
+			decl.HSpacer{},
+			decl.Composite{
+				Layout: decl.VBox{},
+				Children: []decl.Widget{
+					decl.PushButton{
 						Font:     font,
 						AssignTo: &acceptPB,
 						Text:     "OK",
