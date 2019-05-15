@@ -55,16 +55,18 @@ type SNMPCheck struct {
 }
 
 type SNMPCheckData struct {
-	Connect       string   `json:"connect"`
-	Port          uint16   `json:"port"`
-	Timeout       float64  `json:"timeout"`
-	Protocol      string   `json:"protocol"`
-	Community     string   `json:"community,omitempty"` // v1, v2
-	Preset        string   `json:"preset"`
-	Oids          []string `json:"oids,omitempty"`
-	SecurityLevel string   `json:"security_level,omitempty"` // v3
-	Username      string   `json:"username,omitempty"`       // v3
-	Password      string   `json:"password,omitempty"`       // v3
+	Connect                string   `json:"connect"`
+	Port                   uint16   `json:"port"`
+	Timeout                float64  `json:"timeout"`
+	Protocol               string   `json:"protocol"`
+	Community              string   `json:"community,omitempty"` // v1, v2
+	Preset                 string   `json:"preset"`
+	Oids                   []string `json:"oids,omitempty"`
+	SecurityLevel          string   `json:"security_level,omitempty"`          // v3
+	AuthenticationProtocol string   `json:"authentication_protocol,omitempty"` // v3
+	PrivacyProtocol        string   `json:"privacy_protocol,omitempty"`        // v3
+	Username               string   `json:"username,omitempty"`                // v3
+	Password               string   `json:"password,omitempty"`                // v3
 }
 
 type Results struct {
