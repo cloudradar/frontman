@@ -41,6 +41,10 @@ type MinValuableConfig struct {
 	HubURL      string   `toml:"hub_url" commented:"true"`
 	HubUser     string   `toml:"hub_user" commented:"true"`
 	HubPassword string   `toml:"hub_password" commented:"true"`
+
+	HubProxy         string `toml:"hub_proxy" commented:"true"`
+	HubProxyUser     string `toml:"hub_proxy_user" commented:"true"`
+	HubProxyPassword string `toml:"hub_proxy_password" commented:"true"`
 }
 
 type Config struct {
@@ -53,11 +57,8 @@ type Config struct {
 
 	MinValuableConfig
 
-	HubGzip                  bool   `toml:"hub_gzip" comment:"enable gzip when sending results to the HUB"`
-	HubProxy                 string `toml:"hub_proxy" commented:"true"`
-	HubProxyUser             string `toml:"hub_proxy_user" commented:"true"`
-	HubProxyPassword         string `toml:"hub_proxy_password" commented:"true"`
-	HubMaxOfflineBufferBytes int    `toml:"hub_max_offline_buffer_bytes" commented:"true"`
+	HubGzip                  bool `toml:"hub_gzip" comment:"enable gzip when sending results to the HUB"`
+	HubMaxOfflineBufferBytes int  `toml:"hub_max_offline_buffer_bytes" commented:"true"`
 
 	ICMPTimeout            float64 `toml:"icmp_timeout" comment:"ICMP ping timeout in seconds"`
 	NetTCPTimeout          float64 `toml:"net_tcp_timeout" comment:"TCP timeout in seconds"`
