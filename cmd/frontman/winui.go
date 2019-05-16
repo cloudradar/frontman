@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/lxn/walk"
@@ -17,8 +16,6 @@ import (
 	"github.com/lxn/win"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/mgr"
 
 	"github.com/cloudradar-monitoring/frontman"
 )
@@ -95,9 +92,31 @@ func (se *setupErrors) Describe() string {
 	return buf.String()
 }
 
-// CheckSaveAndReload trying to test the Hub address and credentials from the config.
+// saveAndReloadProxySettings saves the proxy settings to the config and reloads the service
+func (ui *UI) saveAndReloadProxySettings() {
+	setupStatus := &setupErrors{}
+	fmt.Printf("XXX saving proxy cfg %+v", ui.frontman.Config.MinValuableConfig)
+	err := frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
+	if err != nil {
+		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
+		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+	}
+}
+
+// saveAndReloadLogSettings saves the log settings to the config and reloads the service
+func (ui *UI) saveAndReloadLogSettings() {
+	setupStatus := &setupErrors{}
+	err := frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
+	if err != nil {
+		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
+		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+	}
+}
+
+// testSaveAndReloadHubSettings trying to test the Hub address and credentials from the config.
 // If testOnly is true do not show alert message about the status (used to test the existing config on start).
-func (ui *UI) CheckSaveAndReload(testOnly bool) {
+func (ui *UI) testSaveAndReloadHubSettings(testOnly bool) {
+	fmt.Println("testSaveAndReloadHubSettings")
 	saveButtonText := ui.SaveButton.Text()
 	defer func() {
 		ui.SaveButton.SetText(saveButtonText)
@@ -117,7 +136,7 @@ func (ui *UI) CheckSaveAndReload(testOnly bool) {
 		setupStatus.SetConnectionError(err)
 		ui.StatusBar.SetText("Status: failed to connect to the Hub")
 		ui.StatusBar.SetIcon(ui.ErrorIcon)
-		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
 		return
 	}
 	if testOnly {
@@ -137,50 +156,23 @@ func (ui *UI) CheckSaveAndReload(testOnly bool) {
 	err = frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
 	if err != nil {
 		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
-		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
 		return
 	}
 
-	m, err := mgr.Connect()
+	err = ui.reloadService()
 	if err != nil {
-		setupStatus.SetServiceError(errors.Wrap(err, "Failed to connect to Windows Service Manager"))
-		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
-		return
+		setupStatus.SetServiceError(errors.Wrap(err, err.Error()))
+		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+	} else {
+		if ui.installationMode {
+			runDialog(ui.MainWindow, ui.SuccessIcon, "Success", setupStatus.Describe(), func() {
+				os.Exit(0)
+			})
+		} else {
+			runDialog(ui.MainWindow, ui.SuccessIcon, "Success", setupStatus.Describe(), nil)
+		}
 	}
-	defer m.Disconnect()
-
-	s, err := m.OpenService("frontman")
-	if err != nil {
-		setupStatus.SetServiceError(errors.Wrap(err, "Failed to find Frontman service"))
-		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
-		return
-	}
-	defer s.Close()
-
-	ui.SaveButton.SetText("Stopping the service...")
-
-	if err := stopService(ctx, s); err != nil {
-		setupStatus.SetServiceError(errors.Wrap(err, "Failed to stop Frontman service"))
-		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
-		return
-	}
-
-	ui.SaveButton.SetText("Starting the service...")
-	if err := startService(ctx, s); err != nil {
-		setupStatus.SetServiceError(errors.Wrap(err, "Failed to start Frontman service"))
-		RunDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
-		return
-	}
-
-	ui.StatusBar.SetText("Status: successfully connected to the Hub")
-	ui.StatusBar.SetIcon(ui.SuccessIcon)
-	if ui.installationMode {
-		RunDialog(ui.MainWindow, ui.SuccessIcon, "Success", setupStatus.Describe(), func() {
-			os.Exit(0)
-		})
-		return
-	}
-	RunDialog(ui.MainWindow, ui.SuccessIcon, "Success", setupStatus.Describe(), nil)
 }
 
 // windowsShowSettingsUI draws a window and waits until it will be closed.
@@ -237,7 +229,7 @@ func windowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
 	ui.MainWindow = mpmw
 
 	go func() {
-		ui.CheckSaveAndReload(true)
+		ui.testSaveAndReloadHubSettings(true)
 	}()
 
 	// disable window resize
@@ -317,7 +309,7 @@ func (ui *UI) newHubLoginPage() PageFactoryFunc {
 							Font:               ui.DefaultFont,
 							OnClicked: func() {
 								ui.DataBinder.Submit()
-								ui.CheckSaveAndReload(false)
+								ui.testSaveAndReloadHubSettings(false)
 							},
 						},
 					},
@@ -404,11 +396,11 @@ func (ui *UI) newProxyPage() PageFactoryFunc {
 							},
 							AlwaysConsumeSpace: true,
 							AssignTo:           &ui.SaveButton,
-							Text:               "Test and Save",
+							Text:               "Save Settings",
 							Font:               ui.DefaultFont,
 							OnClicked: func() {
 								ui.DataBinder.Submit()
-								ui.CheckSaveAndReload(false)
+								ui.saveAndReloadProxySettings()
 							},
 						},
 					},
@@ -477,7 +469,7 @@ func (ui *UI) newLogsPage() PageFactoryFunc {
 					},
 					OnClicked: func() {
 						ui.DataBinder.Submit()
-						ui.CheckSaveAndReload(false)
+						ui.saveAndReloadLogSettings()
 					},
 				},
 			},
@@ -524,57 +516,7 @@ func (ui *UI) newLogsPage() PageFactoryFunc {
 	}
 }
 
-func startService(ctx context.Context, s *mgr.Service) error {
-	err := s.Start("is", "manual-started")
-	if err != nil {
-		err = errors.Wrap(err, "could not schedule a service to start")
-		return err
-	}
-
-	return waitServiceState(ctx, s, svc.Running)
-}
-
-func stopService(ctx context.Context, s *mgr.Service) error {
-	status, err := s.Control(svc.Stop)
-	if err != nil {
-		if strings.Contains(err.Error(), "has not been started") {
-			return nil
-		}
-		err = errors.Wrap(err, "could not schedule a service to stop")
-		return err
-	}
-	if status.State == svc.Stopped {
-		return nil
-	}
-	return waitServiceState(ctx, s, svc.Stopped)
-}
-
-// waitServiceState checks the current state of a service and waits until it will match
-// the expectedState, or a context deadline appearing first.
-func waitServiceState(ctx context.Context, s *mgr.Service, expectedState svc.State) error {
-	for {
-		select {
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				err := errors.Wrap(ctx.Err(), "timeout waiting for service to stop")
-				return err
-			}
-			return nil
-		default:
-			currentStatus, err := s.Query()
-			if err != nil {
-				err := errors.Wrap(err, "could not retrieve service status")
-				return err
-			}
-			if currentStatus.State == expectedState {
-				return nil
-			}
-			time.Sleep(300 * time.Millisecond)
-		}
-	}
-}
-
-func RunDialog(owner walk.Form, icon *walk.Icon, title, text string, callback func()) (int, error) {
+func runDialog(owner walk.Form, icon *walk.Icon, title, text string, callback func()) (int, error) {
 	var dlg *walk.Dialog
 	var acceptPB *walk.PushButton
 	font := decl.Font{PointSize: 12, Family: "Segoe UI"}
