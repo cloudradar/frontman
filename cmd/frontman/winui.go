@@ -95,11 +95,12 @@ func (se *setupErrors) Describe() string {
 // saveAndReloadProxySettings saves the proxy settings to the config and reloads the service
 func (ui *UI) saveAndReloadProxySettings() {
 	setupStatus := &setupErrors{}
-	fmt.Printf("XXX saving proxy cfg %+v", ui.frontman.Config.MinValuableConfig)
 	err := frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
 	if err != nil {
 		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
 		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
+	} else {
+		runDialog(ui.MainWindow, ui.SuccessIcon, "Success", "Your Proxy Settings successfully saved. To test connection, go to Hub Settings", nil)
 	}
 }
 
