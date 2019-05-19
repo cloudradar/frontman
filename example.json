@@ -155,36 +155,36 @@
       "community": "public",
       "preset": "basedata"
   }},{
-    "checkUUID": "snmp_basedata_v3_noauth",
+    "checkUUID": "snmp_basedata_v3_noAuthNoPriv",
     "check": {
       "connect": "172.16.72.143",
       "port": 161,
       "timeout": 1.0,
       "protocol": "v3",
       "preset": "basedata",
-      "security_level": "noauth",
+      "security_level": "noAuthNoPriv",
       "username": "noAuthNoPrivUser"
   }},{
-    "checkUUID": "snmp_basedata_v3_auth",
+    "checkUUID": "snmp_basedata_v3_authNoPriv",
     "check": {
       "connect": "172.16.72.143",
       "port": 161,
       "timeout": 1.0,
       "protocol": "v3",
       "preset": "basedata",
-      "security_level": "auth",
+      "security_level": "authNoPriv",
       "authentication_protocol": "sha",
       "username": "authOnlyUser",
       "password": "password"
   }},{
-    "checkUUID": "snmp_basedata_v3_priv",
+    "checkUUID": "snmp_basedata_v3_authPriv",
     "check": {
       "connect": "172.16.72.143",
       "port": 161,
       "timeout": 1.0,
       "protocol": "v3",
       "preset": "basedata",
-      "security_level": "priv",
+      "security_level": "authPriv",
       "authentication_protocol": "sha",
       "privacy_protocol": "des",
       "username": "authPrivUser",

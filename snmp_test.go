@@ -112,8 +112,8 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
 }
 
-// test SNMP v3 noauth against snmpd
-func TestSNMPv3NoAuth(t *testing.T) {
+// test SNMP v3 noAuthNoPriv against snmpd
+func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// createUser noAuthNoPrivUser
@@ -124,14 +124,14 @@ func TestSNMPv3NoAuth(t *testing.T) {
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_noauth",
+			UUID: "snmp_basedata_v3_noAuthNoPriv",
 			Check: SNMPCheckData{
 				Connect:       snmpdIP,
 				Port:          161,
 				Timeout:       1.0,
 				Protocol:      "v3",
 				Preset:        "basedata",
-				SecurityLevel: "noauth",
+				SecurityLevel: "noAuthNoPriv",
 				Username:      "noAuthNoPrivUser",
 			},
 		}},
@@ -148,22 +148,22 @@ func TestSNMPv3NoAuth(t *testing.T) {
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
-// test SNMP v3 noauth against snmpd with unknown username
-func TestSNMPv3NoAuthUnknownUser(t *testing.T) {
+// test SNMP v3 noAuthNoPriv against snmpd with unknown username
+func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_noauth_unknown_user",
+			UUID: "snmp_basedata_v3_noAuthNoPriv_unknown_user",
 			Check: SNMPCheckData{
 				Connect:       snmpdIP,
 				Port:          161,
 				Timeout:       1.0,
 				Protocol:      "v3",
 				Preset:        "basedata",
-				SecurityLevel: "noauth",
+				SecurityLevel: "noAuthNoPriv",
 				Username:      "noSuchUsername",
 			},
 		}},
@@ -175,8 +175,8 @@ func TestSNMPv3NoAuthUnknownUser(t *testing.T) {
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
 }
 
-// test SNMP v3 auth against snmpd
-func TestSNMPv3Auth(t *testing.T) {
+// test SNMP v3 authNoPriv against snmpd
+func TestSNMPv3AuthNoPriv(t *testing.T) {
 	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// createUser authOnlyUser  SHA "password"
@@ -194,7 +194,7 @@ func TestSNMPv3Auth(t *testing.T) {
 				Timeout:                1.0,
 				Protocol:               "v3",
 				Preset:                 "basedata",
-				SecurityLevel:          "auth",
+				SecurityLevel:          "authNoPriv",
 				AuthenticationProtocol: "sha",
 				Username:               "authOnlyUser",
 				Password:               "password",
@@ -213,22 +213,22 @@ func TestSNMPv3Auth(t *testing.T) {
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
-// test SNMP v3 auth against snmpd with wrong password
-func TestSNMPv3AuthWrongPassword(t *testing.T) {
+// test SNMP v3 authNoPriv against snmpd with wrong password
+func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_auth",
+			UUID: "snmp_basedata_v3_authNoPriv",
 			Check: SNMPCheckData{
 				Connect:                snmpdIP,
 				Port:                   161,
 				Timeout:                1.0,
 				Protocol:               "v3",
 				Preset:                 "basedata",
-				SecurityLevel:          "auth",
+				SecurityLevel:          "authNoPriv",
 				AuthenticationProtocol: "sha",
 				Username:               "authOnlyUser",
 				Password:               "wrongpassword",
@@ -243,8 +243,8 @@ func TestSNMPv3AuthWrongPassword(t *testing.T) {
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
 }
 
-// test SNMP v3 priv against snmpd
-func TestSNMPv3Priv(t *testing.T) {
+// test SNMP v3 authPriv against snmpd
+func TestSNMPv3AuthPriv(t *testing.T) {
 	skipSNMP(t)
 	// necessary snmpd.conf changes:
 	// createUser authPrivUser  SHA "password" DES
@@ -262,7 +262,7 @@ func TestSNMPv3Priv(t *testing.T) {
 				Timeout:                1.0,
 				Protocol:               "v3",
 				Preset:                 "basedata",
-				SecurityLevel:          "priv",
+				SecurityLevel:          "authPriv",
 				AuthenticationProtocol: "sha",
 				PrivacyProtocol:        "des",
 				Username:               "authPrivUser",
