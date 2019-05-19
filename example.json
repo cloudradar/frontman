@@ -175,7 +175,7 @@
       "security_level": "authNoPriv",
       "authentication_protocol": "sha",
       "username": "authOnlyUser",
-      "password": "password"
+      "authentication_password": "password"
   }},{
     "checkUUID": "snmp_basedata_v3_authPriv",
     "check": {
@@ -188,6 +188,7 @@
       "authentication_protocol": "sha",
       "privacy_protocol": "des",
       "username": "authPrivUser",
-      "password": "password"
+      "authentication_password": "auth_password",
+      "privacy_password": "priv_password"
   }}]
 }

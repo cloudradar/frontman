@@ -195,9 +195,9 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 				Protocol:               "v3",
 				Preset:                 "basedata",
 				SecurityLevel:          "authNoPriv",
-				AuthenticationProtocol: "sha",
 				Username:               "authOnlyUser",
-				Password:               "password",
+				AuthenticationProtocol: "sha",
+				AuthenticationPassword: "password",
 			},
 		}},
 	}
@@ -229,9 +229,9 @@ func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 				Protocol:               "v3",
 				Preset:                 "basedata",
 				SecurityLevel:          "authNoPriv",
-				AuthenticationProtocol: "sha",
 				Username:               "authOnlyUser",
-				Password:               "wrongpassword",
+				AuthenticationProtocol: "sha",
+				AuthenticationPassword: "wrongpassword",
 			},
 		}},
 	}
@@ -263,10 +263,11 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 				Protocol:               "v3",
 				Preset:                 "basedata",
 				SecurityLevel:          "authPriv",
-				AuthenticationProtocol: "sha",
-				PrivacyProtocol:        "des",
 				Username:               "authPrivUser",
-				Password:               "password",
+				AuthenticationProtocol: "sha",
+				AuthenticationPassword: "password",
+				PrivacyProtocol:        "des",
+				PrivacyPassword:        "password", // XXX
 			},
 		}},
 	}
