@@ -119,6 +119,12 @@ func main() {
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
+	go func() {
+		if err := frontman.ServeHTTP(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
 	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
