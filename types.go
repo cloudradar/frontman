@@ -63,10 +63,11 @@ type SNMPCheckData struct {
 	Preset                 string   `json:"preset"`
 	Oids                   []string `json:"oids,omitempty"`
 	SecurityLevel          string   `json:"security_level,omitempty"`          // v3
-	AuthenticationProtocol string   `json:"authentication_protocol,omitempty"` // v3
-	PrivacyProtocol        string   `json:"privacy_protocol,omitempty"`        // v3
 	Username               string   `json:"username,omitempty"`                // v3
-	Password               string   `json:"password,omitempty"`                // v3
+	AuthenticationProtocol string   `json:"authentication_protocol,omitempty"` // v3
+	AuthenticationPassword string   `json:"authentication_password,omitempty"` // v3
+	PrivacyProtocol        string   `json:"privacy_protocol,omitempty"`        // v3
+	PrivacyPassword        string   `json:"privacy_password,omitempty"`        // v3
 }
 
 type Results struct {

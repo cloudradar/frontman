@@ -259,11 +259,11 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 			return nil, err
 		}
 		switch check.SecurityLevel {
-		case "noauth":
+		case "noAuthNoPriv":
 			params.MsgFlags = gosnmp.NoAuthNoPriv
-		case "auth":
+		case "authNoPriv":
 			params.MsgFlags = gosnmp.AuthNoPriv
-		case "priv":
+		case "authPriv":
 			params.MsgFlags = gosnmp.AuthPriv
 		default:
 			return nil, fmt.Errorf("invalid security_level configuration value '%s'", check.SecurityLevel)
@@ -299,13 +299,13 @@ func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityPa
 	}
 
 	switch check.SecurityLevel {
-	case "noauth":
+	case "noAuthNoPriv":
 		sp.AuthenticationProtocol = gosnmp.NoAuth
-	case "auth":
-		sp.AuthenticationPassphrase = check.Password
-	case "priv":
-		sp.AuthenticationPassphrase = check.Password
-		sp.PrivacyPassphrase = check.Password
+	case "authNoPriv":
+		sp.AuthenticationPassphrase = check.AuthenticationPassword
+	case "authPriv":
+		sp.AuthenticationPassphrase = check.AuthenticationPassword
+		sp.PrivacyPassphrase = check.PrivacyPassword
 	default:
 		err = fmt.Errorf("invalid security_level configuration value '%s'", check.SecurityLevel)
 	}
