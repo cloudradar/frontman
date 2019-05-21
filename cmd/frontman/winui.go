@@ -117,7 +117,6 @@ func (ui *UI) saveAndReloadLogSettings() {
 // testSaveAndReloadHubSettings trying to test the Hub address and credentials from the config.
 // If testOnly is true do not show alert message about the status (used to test the existing config on start).
 func (ui *UI) testSaveAndReloadHubSettings(testOnly bool) {
-	fmt.Println("testSaveAndReloadHubSettings")
 	saveButtonText := ui.SaveButton.Text()
 	defer func() {
 		ui.SaveButton.SetText(saveButtonText)
