@@ -1,11 +1,12 @@
 package frontman
 
 // In order to run tests, set up snmpd somewhere and
-// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v
+// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
 
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,9 +49,8 @@ func TestSNMPv1(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
@@ -79,10 +79,65 @@ func TestSNMPv2(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+}
+
+// test SNMP v2 against snmpd
+func TestSNMPv2Bandwidth(t *testing.T) {
+	// necessary snmpd.conf changes:
+	// view   systemonly  included   .1
+	skipSNMP(t)
+
+	delaySeconds := 1.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_bandwidth",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   1.0,
+				Protocol:  "v2",
+				Community: "public",
+				Preset:    "bandwidth",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
+
+	// NOTE: test makes some assumptions that may be hard to reproduce
+	iface := res.Measurements["2"].(map[string]interface{})
+	require.Equal(t, uint(1000), iface["ifSpeed_mbps"])
+	require.Equal(t, "enp0s31f6", iface["ifName"])
+	require.Equal(t, "enp0s31f6", iface["ifDescr"])
+	require.Equal(t, 2, iface["ifIndex"])
+
+	// do 2nd request and check delta values
+	time.Sleep(time.Duration(delaySeconds) * time.Second)
+
+	resultsChan = make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res = <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
+
+	iface = res.Measurements["2"].(map[string]interface{})
+
+	if _, ok := iface["ifIn_Bps"]; !ok {
+		t.Errorf("ifIn_Bps key missing")
+	}
+	if _, ok := iface["ifInUtilization_percent"]; !ok {
+		t.Errorf("ifInUtilization_percent key missing")
+	}
 }
 
 // test SNMP v2 invalid community against snmpd
@@ -142,9 +197,8 @@ func TestSNMPv3NoAuth(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
@@ -207,9 +261,8 @@ func TestSNMPv3Auth(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
@@ -276,8 +329,24 @@ func TestSNMPv3Priv(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 
-	// test against default values from ubuntu snmpd.conf
+	// test against default values from snmpd.conf
 	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "ubuntu", res.Measurements["system.hostname"])
 	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+}
+
+func TestOidToHumanReadable(t *testing.T) {
+	v, suffix, err := oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.1")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 1, suffix)
+	assert.Equal(t, "ifOperStatus", v)
+
+	v, suffix, err = oidToHumanReadable(".1.3.6.1.2.1.2.2.1.8.2")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 2, suffix)
+	assert.Equal(t, "ifOperStatus", v)
+}
+
+func TestDelta(t *testing.T) {
+	assert.Equal(t, uint(1), delta(1, 2))
+	assert.Equal(t, uint(1), delta(2, 1))
 }
