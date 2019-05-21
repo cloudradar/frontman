@@ -47,44 +47,37 @@ func InputFromFile(filename string) (*Input, error) {
 	return &i, nil
 }
 
-func (fm *Frontman) initHubClientOnce(reinit bool) {
-	initClient := func() {
-		transport := &http.Transport{
-			ResponseHeaderTimeout: 15 * time.Second,
-		}
-		if fm.rootCAs != nil {
-			transport.TLSClientConfig = &tls.Config{
-				RootCAs: fm.rootCAs,
-			}
-		}
-		if fm.Config.HubProxy != "" {
-			if !strings.HasPrefix(fm.Config.HubProxy, "http://") {
-				fm.Config.HubProxy = "http://" + fm.Config.HubProxy
-			}
-			proxyURL, err := url.Parse(fm.Config.HubProxy)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"url": fm.Config.HubProxy,
-				}).Warningln("failed to parse hub_proxy URL")
-			} else {
-				if fm.Config.HubProxyUser != "" {
-					proxyURL.User = url.UserPassword(fm.Config.HubProxyUser, fm.Config.HubProxyPassword)
-				}
-				transport.Proxy = func(_ *http.Request) (*url.URL, error) {
-					return proxyURL, nil
-				}
-			}
-		}
-		fm.hubClient = &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
+func (fm *Frontman) initHubClient() {
+	transport := &http.Transport{
+		ResponseHeaderTimeout: 15 * time.Second,
+	}
+	if fm.rootCAs != nil {
+		transport.TLSClientConfig = &tls.Config{
+			RootCAs: fm.rootCAs,
 		}
 	}
-	if reinit {
-		initClient()
-		return
+	if fm.Config.HubProxy != "" {
+		if !strings.HasPrefix(fm.Config.HubProxy, "http://") {
+			fm.Config.HubProxy = "http://" + fm.Config.HubProxy
+		}
+		proxyURL, err := url.Parse(fm.Config.HubProxy)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"url": fm.Config.HubProxy,
+			}).Warningln("failed to parse hub_proxy URL")
+		} else {
+			if fm.Config.HubProxyUser != "" {
+				proxyURL.User = url.UserPassword(fm.Config.HubProxyUser, fm.Config.HubProxyPassword)
+			}
+			transport.Proxy = func(_ *http.Request) (*url.URL, error) {
+				return proxyURL, nil
+			}
+		}
 	}
-	fm.hubClientOnce.Do(initClient)
+	fm.hubClient = &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+	}
 }
 
 // CheckHubCredentials performs credentials check for a Hub config, returning errors that reference
@@ -95,7 +88,7 @@ func (fm *Frontman) initHubClientOnce(reinit bool) {
 // * for TOML: CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
 // * for WinUI: CheckHubCredentials(ctx, "URL", "User", "Password")
 func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldHubUser, fieldHubPassword string) error {
-	fm.initHubClientOnce(true)
+	fm.initHubClient()
 
 	if fm.Config.HubURL == "" {
 		return newEmptyFieldError(fieldHubURL)
@@ -158,7 +151,7 @@ func newFieldError(name string, err error) error {
 }
 
 func (fm *Frontman) InputFromHub() (*Input, error) {
-	fm.initHubClientOnce(false)
+	fm.initHubClient()
 
 	if fm.Config.HubURL == "" {
 		return nil, newEmptyFieldError("hub_url")
@@ -214,7 +207,7 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 }
 
 func (fm *Frontman) PostResultsToHub(results []Result) error {
-	fm.initHubClientOnce(false)
+	fm.initHubClient()
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	b, err := json.Marshal(Results{
