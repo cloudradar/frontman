@@ -24,15 +24,23 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	decoder := json.NewDecoder(req.Body)
-	var t Input
-	err := decoder.Decode(&t)
+	var inputConfig Input
+	err := decoder.Decode(&inputConfig)
 	if err != nil {
 		log.Println("json decode error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Printf("%+v\n", t)
-	// XXX perform the checks, collect result and pass it back as json
+
+	// perform the checks, collect result and pass it back as json
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	resultsChan := make(chan Result, 100)
+	fm.processInput(&inputConfig, resultsChan)
+	res := <-resultsChan
+
+	enc, _ := json.Marshal(res)
+	w.Write(enc)
 }
 
 func ServeHTTP() error {
