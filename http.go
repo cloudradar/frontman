@@ -2,8 +2,10 @@ package frontman
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func pingHandler(w http.ResponseWriter, req *http.Request) {
@@ -43,10 +45,25 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write(enc)
 }
 
-func ServeHTTP() error {
-	log.Println("ServeHTTP !")
+func ServeWeb(cfg HTTPListenerConfig) error {
+	// XXX drop http:// prfix from address
+	pos := strings.Index(cfg.HTTPListen, "://")
+	if pos == -1 {
+		return fmt.Errorf("invalid address in http_listen: '%s'", cfg.HTTPListen)
+	}
+	protocol := cfg.HTTPListen[0:pos]
+	address := cfg.HTTPListen[pos+3:]
+	log.Println("ServeWeb", protocol+"://"+address)
 	http.HandleFunc("/ping", pingHandler)
 	http.HandleFunc("/check", checkHandler)
-	//err := http.ListenAndServeTLS(":443", "server.crt", "server.key", nil)
-	return http.ListenAndServe(":8080", nil)
+	var err error
+	switch protocol {
+	case "http":
+		err = http.ListenAndServe(address, nil)
+	case "https":
+		err = http.ListenAndServeTLS(":443", "server.crt", "server.key", nil)
+	default:
+		return fmt.Errorf("invalid protocol: '%s'", protocol)
+	}
+	return err
 }
