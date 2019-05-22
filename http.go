@@ -7,8 +7,8 @@ import (
 )
 
 func pingHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("pong\n"))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"alive": true}`))
 }
 
 func checkHandler(w http.ResponseWriter, req *http.Request) {
@@ -27,7 +27,9 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	var t Input
 	err := decoder.Decode(&t)
 	if err != nil {
-		panic(err)
+		log.Println("json decode error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	log.Printf("%+v\n", t)
 	// XXX perform the checks, collect result and pass it back as json
