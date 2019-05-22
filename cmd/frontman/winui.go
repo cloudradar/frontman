@@ -75,7 +75,6 @@ func (se *setupErrors) Describe() string {
 		fmt.Fprintf(buf, "Hub connection failed: %v", se.connectionError)
 		return buf.String()
 	}
-	fmt.Fprintln(buf, "Hub connection succeeded.")
 
 	if se.configError != nil {
 		fmt.Fprintf(buf, "Failed to save settings: %v", se.configError)
@@ -117,7 +116,6 @@ func (ui *UI) saveAndReloadLogSettings() {
 // testSaveAndReloadHubSettings trying to test the Hub address and credentials from the config.
 // If testOnly is true do not show alert message about the status (used to test the existing config on start).
 func (ui *UI) testSaveAndReloadHubSettings(testOnly bool) {
-	fmt.Println("testSaveAndReloadHubSettings")
 	saveButtonText := ui.SaveButton.Text()
 	defer func() {
 		ui.SaveButton.SetText(saveButtonText)
@@ -140,14 +138,16 @@ func (ui *UI) testSaveAndReloadHubSettings(testOnly bool) {
 		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
 		return
 	}
+
+	// otherwise - provide a feedback for user and set the status
+	ui.StatusBar.SetText("Status: successfully connected to the Hub")
+	ui.StatusBar.SetIcon(ui.SuccessIcon)
+
 	if testOnly {
 		// in case we running this inside msi installer, just exit
 		if ui.installationMode {
 			os.Exit(0)
 		}
-		// otherwise - provide a feedback for user and set the status
-		ui.StatusBar.SetText("Status: successfully connected to the Hub")
-		ui.StatusBar.SetIcon(ui.SuccessIcon)
 		return
 	}
 
