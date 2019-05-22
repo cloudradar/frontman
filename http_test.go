@@ -1,6 +1,7 @@
 package frontman
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -40,7 +41,22 @@ func TestHttpCheckHandler(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 
-	// XXX result should be json output from webChecks
-	expected := `{"alive": true}`
-	assert.Equal(t, expected, rr.Body.String())
+	var f interface{}
+	err = json.Unmarshal([]byte(rr.Body.Bytes()), &f)
+	assert.Equal(t, nil, err)
+	dec := f.(map[string]interface{})
+	measurements := dec["measurements"].(map[string]interface{})
+
+	assert.Equal(t, nil, dec["message"])
+	assert.Equal(t, "webCheck", dec["checkType"])
+	assert.Equal(t, "web_head_status_matched", dec["checkUuid"])
+	assert.Equal(t, 200., measurements["http.head.httpStatusCode"])
+	assert.Equal(t, 1., measurements["http.head.success"])
+	assert.Equal(t, map[string]interface{}{
+		"dontFollowRedirects": false,
+		"expectedHttpStatus":  200.,
+		"method":              "head",
+		"searchHtmlSource":    false,
+		"url":                 "https://www.google.com",
+	}, dec["check"])
 }
