@@ -16,8 +16,10 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
-	// XXX 2. stop if content type is not application/json
+	if req.Header.Get("Content-type") != "application/json" {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -28,8 +30,7 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 	log.Printf("%+v\n", t)
-
-	// w.Write([]byte(t)
+	// XXX perform the checks, collect result and pass it back as json
 }
 
 func ServeHTTP() error {
