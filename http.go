@@ -61,7 +61,7 @@ func ServeWeb(cfg HTTPListenerConfig) error {
 	case "http":
 		err = http.ListenAndServe(address, nil)
 	case "https":
-		err = http.ListenAndServeTLS(":443", "server.crt", "server.key", nil)
+		err = http.ListenAndServeTLS(":443", cfg.HTTPTLSCert, cfg.HTTPTLSKey, nil)
 	default:
 		return fmt.Errorf("invalid protocol: '%s'", protocol)
 	}
