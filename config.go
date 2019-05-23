@@ -92,7 +92,6 @@ type HTTPListenerConfig struct {
 	HTTPAuthUser     string `toml:"http_auth_user" comment:"Username for the http basic authentication. If omitted authentication is disabled"`
 	HTTPAuthPassword string `toml:"http_auth_password" comment:"Password for the http basic authentication."`
 	HTTPAccessLog    string `toml:"http_access_log" comment:"Log http requests"`
-	HTTPErrorLog     string `toml:"http_error_log" comment:"Log http errors"`
 }
 
 func init() {

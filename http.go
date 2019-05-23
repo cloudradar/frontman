@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/goji/httpauth"
 	"github.com/gorilla/handlers"
 )
 
@@ -49,8 +49,43 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write(enc)
 }
 
-func (listener *HTTPListenerConfig) ServeWeb() error {
-	// XXX drop http:// prfix from address
+func (listener *HTTPListenerConfig) middlewareLogging(h http.Handler) http.Handler {
+	var logFile *os.File
+	if listener.HTTPAccessLog != "" {
+		absFile, err := filepath.Abs(listener.HTTPAccessLog)
+		if err != nil {
+			log.Fatal(err)
+		}
+		path := filepath.Dir(absFile)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			log.Println("Creating directory for http log:", path)
+			err = os.MkdirAll(path, os.ModePerm)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		logFile, err = os.OpenFile(absFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		logFile = os.Stdout
+	}
+	return handlers.LoggingHandler(logFile, h)
+}
+
+func (listener HTTPListenerConfig) middlewareAuth(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, pass, _ := r.BasicAuth()
+		if user != listener.HTTPAuthUser || pass != listener.HTTPAuthPassword {
+			http.Error(w, "Unauthorized.", http.StatusUnauthorized)
+			return
+		}
+		fn(w, r)
+	}
+}
+
+func (listener HTTPListenerConfig) ServeWeb() error {
 	pos := strings.Index(listener.HTTPListen, "://")
 	if pos == -1 {
 		return fmt.Errorf("invalid address in http_listen: '%s'", listener.HTTPListen)
@@ -58,12 +93,8 @@ func (listener *HTTPListenerConfig) ServeWeb() error {
 	protocol := listener.HTTPListen[0:pos]
 	address := listener.HTTPListen[pos+3:]
 	log.Println("ServeWeb", protocol+"://"+address)
-	http.HandleFunc("/ping", pingHandler)
-	if listener.HTTPAuthUser != "" {
-		http.Handle("/check", handlers.LoggingHandler(os.Stdout, httpauth.SimpleBasicAuth(listener.HTTPAuthUser, listener.HTTPAuthPassword)(http.HandlerFunc(checkHandler))))
-	} else {
-		http.Handle("/check", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(checkHandler)))
-	}
+	http.Handle("/ping", listener.middlewareLogging(http.HandlerFunc(pingHandler)))
+	http.Handle("/check", listener.middlewareLogging(listener.middlewareAuth(checkHandler)))
 	var err error
 	switch protocol {
 	case "http":
