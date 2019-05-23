@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/goji/httpauth"
 )
 
 func pingHandler(w http.ResponseWriter, req *http.Request) {
@@ -55,7 +57,11 @@ func ServeWeb(cfg HTTPListenerConfig) error {
 	address := cfg.HTTPListen[pos+3:]
 	log.Println("ServeWeb", protocol+"://"+address)
 	http.HandleFunc("/ping", pingHandler)
-	http.HandleFunc("/check", checkHandler)
+	if cfg.HTTPAuthUser != "" {
+		http.Handle("/check", httpauth.SimpleBasicAuth(cfg.HTTPAuthUser, cfg.HTTPAuthPassword)(http.HandlerFunc(checkHandler)))
+	} else {
+		http.HandleFunc("/check", checkHandler)
+	}
 	var err error
 	switch protocol {
 	case "http":
