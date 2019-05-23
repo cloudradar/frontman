@@ -121,7 +121,7 @@ func main() {
 
 	if cfg.HTTPListener.HTTPListen != "" {
 		go func() {
-			if err := frontman.ServeWeb(cfg.HTTPListener); err != nil {
+			if err := cfg.HTTPListener.ServeWeb(); err != nil {
 				log.Fatal(err)
 			}
 		}()
