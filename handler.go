@@ -825,16 +825,5 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 }
 
 func joinStrings(a, b []string) []string {
-	ab := make([]string, 0, len(a)+len(b))
-	set := make(map[string]struct{}, len(ab))
-	for _, str := range a {
-		set[str] = struct{}{}
-	}
-	for _, str := range b {
-		set[str] = struct{}{}
-	}
-	for str := range set {
-		ab = append(ab, str)
-	}
-	return ab
+	return append(a, b...)
 }
