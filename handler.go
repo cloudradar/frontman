@@ -432,9 +432,8 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 
 	// since fm.Run calls fm.RunOnce over and over again, we need this check here
 	if !fm.hostInfoSent {
-		// Only try to collect HostInfo when HostInfo or SystemFields are defined in config
-		fields := joinStrings(fm.Config.HostInfo, fm.Config.SystemFields)
-		if len(fields) > 0 {
+		// Only try to collect HostInfo when defined in config
+		if len(fm.Config.HostInfo) > 0 {
 			hostInfo, err = fm.HostInfoResults()
 			if err != nil {
 				log.Warnf("Failed to fetch HostInfo: %s", err)
@@ -749,8 +748,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		errs = append(errs, err.Error())
 	}
 
-	fields := joinStrings(fm.Config.HostInfo, fm.Config.SystemFields)
-	for _, field := range fields {
+	for _, field := range fm.Config.HostInfo {
 		switch strings.ToLower(field) {
 		case "os_kernel":
 			if info != nil {
@@ -829,8 +827,4 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 
 	ipAddr := ipAddrs[0]
 	return &ipAddr, nil
-}
-
-func joinStrings(a, b []string) []string {
-	return append(a, b...)
 }

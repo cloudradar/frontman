@@ -250,7 +250,8 @@ func GenerateDefaultConfigFile(mvc *MinValuableConfig, configFilePath string) er
 	return nil
 }
 
-func (cfg *Config) validate() error {
+// auto-corrects some config values
+func (cfg *Config) fixup() error {
 	if cfg.HubProxy != "" {
 		if !strings.HasPrefix(cfg.HubProxy, "http") {
 			cfg.HubProxy = "http://" + cfg.HubProxy
@@ -260,6 +261,9 @@ func (cfg *Config) validate() error {
 			return fmt.Errorf("failed to parse 'hub_proxy' URL")
 		}
 	}
+
+	// backwards compatibility with old configs. system_fields is deprecated!
+	cfg.HostInfo = append(cfg.HostInfo, cfg.SystemFields...)
 
 	return nil
 }
@@ -285,7 +289,7 @@ func HandleAllConfigSetup(configFilePath string) (*Config, error) {
 		return nil, fmt.Errorf("config load error: %s", err.Error())
 	}
 
-	if err = cfg.validate(); err != nil {
+	if err = cfg.fixup(); err != nil {
 		return nil, err
 	}
 
