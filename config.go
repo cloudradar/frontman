@@ -91,7 +91,7 @@ type HTTPListenerConfig struct {
 	HTTPTLSCert      string `toml:"http_tls_cert" comment:"Certificate for https connections"`
 	HTTPAuthUser     string `toml:"http_auth_user" comment:"Username for the http basic authentication. If omitted authentication is disabled"`
 	HTTPAuthPassword string `toml:"http_auth_password" comment:"Password for the http basic authentication."`
-	HTTPAccessLog    string `toml:"http_access_log" comment:"Log http requests"`
+	HTTPAccessLog    string `toml:"http_access_log" comment:"Log http requests. On windows slash must be escaped like \"C:\\\\access.log\""`
 }
 
 func init() {
