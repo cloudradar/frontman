@@ -12,6 +12,9 @@ type Uniquify interface {
 	Call(id string, callable func() error) error
 }
 
+// verify uniquify implements Uniquify
+var _ Uniquify = (*uniquify)(nil)
+
 // NewUniquify returns a new thread-safe uniquify object.
 func NewUniquify() Uniquify {
 	return &uniquify{
