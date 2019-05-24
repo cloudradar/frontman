@@ -39,7 +39,10 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// perform the checks, collect result and pass it back as json
-	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 	resultsChan := make(chan Result, 100)
 	fm.processInput(&inputConfig, resultsChan)
