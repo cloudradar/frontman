@@ -19,7 +19,7 @@ jobs:
     steps:
       - attach_workspace:
           at: /go/src/github.com/cloudradar-monitoring
-      - run: sudo make test
+      - run: make test
   
   test-goreleaser:
     docker:
