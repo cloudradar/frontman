@@ -783,7 +783,6 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 				res[field] = nil
 				continue
 			}
-
 			res[field] = cpuInfo[0].ModelName
 		case "os_arch":
 			res[field] = runtime.GOARCH
@@ -795,8 +794,16 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 				res[field] = nil
 				continue
 			}
-
 			res[field] = memStat.Total
+		case "hostname":
+			name, err := os.Hostname()
+			if err != nil {
+				log.Errorf("[SYSTEM] Failed to read hostname: %s", err.Error())
+				errs = append(errs, err.Error())
+				res[field] = nil
+				continue
+			}
+			res[field] = name
 		}
 	}
 
