@@ -70,7 +70,7 @@ type Config struct {
 	SenderMode         string  `toml:"sender_mode" comment:"\"wait\" – to post results to HUB after each round; \"interval\" – to post results to HUB by fixed interval"`
 	SenderModeInterval float64 `toml:"sender_mode_interval" comment:"interval in seconds to post results to HUB server"`
 
-	// Will be sent to hub as HostInfo
+	// new configs should use host_info, keep system_fields to support older configs
 	SystemFields []string `toml:"system_fields" commented:"true"`
 	HostInfo     []string `toml:"host_info" commented:"true"`
 
