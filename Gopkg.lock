@@ -37,6 +37,14 @@
   version = "1.3.1"
 
 [[projects]]
+  digest = "1:2a26f9d34f80b0e53dc2d1526649a26d017f5dcd99576f863cb9d3c2021feec3"
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:46da7427e7bed7f7cbf5ff8df4c8f588a5e680dc0e0b4fe524fd5b68c846b47f"
   name = "github.com/kardianos/service"
   packages = ["."]
@@ -227,6 +235,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/gorilla/handlers",
     "github.com/kardianos/service",
     "github.com/lxn/walk",
     "github.com/lxn/walk/declarative",

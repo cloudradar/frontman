@@ -119,6 +119,14 @@ func main() {
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
+	if cfg.HTTPListener.HTTPListen != "" {
+		go func() {
+			if err := cfg.HTTPListener.ServeWeb(); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
+
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
 	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
