@@ -289,9 +289,5 @@ func HandleAllConfigSetup(configFilePath string) (*Config, error) {
 		return nil, fmt.Errorf("config load error: %s", err.Error())
 	}
 
-	if err = cfg.fixup(); err != nil {
-		return nil, err
-	}
-
 	return cfg, nil
 }

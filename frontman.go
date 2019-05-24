@@ -61,6 +61,10 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 		}
 	}
 
+	if err := fm.Config.fixup(); err != nil {
+		log.Error(err)
+	}
+
 	if fm.Config.LogFile != "" {
 		err := addLogFileHook(fm.Config.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
