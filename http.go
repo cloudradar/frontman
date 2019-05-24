@@ -14,7 +14,7 @@ import (
 
 func pingHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"alive": true}`))
+	_, _ = w.Write([]byte(`{"alive": true}`))
 }
 
 func checkHandler(w http.ResponseWriter, req *http.Request) {
@@ -46,7 +46,7 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	res := <-resultsChan
 
 	enc, _ := json.Marshal(res)
-	w.Write(enc)
+	_, _ = w.Write(enc)
 }
 
 func (listener *HTTPListenerConfig) middlewareLogging(h http.Handler) http.Handler {
