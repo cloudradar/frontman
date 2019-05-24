@@ -487,8 +487,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	if inputFilePath != "" {
 		input, err = InputFromFile(inputFilePath)
 		if err != nil {
-			err = errors.Wrapf(err, "InputFromFile(%s) error", inputFilePath)
-			return nil, err
+			return nil, errors.Wrapf(err, "InputFromFile(%s) error", inputFilePath)
 		}
 		return input, nil
 	}
@@ -503,11 +502,9 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		if fm.Config.HubUser != "" {
 			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
 			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
-			err = errors.Wrapf(err, "InputFromHub(%s:***) error", fm.Config.HubUser)
-			return nil, err
+			return nil, errors.Wrapf(err, "InputFromHub(%s:***) error", fm.Config.HubUser)
 		}
-		err = errors.Wrap(err, "InputFromHub error")
-		return nil, err
+		return nil, errors.Wrap(err, "InputFromHub error")
 	}
 
 	return input, nil
@@ -649,9 +646,9 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			continue
 		} else if _, ok := seenServiceChecks[check.UUID]; ok {
 			continue
-		} else {
-			seenServiceChecks[check.UUID] = struct{}{}
 		}
+		seenServiceChecks[check.UUID] = struct{}{}
+
 		checkLog := log.WithFields(log.Fields{
 			"uuid": check.UUID,
 		})
@@ -689,9 +686,9 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			continue
 		} else if _, ok := seenWebChecks[check.UUID]; ok {
 			continue
-		} else {
-			seenWebChecks[check.UUID] = struct{}{}
 		}
+		seenWebChecks[check.UUID] = struct{}{}
+
 		checkLog := log.WithFields(log.Fields{
 			"uuid": check.UUID,
 		})
