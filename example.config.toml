@@ -37,8 +37,6 @@ sender_mode_interval = 0.0 # interval in seconds to post results to HUB server  
 # host_info of frontman machine will be sent to hub
 # default ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostname','memory_total_B']
 host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostname','memory_total_B']
-# system_fields of frontman machine will be sent to hub
-system_fields = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','memory_total_B'] # default ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','memory_total_B']
 
 #
 # Frontman can perform health checks before executing all other checks.
