@@ -432,9 +432,8 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 
 	// since fm.Run calls fm.RunOnce over and over again, we need this check here
 	if !fm.hostInfoSent {
-		// Only try to collect HostInfo when HostInfo or SystemFields are defined in config
-		fields := joinStrings(fm.Config.HostInfo, fm.Config.SystemFields)
-		if len(fields) > 0 {
+		// Only try to collect HostInfo when defined in config
+		if len(fm.Config.HostInfo) > 0 {
 			hostInfo, err = fm.HostInfoResults()
 			if err != nil {
 				log.Warnf("Failed to fetch HostInfo: %s", err)
@@ -749,8 +748,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		errs = append(errs, err.Error())
 	}
 
-	fields := joinStrings(fm.Config.HostInfo, fm.Config.SystemFields)
-	for _, field := range fields {
+	for _, field := range fm.Config.HostInfo {
 		switch strings.ToLower(field) {
 		case "os_kernel":
 			if info != nil {
@@ -783,7 +781,6 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 				res[field] = nil
 				continue
 			}
-
 			res[field] = cpuInfo[0].ModelName
 		case "os_arch":
 			res[field] = runtime.GOARCH
@@ -795,8 +792,16 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 				res[field] = nil
 				continue
 			}
-
 			res[field] = memStat.Total
+		case "hostname":
+			name, err := os.Hostname()
+			if err != nil {
+				log.Errorf("[SYSTEM] Failed to read hostname: %s", err.Error())
+				errs = append(errs, err.Error())
+				res[field] = nil
+				continue
+			}
+			res[field] = name
 		}
 	}
 
@@ -822,19 +827,4 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 
 	ipAddr := ipAddrs[0]
 	return &ipAddr, nil
-}
-
-func joinStrings(a, b []string) []string {
-	ab := make([]string, 0, len(a)+len(b))
-	set := make(map[string]struct{}, len(ab))
-	for _, str := range a {
-		set[str] = struct{}{}
-	}
-	for _, str := range b {
-		set[str] = struct{}{}
-	}
-	for str := range set {
-		ab = append(ab, str)
-	}
-	return ab
 }
