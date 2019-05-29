@@ -3,22 +3,19 @@ package frontman
 import (
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPreventDoubleRunOfChecks(t *testing.T) {
-	// verifies that we prevent frontman starting another check with the same uuid while the first has not finished yet
+func TestWebCheck(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = 10
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
-
 	inputConfig := &Input{
 		WebChecks: []WebCheck{{
 			UUID: "webcheck1",
 			Check: WebCheckData{
-				Timeout:            2.0,
-				URL:                "https://h1.hostgum.eu/sleep.php?t=1",
+				Timeout:            1.0,
+				URL:                "https://www.google.com",
 				Method:             "get",
 				ExpectedHTTPStatus: 200,
 			},
@@ -29,6 +26,4 @@ func TestPreventDoubleRunOfChecks(t *testing.T) {
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["http.get.success"])
-
-	spew.Dump(res)
 }
