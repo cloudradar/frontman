@@ -96,10 +96,10 @@ jobs:
     working_directory: /go/src/github.com/cloudradar-monitoring/frontman
     steps:
       - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring/frontman/synology-spk
+          at: /go/src/github.com/cloudradar-monitoring
       - run:
           name: Build Synology packages
-          command: ./create_spk.sh ${CIRCLE_TAG}
+          command: make synology-spk
 
 workflows:
   version: 2

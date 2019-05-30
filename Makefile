@@ -1,3 +1,5 @@
+.PHONY: synology-spk
+
  # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -64,3 +66,6 @@ windows-sign:
 	# Add files to Github release
 	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_Windows_386.msi" --file "/go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_386.msi"
 	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "/go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_64.msi"
+
+synology-spk:
+	cd synology-spk && ./create_spk.sh ${CIRCLE_TAG} && mv *.spk ..
