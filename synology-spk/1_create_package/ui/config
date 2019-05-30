@@ -1,0 +1,12 @@
+{
+    ".url": {
+        "io.cloudradar.frontman": {
+            "type": "url",
+            "allUsers": true,
+            "title": "Frontman",
+            "desc": "Monitoring proxy for agentless monitoring of subnets",
+            "icon": "frontman-{0}.png",
+            "grantPrivilege": "local"
+        }
+    }
+}
