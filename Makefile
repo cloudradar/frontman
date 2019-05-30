@@ -68,4 +68,8 @@ windows-sign:
 	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "/go/src/github.com/cloudradar-monitoring/frontman/dist/frontman_64.msi"
 
 synology-spk:
-	cd synology-spk && ./create_spk.sh ${CIRCLE_TAG} && mv *.spk ..
+	cd synology-spk && ./create_spk.sh ${CIRCLE_TAG}
+	# Add files to Github release
+	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_synology_amd64.spk" --file "/go/src/github.com/cloudradar-monitoring/frontman/synology-spk/frontman-amd64.spk"
+	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_synology_armv7.spk" --file "/go/src/github.com/cloudradar-monitoring/frontman/synology-spk/frontman-armv7.spk"
+	github-release upload --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} --name "frontman_${CIRCLE_TAG}_synology_armv8.spk" --file "/go/src/github.com/cloudradar-monitoring/frontman/synology-spk/frontman-armv8.spk"
