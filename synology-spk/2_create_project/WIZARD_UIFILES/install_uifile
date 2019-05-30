@@ -1,11 +1,33 @@
 [{
-    "step_title": "Frontman configuration: Debug",
+    "step_title": "Frontman configuration",
     "items": [{
-        "type": "multiselect",
+        "type": "textfield",
         "desc": "Check to create debug when start and see what happens behind the scenes (New log file at each start)",
         "subitems": [{
-          "key": "wizard_create_log",
-            "desc": "Create log file at start"
+            "key": "FRONTMAN_HUB_URL",
+            "desc": "Hub URL",
+            "defaultVaule": "https://hub.cloudradar.info/checks/",
+            "validator": {
+                "allowBlank": false,
+                "minLength": 2,
+                "maxLength": 4
+            }
+        },{
+            "key": "FRONTMAN_HUB_USER",
+            "desc": "Hub Username",
+            "validator": {
+                "allowBlank": false,
+                "minLength": 2,
+                "maxLength": 4
+            }
+        },{
+            "key": "FRONTMAN_HUB_PASSWORD",
+            "desc": "Hub Password",
+            "validator": {
+                "allowBlank": false,
+                "minLength": 2,
+                "maxLength": 4
+            }
         }]
     }]
 }]
