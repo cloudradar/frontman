@@ -1,10 +1,17 @@
 ---
 version: 2
+docker_job_setup: &docker_job
+  docker:
+    - image: cloudradario/go-build:0.0.14
+  working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+
+attach_workspace: &workspace
+  attach_workspace:
+    at: /go/src/github.com/cloudradar-monitoring
+
 jobs:
   get-source:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+  <<: *docker_job
     steps:
       - checkout
       - persist_to_workspace:
@@ -13,30 +20,21 @@ jobs:
             - frontman
 
   test:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
+      - <<: *workspace
       - run: make test
 
   test-goreleaser:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
+      - <<: *workspace
       - run: make goreleaser-snapshot
 
   build-goreleaser:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
+      - <<: *workspace
       - run: make goreleaser-rm-dist
       - persist_to_workspace:
           root: /go/src/github.com/cloudradar-monitoring
@@ -44,33 +42,25 @@ jobs:
             - frontman
 
   build-docker:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
+      - <<: *workspace
       - setup_remote_docker
       - run: docker login --username ${DOCKERHUB_USER} --password ${DOCKERHUB_PASS}
       - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/fontman:${CIRCLE_TAG} .
       - run: docker push cloudradario/frontman:${CIRCLE_TAG}
 
   build-sign-msi:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
+      - <<: *workspace
       - run:
           name: Setup ssh key to access windows signing machine
           command: echo $SSH_KEY | base64 -d > /tmp/id_ssh && chmod 0600 /tmp/id_ssh
       - run: make windows-sign
 
   release-github:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
       - run:
           name: Fetch release changelog so we can preserve it when releasing
@@ -91,12 +81,9 @@ jobs:
           when: on_fail
 
   build-synology-spk:
-    docker:
-      - image: cloudradario/go-build:0.0.11
-    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    <<: *docker_job
     steps:
-      - attach_workspace:
-          at: /go/src/github.com/cloudradar-monitoring
+      - <<: *workspace
       - run:
           name: Build Synology packages
           command: make synology-spk
