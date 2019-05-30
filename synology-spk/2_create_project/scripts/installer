@@ -36,10 +36,13 @@ postinst ()
     ${SERVICETOOL} --install-configure-file --package ${FWPORTS} >> /dev/null
 
     # install default config
-    if [ ! -e /etc/frontman/frontman.conf ]; then
-        mkdir -p /etc/frontman
-        mv ${APP_DIR}/frontman.default.conf /etc/frontman/frontman.conf
-    fi
+    mkdir -p /etc/frontman
+    cp -f ${APP_DIR}/frontman.default.conf /etc/frontman/frontman.conf
+
+    # apply config values from WIZARD_UIFILES/install_uifile
+    sed -i "s#CONFIG_HUB_URL#${CONFIG_HUB_URL}#g" /etc/frontman/frontman.conf
+    sed -i "s#CONFIG_HUB_USER#${CONFIG_HUB_USER}#g" /etc/frontman/frontman.conf
+    sed -i "s#CONFIG_HUB_PASSWORD#${CONFIG_HUB_PASSWORD}#g" /etc/frontman/frontman.conf
 
     mkdir -p /var/log/frontman
     chown frontman:frontman /var/log/frontman

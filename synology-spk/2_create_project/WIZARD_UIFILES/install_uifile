@@ -4,15 +4,16 @@
         "type": "textfield",
         "desc": "Configure frontman authentication for Cloudradar Hub",
         "subitems": [{
-            "key": "FRONTMAN_HUB_URL",
+            "key": "CONFIG_HUB_URL",
             "desc": "Hub URL",
             "defaultValue": "https://hub.cloudradar.info/checks/",
             "validator": {
                 "allowBlank": false,
+                "minLength": 2,
                 "maxLength": 100
             }
         },{
-            "key": "FRONTMAN_HUB_USER",
+            "key": "CONFIG_HUB_USER",
             "desc": "Hub Username",
             "validator": {
                 "allowBlank": false,
@@ -20,7 +21,7 @@
                 "maxLength": 40
             }
         },{
-            "key": "FRONTMAN_HUB_PASSWORD",
+            "key": "CONFIG_HUB_PASSWORD",
             "desc": "Hub Password",
             "validator": {
                 "allowBlank": false,
