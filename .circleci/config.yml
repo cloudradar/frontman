@@ -11,7 +11,7 @@ jobs:
           root: /go/src/github.com/cloudradar-monitoring
           paths:
             - frontman
-  
+
   test:
     docker:
       - image: cloudradario/go-build:0.0.11
@@ -20,7 +20,7 @@ jobs:
       - attach_workspace:
           at: /go/src/github.com/cloudradar-monitoring
       - run: make test
-  
+
   test-goreleaser:
     docker:
       - image: cloudradario/go-build:0.0.11
@@ -29,7 +29,7 @@ jobs:
       - attach_workspace:
           at: /go/src/github.com/cloudradar-monitoring
       - run: make goreleaser-snapshot
-  
+
   build-goreleaser:
     docker:
       - image: cloudradario/go-build:0.0.11
@@ -90,6 +90,17 @@ jobs:
           command: github-release delete --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG}
           when: on_fail
 
+  build-synology-spk:
+    docker:
+      - image: cloudradario/go-build:0.0.11
+    working_directory: /go/src/github.com/cloudradar-monitoring/frontman
+    steps:
+      - attach_workspace:
+          at: /go/src/github.com/cloudradar-monitoring
+      - run:
+          name: Build Synology packages
+          command: make synology-spk
+
 workflows:
   version: 2
   test-on-commit:
@@ -110,7 +121,7 @@ workflows:
           filters:
             tags:
               ignore: /.*/
-  
+
   release:
     jobs:
       - get-source:
@@ -151,6 +162,7 @@ workflows:
           context: cloudradar
           requires:
             - build-sign-msi
+            - build-synology-spk
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
@@ -163,5 +175,14 @@ workflows:
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+            branches:
+              ignore: /.*/
+      - build-synology-spk:
+          context: cloudradar
+          requires:
+            - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
