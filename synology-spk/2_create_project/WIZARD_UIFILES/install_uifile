@@ -6,7 +6,7 @@
         "subitems": [{
             "key": "CONFIG_HUB_URL",
             "desc": "Hub URL",
-            "defaultValue": "https://hub.cloudradar.info/checks/",
+            "defaultValue": "https://hub.cloudradar.io/checks/",
             "validator": {
                 "allowBlank": false,
                 "minLength": 2,
