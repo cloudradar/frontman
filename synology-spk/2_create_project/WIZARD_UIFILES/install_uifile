@@ -2,15 +2,14 @@
     "step_title": "Frontman configuration",
     "items": [{
         "type": "textfield",
-        "desc": "Check to create debug when start and see what happens behind the scenes (New log file at each start)",
+        "desc": "Configure frontman authentication for Cloudradar Hub",
         "subitems": [{
             "key": "FRONTMAN_HUB_URL",
             "desc": "Hub URL",
-            "defaultVaule": "https://hub.cloudradar.info/checks/",
+            "defaultValue": "https://hub.cloudradar.info/checks/",
             "validator": {
                 "allowBlank": false,
-                "minLength": 2,
-                "maxLength": 4
+                "maxLength": 100
             }
         },{
             "key": "FRONTMAN_HUB_USER",
@@ -18,7 +17,7 @@
             "validator": {
                 "allowBlank": false,
                 "minLength": 2,
-                "maxLength": 4
+                "maxLength": 40
             }
         },{
             "key": "FRONTMAN_HUB_PASSWORD",
@@ -26,7 +25,7 @@
             "validator": {
                 "allowBlank": false,
                 "minLength": 2,
-                "maxLength": 4
+                "maxLength": 40
             }
         }]
     }]
