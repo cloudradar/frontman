@@ -11,7 +11,7 @@ attach_workspace: &workspace
 
 jobs:
   get-source:
-  <<: *docker_job
+    <<: *docker_job
     steps:
       - checkout
       - persist_to_workspace:
