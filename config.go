@@ -262,6 +262,10 @@ func (cfg *Config) fixup() error {
 		}
 	}
 
+	if cfg.SenderModeInterval == 0 {
+		cfg.SenderModeInterval = 30
+	}
+
 	// backwards compatibility with old configs. system_fields is deprecated!
 	cfg.HostInfo = append(cfg.HostInfo, cfg.SystemFields...)
 
