@@ -111,6 +111,8 @@ func main() {
 
 	handleToastFeedback(fm, *cfgPathPtr)
 
+	log.Info("frontman " + version + " started")
+
 	if !service.Interactive() {
 		runUnderOsServiceManager(fm)
 	}
@@ -325,6 +327,8 @@ func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputF
 	if !oneRunOnlyMode {
 		return
 	}
+	log.Debug("OneRunOnlyMode invoked (-r)")
+
 	if err := fm.HealthCheck(); err != nil {
 		fm.HealthCheckPassedPreviously = false
 		log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")

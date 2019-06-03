@@ -22,7 +22,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	ping "github.com/sparrc/go-ping"
 )
 
@@ -62,7 +62,7 @@ func (fm *Frontman) initHubClient() {
 		}
 		proxyURL, err := url.Parse(fm.Config.HubProxy)
 		if err != nil {
-			log.WithFields(log.Fields{
+			logrus.WithFields(logrus.Fields{
 				"url": fm.Config.HubProxy,
 			}).Warningln("failed to parse hub_proxy URL")
 		} else {
@@ -220,7 +220,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	// in case we have HubMaxOfflineBufferBytes set(>0) and buffer + results exceed HubMaxOfflineBufferBytes -> reset buffer
 	if fm.Config.HubMaxOfflineBufferBytes > 0 && len(b) > fm.Config.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
-		log.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...",
+		logrus.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...",
 			fm.Config.HubMaxOfflineBufferBytes,
 			len(results))
 
@@ -273,7 +273,7 @@ func (fm *Frontman) PostResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	log.Debugf("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
+	logrus.Debugf("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.New(resp.Status)
@@ -357,7 +357,7 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 			break
 		}
 
-		log.Debugf("SenderModeInterval: send %d results", len(results))
+		logrus.Debugf("SenderModeInterval: send %d results", len(results))
 		err := fm.PostResultsToHub(results)
 		if err != nil {
 			err = fmt.Errorf("PostResultsToHub error: %s", err.Error())
@@ -368,7 +368,7 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 		}
 
 		if err != nil {
-			log.Error(err)
+			logrus.Error(err)
 		}
 	}
 }
@@ -394,7 +394,7 @@ func (fm *Frontman) HealthCheck() error {
 	for _, addr := range hcfg.ReferencePingHosts {
 		p, err := ping.NewPinger(addr)
 		if err != nil {
-			log.WithError(err).Warningln("failed to parse host for ICMP ping")
+			logrus.WithError(err).Warningln("failed to parse host for ICMP ping")
 			continue
 		}
 		p.Timeout = timeout
@@ -436,7 +436,7 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		if len(fm.Config.HostInfo) > 0 {
 			hostInfo, err = fm.HostInfoResults()
 			if err != nil {
-				log.Warnf("Failed to fetch HostInfo: %s", err)
+				logrus.Warnf("Failed to fetch HostInfo: %s", err)
 				hostInfo["error"] = err.Error()
 			}
 		}
@@ -506,13 +506,13 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
 	fm.Stats.StartedAt = time.Now()
-	log.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
+	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
 	fm.StartWritingStats()
 
 	for {
 		if err := fm.HealthCheck(); err != nil {
 			fm.HealthCheckPassedPreviously = false
-			log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
+			logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
 			select {
 			case <-interrupt:
 				return
@@ -521,22 +521,22 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			}
 		} else if !fm.HealthCheckPassedPreviously {
 			fm.HealthCheckPassedPreviously = true
-			log.Infoln("All health checks are positive. Resuming normal operation.")
+			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
 		input, err := fm.FetchInput(inputFilePath)
 		if err != nil && err == ErrorMissingHubOrInput {
-			log.Warnln(err)
+			logrus.Warnln(err)
 			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
 			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
 			time.Sleep(10 * time.Second)
 			os.Exit(0)
 		} else if err != nil {
-			log.Error(err)
+			logrus.Error(err)
 		} else {
 			err := fm.RunOnce(input, outputFile, interrupt, false)
 			if err != nil {
-				log.Error(err)
+				logrus.Error(err)
 			}
 		}
 
@@ -557,7 +557,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 		ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
 		if resolveErr != nil {
 			err = fmt.Errorf("resolve ip error: %s", resolveErr.Error())
-			log.Debugf("serviceCheck: ResolveIPAddr error: %s", resolveErr.Error())
+			logrus.Debugf("serviceCheck: ResolveIPAddr error: %s", resolveErr.Error())
 			done <- struct{}{}
 			return
 		}
@@ -566,27 +566,27 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 		case ProtocolICMP:
 			results, err = fm.runPing(ipaddr)
 			if err != nil {
-				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolTCP:
 			port, _ := check.Check.Port.Int64()
 
 			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
 			if err != nil {
-				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolSSL:
 			port, _ := check.Check.Port.Int64()
 
 			results, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
 			if err != nil {
-				log.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case "":
-			log.Errorf("serviceCheck: missing check.protocol")
+			logrus.Errorf("serviceCheck: missing check.protocol")
 			err = errors.New("Missing check.protocol")
 		default:
-			log.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
+			logrus.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
 			err = errors.New("Unknown check.protocol")
 		}
 		done <- struct{}{}
@@ -598,7 +598,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	case <-done:
 		return results, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		log.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
+		logrus.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
 	}
 }
@@ -615,7 +615,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 			if check.UUID == "" {
 				// in case checkUuid is missing we can ignore this item
-				log.Errorf("serviceCheck: missing checkUuid key")
+				logrus.Errorf("serviceCheck: missing checkUuid key")
 				return
 			}
 
@@ -628,7 +628,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			res.Check = check.Check
 
 			if check.Check.Connect == "" {
-				log.Errorf("serviceCheck: missing data.connect key")
+				logrus.Errorf("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
 			} else {
 				var err error
@@ -651,7 +651,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 			if check.UUID == "" {
 				// in case checkUuid is missing we can ignore this item
-				log.Errorf("webCheck: missing checkUuid key")
+				logrus.Errorf("webCheck: missing checkUuid key")
 				return
 			}
 
@@ -664,16 +664,16 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			res.Check = check.Check
 
 			if check.Check.Method == "" {
-				log.Errorf("webCheck: missing check.method key")
+				logrus.Errorf("webCheck: missing check.method key")
 				res.Message = "Missing check.method key"
 			} else if check.Check.URL == "" {
-				log.Errorf("webCheck: missing check.url key")
+				logrus.Errorf("webCheck: missing check.url key")
 				res.Message = "Missing check.url key"
 			} else {
 				var err error
 				res.Measurements, err = fm.runWebCheck(check.Check)
 				if err != nil {
-					log.Debugf("webCheck: %s: %s", check.UUID, err.Error())
+					logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
 				}
 			}
@@ -693,7 +693,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 			if check.UUID == "" {
 				// in case checkUuid is missing we can ignore this item
-				log.Errorf("snmpCheck: missing checkUuid key")
+				logrus.Errorf("snmpCheck: missing checkUuid key")
 				return
 			}
 
@@ -706,13 +706,13 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			res.Check = check.Check
 
 			if check.Check.Connect == "" {
-				log.Errorf("snmpCheck: missing check.connect key")
+				logrus.Errorf("snmpCheck: missing check.connect key")
 				res.Message = "Missing check.connect key"
 			} else {
 				var err error
 				res.Measurements, err = fm.runSNMPCheck(&check)
 				if err != nil {
-					log.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
+					logrus.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()
 				}
 			}
@@ -729,7 +729,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	close(resultsChan)
 
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
-	log.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }
 
 // HostInfoResults fetches information about the host itself which can be
@@ -744,7 +744,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 	errs := []string{}
 
 	if err != nil {
-		log.Errorf("[SYSTEM] Failed to read host info: %s", err.Error())
+		logrus.Errorf("[SYSTEM] Failed to read host info: %s", err.Error())
 		errs = append(errs, err.Error())
 	}
 
@@ -765,7 +765,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		case "uname":
 			uname, err := Uname()
 			if err != nil {
-				log.Errorf("[SYSTEM] Failed to read host uname: %s", err.Error())
+				logrus.Errorf("[SYSTEM] Failed to read host uname: %s", err.Error())
 				errs = append(errs, err.Error())
 				res[field] = nil
 			} else {
@@ -776,7 +776,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		case "cpu_model":
 			cpuInfo, err := cpu.Info()
 			if err != nil {
-				log.Errorf("[SYSTEM] Failed to read cpu info: %s", err.Error())
+				logrus.Errorf("[SYSTEM] Failed to read cpu info: %s", err.Error())
 				errs = append(errs, err.Error())
 				res[field] = nil
 				continue
@@ -787,7 +787,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		case "memory_total_b":
 			memStat, err := mem.VirtualMemory()
 			if err != nil {
-				log.Errorf("[SYSTEM] Failed to read mem info: %s", err.Error())
+				logrus.Errorf("[SYSTEM] Failed to read mem info: %s", err.Error())
 				errs = append(errs, err.Error())
 				res[field] = nil
 				continue
@@ -796,7 +796,7 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 		case "hostname":
 			name, err := os.Hostname()
 			if err != nil {
-				log.Errorf("[SYSTEM] Failed to read hostname: %s", err.Error())
+				logrus.Errorf("[SYSTEM] Failed to read hostname: %s", err.Error())
 				errs = append(errs, err.Error())
 				res[field] = nil
 				continue

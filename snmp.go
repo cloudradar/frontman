@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/soniah/gosnmp"
 )
 
@@ -49,7 +49,7 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 	case <-done:
 		return results, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		log.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
+		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
 	}
 }
@@ -108,7 +108,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		}
 		prefix, suffix, err := oidToHumanReadable(variable.Name)
 		if err != nil {
-			log.Debug(err)
+			logrus.Debug(err)
 			continue
 		}
 
@@ -120,7 +120,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
 
 		default:
-			log.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
+			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
 	}
 	return fm.filterSNMPResult(preset, res)
