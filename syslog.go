@@ -8,7 +8,7 @@ import (
 	"log/syslog"
 	"net/url"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	lSyslog "github.com/sirupsen/logrus/hooks/syslog"
 )
 
@@ -35,7 +35,7 @@ func addSyslogHook(syslogURL string) error {
 		return err
 	}
 
-	log.AddHook(hook)
+	logrus.AddHook(hook)
 
 	return nil
 }

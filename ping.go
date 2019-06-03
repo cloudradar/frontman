@@ -12,7 +12,7 @@ import (
 
 	"errors"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -137,7 +137,7 @@ func (p *Pinger) run() {
 	for {
 		err := p.sendICMP(conn)
 		if err != nil {
-			log.Errorf("#%d ICMP send error: %s", p.sequence, err.Error())
+			logrus.Errorf("#%d ICMP send error: %s", p.sequence, err.Error())
 			continue
 		}
 		timeout := time.NewTimer(p.Timeout)
@@ -148,7 +148,7 @@ func (p *Pinger) run() {
 			wg.Wait()
 			return
 		case <-timeout.C:
-			log.Debugf("#%d %s timeouted", p.sequence, p.ipaddr.String())
+			logrus.Debugf("#%d %s timeouted", p.sequence, p.ipaddr.String())
 
 			wg.Done()
 			timeout = time.NewTimer(p.Timeout)
@@ -157,7 +157,7 @@ func (p *Pinger) run() {
 			wg.Done()
 			err := p.processPacket(r)
 			if err != nil {
-				log.Errorf("#%d %s: %s", p.sequence, p.ipaddr.IP, err.Error())
+				logrus.Errorf("#%d %s: %s", p.sequence, p.ipaddr.IP, err.Error())
 			}
 		}
 
@@ -297,7 +297,7 @@ func (p *Pinger) sendICMP(conn *icmp.PacketConn) error {
 func (p *Pinger) listen(netProto string, source string) *icmp.PacketConn {
 	conn, err := icmp.ListenPacket(netProto, source)
 	if err != nil {
-		log.Errorf("Error listening for ICMP packets: %s", err.Error())
+		logrus.Errorf("Error listening for ICMP packets: %s", err.Error())
 		close(p.done)
 		return nil
 	}

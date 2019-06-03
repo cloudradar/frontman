@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/handlers"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func pingHandler(w http.ResponseWriter, req *http.Request) {
@@ -33,7 +33,7 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	var inputConfig Input
 	err := decoder.Decode(&inputConfig)
 	if err != nil {
-		log.Error("json decode error")
+		logrus.Error("json decode error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -41,7 +41,7 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	// perform the checks, collect result and pass it back as json
 	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 	resultsChan := make(chan Result, 100)
@@ -57,19 +57,19 @@ func (listener *HTTPListenerConfig) middlewareLogging(h http.Handler) http.Handl
 	if listener.HTTPAccessLog != "" {
 		absFile, err := filepath.Abs(listener.HTTPAccessLog)
 		if err != nil {
-			log.Fatal(err)
+			logrus.Fatal(err)
 		}
 		path := filepath.Dir(absFile)
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			log.Info("Creating directory for http log:", path)
+			logrus.Info("Creating directory for http log:", path)
 			err = os.MkdirAll(path, os.ModePerm)
 			if err != nil {
-				log.Fatal(err)
+				logrus.Fatal(err)
 			}
 		}
 		logFile, err = os.OpenFile(absFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Error(err)
+			logrus.Error(err)
 		}
 	} else {
 		logFile = os.Stdout
@@ -95,7 +95,7 @@ func (listener HTTPListenerConfig) ServeWeb() error {
 	}
 	protocol := listener.HTTPListen[0:pos]
 	address := listener.HTTPListen[pos+3:]
-	log.Info("http_listener listening on ", protocol+"://"+address)
+	logrus.Info("http_listener listening on ", protocol+"://"+address)
 	http.Handle("/ping", listener.middlewareLogging(http.HandlerFunc(pingHandler)))
 	http.Handle("/check", listener.middlewareLogging(listener.middlewareAuth(checkHandler)))
 	var err error

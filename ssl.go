@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 const timeoutPortLookup = time.Second * 3
@@ -51,7 +51,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 	connection, err := tls.DialWithDialer(&dialer, "tcp", addr.String(), &tls.Config{ServerName: hostname, InsecureSkipVerify: true})
 
 	if err != nil {
-		log.Debugf("TLS dial err: %s", err.Error())
+		logrus.Debugf("TLS dial err: %s", err.Error())
 		if strings.HasPrefix(err.Error(), "tls:") {
 			err = fmt.Errorf("service doesn't support SSL")
 		}
@@ -84,7 +84,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		if !cert.IsCA && hostname != "" {
 			err = cert.VerifyHostname(hostname)
 			if err != nil {
-				log.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
+				logrus.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
 				err = errors.New(strings.TrimPrefix(err.Error(), "x509: certificate"))
 			}
 		}

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/cloudradar-monitoring/frontman/pkg/stats"
 )
@@ -51,7 +51,7 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 
 			b, err := ioutil.ReadFile(rootCertsPath)
 			if err != nil {
-				log.Error("Failed to read cacert.pem: ", err.Error())
+				logrus.Error("Failed to read cacert.pem: ", err.Error())
 			} else {
 				ok := certPool.AppendCertsFromPEM(b)
 				if ok {
@@ -62,20 +62,20 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 	}
 
 	if err := fm.Config.fixup(); err != nil {
-		log.Error(err)
+		logrus.Error(err)
 	}
 
 	if fm.Config.LogFile != "" {
 		err := addLogFileHook(fm.Config.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
-			log.Error("Can't write logs to file: ", err.Error())
+			logrus.Error("Can't write logs to file: ", err.Error())
 		}
 	}
 
 	if fm.Config.LogSyslog != "" {
 		err := addSyslogHook(fm.Config.LogSyslog)
 		if err != nil {
-			log.Error("Can't set up syslog: ", err.Error())
+			logrus.Error("Can't set up syslog: ", err.Error())
 		}
 	}
 

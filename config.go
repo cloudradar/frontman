@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/troian/toml"
 )
 
@@ -174,7 +174,7 @@ func (cfg *Config) DumpToml() string {
 	err := enc.Encode(cfg)
 
 	if err != nil {
-		log.Errorf("DumpConfigToml error: %s", err.Error())
+		logrus.Errorf("DumpConfigToml error: %s", err.Error())
 		return ""
 	}
 

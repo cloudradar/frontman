@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/cloudradar-monitoring/frontman/pkg/stats"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type LogLevel string
@@ -21,14 +21,14 @@ const (
 	LogLevelError LogLevel = "error"
 )
 
-func (lvl LogLevel) LogrusLevel() log.Level {
+func (lvl LogLevel) LogrusLevel() logrus.Level {
 	switch lvl {
 	case LogLevelDebug:
-		return log.DebugLevel
+		return logrus.DebugLevel
 	case LogLevelError:
-		return log.ErrorLevel
+		return logrus.ErrorLevel
 	default:
-		return log.InfoLevel
+		return logrus.InfoLevel
 	}
 }
 
@@ -36,17 +36,17 @@ type logrusFileHook struct {
 	file      *os.File
 	flag      int
 	chmod     os.FileMode
-	formatter *log.TextFormatter
+	formatter *logrus.TextFormatter
 }
 
 func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	dir := filepath.Dir(file)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
-		log.WithError(err).Errorf("Failed to create the logs dir: '%s'", dir)
+		logrus.WithError(err).Errorf("Failed to create the logs dir: '%s'", dir)
 	}
 
-	plainFormatter := &log.TextFormatter{FullTimestamp: true, DisableColors: true}
+	plainFormatter := &logrus.TextFormatter{FullTimestamp: true, DisableColors: true}
 	logFile, err := os.OpenFile(file, flag, chmod)
 	if err != nil {
 		return fmt.Errorf("Unable to write log file: %s", err.Error())
@@ -54,7 +54,7 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 
 	hook := &logrusFileHook{logFile, flag, chmod, plainFormatter}
 
-	log.AddHook(hook)
+	logrus.AddHook(hook)
 
 	return nil
 }
@@ -66,11 +66,11 @@ func addErrorHook(stats *stats.FrontmanStats) {
 		InternalLastErrorTimestamp: &stats.InternalLastErrorTimestamp,
 	}
 
-	log.AddHook(hook)
+	logrus.AddHook(hook)
 }
 
 // Fire event
-func (hook *logrusFileHook) Fire(entry *log.Entry) error {
+func (hook *logrusFileHook) Fire(entry *logrus.Entry) error {
 	plainformat, err := hook.formatter.Format(entry)
 	line := string(plainformat)
 	_, err = hook.file.WriteString(line)
@@ -82,14 +82,14 @@ func (hook *logrusFileHook) Fire(entry *log.Entry) error {
 	return nil
 }
 
-func (hook *logrusFileHook) Levels() []log.Level {
-	return []log.Level{
-		log.PanicLevel,
-		log.FatalLevel,
-		log.ErrorLevel,
-		log.WarnLevel,
-		log.InfoLevel,
-		log.DebugLevel,
+func (hook *logrusFileHook) Levels() []logrus.Level {
+	return []logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+		logrus.InfoLevel,
+		logrus.DebugLevel,
 	}
 }
 
@@ -115,13 +115,13 @@ func (fm *Frontman) StartWritingStats() {
 				stats = *fm.Stats
 				err = encoder.Encode(stats)
 				if err != nil {
-					log.Errorf("Could not encode stats file: %s", err)
+					logrus.Errorf("Could not encode stats file: %s", err)
 					continue
 				}
 
 				err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
 				if err != nil {
-					log.Errorf("Could not write stats file: %s", err)
+					logrus.Errorf("Could not write stats file: %s", err)
 					return
 				}
 			}
@@ -132,7 +132,7 @@ func (fm *Frontman) StartWritingStats() {
 // SetLogLevel sets Log level and corresponding logrus level
 func (fm *Frontman) SetLogLevel(lvl LogLevel) {
 	fm.Config.LogLevel = lvl
-	log.SetLevel(lvl.LogrusLevel())
+	logrus.SetLevel(lvl.LogrusLevel())
 }
 
 type LogrusErrorHook struct {
@@ -141,7 +141,7 @@ type LogrusErrorHook struct {
 	InternalLastErrorTimestamp *uint64
 }
 
-func (h *LogrusErrorHook) Fire(entry *log.Entry) error {
+func (h *LogrusErrorHook) Fire(entry *logrus.Entry) error {
 	now := uint64(time.Now().Unix())
 
 	*h.InternalErrorsTotal++
@@ -151,8 +151,8 @@ func (h *LogrusErrorHook) Fire(entry *log.Entry) error {
 	return nil
 }
 
-func (h *LogrusErrorHook) Levels() []log.Level {
-	return []log.Level{
-		log.ErrorLevel,
+func (h *LogrusErrorHook) Levels() []logrus.Level {
+	return []logrus.Level{
+		logrus.ErrorLevel,
 	}
 }
