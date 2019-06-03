@@ -262,7 +262,7 @@ func (cfg *Config) fixup() error {
 		}
 	}
 
-	if cfg.SenderModeInterval == 0 {
+	if cfg.SenderModeInterval <= 0 {
 		cfg.SenderModeInterval = 30
 	}
 
