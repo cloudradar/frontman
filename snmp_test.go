@@ -1,6 +1,6 @@
 package frontman
 
-// In order to run tests, set up snmpd somewhere and
+// In order to run tests, set up snmpd in a Ubuntu 19.04 VM and
 // $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
 
 import (
@@ -48,10 +48,9 @@ func TestSNMPv1(t *testing.T) {
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
-
-	// test against default values from snmpd.conf
-	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	require.Equal(t, true, len(res.Measurements) > 1)
+	require.Equal(t, true, len(res.Measurements["system.contact"].(string)) > 1)
+	require.Equal(t, true, len(res.Measurements["system.location"].(string)) > 1)
 }
 
 // test SNMP v2 against snmpd
@@ -78,10 +77,9 @@ func TestSNMPv2(t *testing.T) {
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
-
-	// test against default values from snmpd.conf
-	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	require.Equal(t, true, len(res.Measurements) > 1)
+	require.Equal(t, true, len(res.Measurements["system.contact"].(string)) > 1)
+	require.Equal(t, true, len(res.Measurements["system.location"].(string)) > 1)
 }
 
 // test SNMP v2 against snmpd
@@ -114,7 +112,11 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
 
+	// should be at least 1 network interface + success key in result
+	require.Equal(t, true, len(res.Measurements) >= 2)
+
 	// NOTE: test makes some assumptions that may be hard to reproduce
+	// NOTE: test must be performed vs a wired connection, as snmpd don't report interface speed on wireless connections
 	iface := res.Measurements["2"].(map[string]interface{})
 	require.Equal(t, uint(1000), iface["ifSpeed_mbps"])
 	require.Equal(t, "enp0s31f6", iface["ifName"])
@@ -129,6 +131,7 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
+	require.Equal(t, true, len(res.Measurements) >= 2)
 
 	iface = res.Measurements["2"].(map[string]interface{})
 
