@@ -289,6 +289,13 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 }
 
 func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityParameters, err error) {
+	// 8+ password length required by the SNMPv3 USM
+	if len(check.AuthenticationPassword) < 8 {
+		return nil, fmt.Errorf("authentication_password must be at least 8 characters")
+	}
+	if len(check.PrivacyPassword) < 8 {
+		return nil, fmt.Errorf("privacy_password must be at least 8 characters")
+	}
 	sp = &gosnmp.UsmSecurityParameters{
 		UserName: check.Username,
 	}
