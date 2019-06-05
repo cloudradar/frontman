@@ -85,7 +85,7 @@ Check [dockerhub](https://cloud.docker.com/u/cloudradario/repository/docker/clou
 
 ### Passing credentials
 Username and password need to be configured via environment variables. You can pass them using the `-e` flags.
-`docker run -d -e FRONTMAN_HUB_USER=YOUR_USERNAME -e FRONTMAN_HUB_PASSWORD=YOUR_PASS cloudradar/frontman:1.0.0`
+`docker run -d -e FRONTMAN_HUB_USER=YOUR_USERNAME -e FRONTMAN_HUB_PASSWORD=YOUR_PASS cloudradario/frontman:1.0.7`
 
 ## Credits
 Project co-financed by the European Regional Development Fund under the Innovative Economy Operational Programme. Innovation grants. We invest in your future.
