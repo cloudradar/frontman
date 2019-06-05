@@ -119,6 +119,9 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
 
+		case gosnmp.Null:
+			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: ""})
+
 		default:
 			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
 		}
@@ -237,12 +240,14 @@ func delta(v1, v2 uint) uint {
 
 // generates gosnmp parameters for the given check configuration
 func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
+	if check.Timeout < 5 {
+		check.Timeout = 5
+	}
 	params := &gosnmp.GoSNMP{
 		Target:  check.Connect,
 		Port:    check.Port,
 		Timeout: time.Duration(check.Timeout) * time.Second,
 	}
-
 	switch check.Protocol {
 	case protocolSNMPv1:
 		params.Version = gosnmp.Version1
