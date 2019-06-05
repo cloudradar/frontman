@@ -1,6 +1,6 @@
 package frontman
 
-// In order to run tests, set up snmpd in a Ubuntu 19.04 VM and
+// In order to run tests, set up snmpd somewhere and
 // $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
 
 import (
@@ -36,7 +36,7 @@ func TestSNMPv1(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:   snmpdIP,
 				Port:      161,
-				Timeout:   1.0,
+				Timeout:   5.0,
 				Protocol:  "v1",
 				Community: "public",
 				Preset:    "basedata",
@@ -65,7 +65,7 @@ func TestSNMPv2(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:   snmpdIP,
 				Port:      161,
-				Timeout:   1.0,
+				Timeout:   5.0,
 				Protocol:  "v2",
 				Community: "public",
 				Preset:    "basedata",
@@ -86,6 +86,10 @@ func TestSNMPv2(t *testing.T) {
 func TestSNMPv2Bandwidth(t *testing.T) {
 	// necessary snmpd.conf changes:
 	// view   systemonly  included   .1
+
+	// in order to verify IF-MIB configuration:
+	// $ snmpwalk -v2c -c public hostname .1.3.6.1.2.1.2.2.1.8
+
 	skipSNMP(t)
 
 	delaySeconds := 1.
@@ -99,7 +103,7 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:   snmpdIP,
 				Port:      161,
-				Timeout:   1.0,
+				Timeout:   5.0,
 				Protocol:  "v2",
 				Community: "public",
 				Preset:    "bandwidth",
@@ -119,8 +123,8 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	// NOTE: test must be performed vs a wired connection, as snmpd don't report interface speed on wireless connections
 	iface := res.Measurements["2"].(map[string]interface{})
 	require.Equal(t, uint(1000), iface["ifSpeed_mbps"])
-	require.Equal(t, "enp0s31f6", iface["ifName"])
-	require.Equal(t, "enp0s31f6", iface["ifDescr"])
+	require.Equal(t, true, len(iface["ifName"].(string)) > 0)
+	require.Equal(t, true, len(iface["ifDescr"].(string)) > 0)
 	require.Equal(t, 2, iface["ifIndex"])
 
 	// do 2nd request and check delta values
@@ -155,7 +159,7 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:   snmpdIP,
 				Port:      161,
-				Timeout:   1.0,
+				Timeout:   2.0,
 				Protocol:  "v2",
 				Community: "invalidCommunityName",
 				Preset:    "basedata",
@@ -186,7 +190,7 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:       snmpdIP,
 				Port:          161,
-				Timeout:       1.0,
+				Timeout:       5.0,
 				Protocol:      "v3",
 				Preset:        "basedata",
 				SecurityLevel: "noAuthNoPriv",
@@ -199,10 +203,6 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
-
-	// test against default values from snmpd.conf
-	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
 }
 
 // test SNMP v3 noAuthNoPriv against snmpd with unknown username
@@ -217,7 +217,7 @@ func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:       snmpdIP,
 				Port:          161,
-				Timeout:       1.0,
+				Timeout:       5.0,
 				Protocol:      "v3",
 				Preset:        "basedata",
 				SecurityLevel: "noAuthNoPriv",
@@ -248,7 +248,7 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:                snmpdIP,
 				Port:                   161,
-				Timeout:                1.0,
+				Timeout:                5.0,
 				Protocol:               "v3",
 				Preset:                 "basedata",
 				SecurityLevel:          "authNoPriv",
@@ -263,10 +263,8 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
-
-	// test against default values from snmpd.conf
-	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	require.Equal(t, true, len(res.Measurements["system.contact"].(string)) > 1)
+	require.Equal(t, true, len(res.Measurements["system.location"].(string)) > 1)
 }
 
 // test SNMP v3 authNoPriv against snmpd with wrong password
@@ -281,7 +279,7 @@ func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:                snmpdIP,
 				Port:                   161,
-				Timeout:                1.0,
+				Timeout:                5.0,
 				Protocol:               "v3",
 				Preset:                 "basedata",
 				SecurityLevel:          "authNoPriv",
@@ -315,7 +313,7 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 			Check: SNMPCheckData{
 				Connect:                snmpdIP,
 				Port:                   161,
-				Timeout:                1.0,
+				Timeout:                5.0,
 				Protocol:               "v3",
 				Preset:                 "basedata",
 				SecurityLevel:          "authPriv",
@@ -332,10 +330,8 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
-
-	// test against default values from snmpd.conf
-	assert.Equal(t, "Me <me@example.org>", res.Measurements["system.contact"])
-	assert.Equal(t, "Sitting on the Dock of the Bay", res.Measurements["system.location"])
+	require.Equal(t, true, len(res.Measurements["system.contact"].(string)) > 1)
+	require.Equal(t, true, len(res.Measurements["system.location"].(string)) > 1)
 }
 
 func TestOidToHumanReadable(t *testing.T) {
