@@ -105,7 +105,7 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 				Port:      161,
 				Timeout:   5.0,
 				Protocol:  "v2",
-				Community: "public",
+				Community: "cloudr",
 				Preset:    "bandwidth",
 			},
 		}},
@@ -321,7 +321,7 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 				AuthenticationProtocol: "sha",
 				AuthenticationPassword: "password",
 				PrivacyProtocol:        "des",
-				PrivacyPassword:        "password", // XXX
+				PrivacyPassword:        "password",
 			},
 		}},
 	}
