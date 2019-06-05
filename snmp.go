@@ -155,6 +155,12 @@ func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (m
 			skip := false
 			for _, kv := range iface {
 				if kv.shouldExcludeInterface() {
+					if kv.key == "ifOperStatus" && kv.val.(int) != ifOperStatusUp {
+						logrus.Debug("Excluding interface ", idx, " since status is ", kv.val)
+					}
+					if kv.key == "ifType" && kv.val.(int) != ifTypeEthernetCsmacd {
+						logrus.Debug("Excluding interface ", idx, " since type is ", kv.val)
+					}
 					skip = true
 					break
 				}
@@ -207,16 +213,19 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 
 	// calculate delta from previous measure
 	for _, measure := range prevMeasures {
-		if measure.ifName == ifName && ifSpeedInBytes > 0 {
+		if measure.ifName == ifName {
 			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
 			inDelta := float64(delta(measure.ifInOctets, ifIn))
 			outDelta := float64(delta(measure.ifOutOctets, ifOut))
-			inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-			outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-			m["ifInUtilization_percent"] = math.Round(inPct*100) / 100
-			m["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
 			m["ifIn_Bps"] = uint(math.Round(inDelta / delaySeconds))
 			m["ifOut_Bps"] = uint(math.Round(outDelta / delaySeconds))
+
+			if ifSpeedInBytes > 0 {
+				inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+				outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+				m["ifInUtilization_percent"] = math.Round(inPct*100) / 100
+				m["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
+			}
 			break
 		}
 	}
