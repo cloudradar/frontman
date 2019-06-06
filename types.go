@@ -68,6 +68,12 @@ type SNMPCheckData struct {
 	AuthenticationPassword string   `json:"authentication_password,omitempty"` // v3
 	PrivacyProtocol        string   `json:"privacy_protocol,omitempty"`        // v3
 	PrivacyPassword        string   `json:"privacy_password,omitempty"`        // v3
+
+	// values used by "oid" preset
+	Oid       string `json:"oid,omitempty"`
+	Name      string `json:"name,omitempty"`
+	ValueType string `json:"value_type,omitempty"`
+	Unit      string `json:"unit,omitempty"`
 }
 
 type Results struct {

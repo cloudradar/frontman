@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -85,7 +86,7 @@ func TestSNMPv2(t *testing.T) {
 }
 
 // test SNMP v2 against snmpd
-func TestSNMPv2Bandwidth(t *testing.T) {
+func TestSNMPv2PresetBandwidth(t *testing.T) {
 	// necessary snmpd.conf changes:
 	// view   systemonly  included   .1
 
@@ -147,6 +148,40 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 	if _, ok := iface["ifInUtilization_percent"]; !ok {
 		t.Errorf("ifInUtilization_percent key missing")
 	}
+}
+
+func TestSNMPv2PresetOid(t *testing.T) {
+	skipSNMP(t)
+
+	delaySeconds := 1.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_oid",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   5.0,
+				Protocol:  "v2",
+				Community: snmpdCommunity,
+				Preset:    "oid",
+				Oid:       ".1.3.6.1.2.1.2.2.1.20.7",
+				Name:      "ifOutErrors p sec Port 7",
+				ValueType: "delta_per_sec",
+				Unit:      "Eps",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
+
+	logrus.Println(res)
 }
 
 // test SNMP v2 invalid community against snmpd
