@@ -697,6 +697,10 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				return
 			}
 
+			if check.Check.ValueType == "" {
+				check.Check.ValueType = "auto"
+			}
+
 			res := Result{
 				CheckType: "snmpCheck",
 				CheckUUID: check.UUID,
