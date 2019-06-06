@@ -31,6 +31,7 @@ type snmpBandwidthMeasure struct {
 type snmpOidDeltaMeasure struct {
 	timestamp time.Time
 	name      string
+	val       uint
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -208,6 +209,7 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 			for idx := range res {
 				for _, r := range res[idx] {
 					m[r.key] = fm.filterSNMPOidDeltaResult(check, r)
+					break
 				}
 			}
 		}
@@ -224,9 +226,37 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 	return m, nil
 }
 
-func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult) interface{} {
-	var m interface{}
-	m = r.val.(string)
+func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	if check.ValueType != "delta" {
+		m["value"] = r.val.(string)
+		return m
+	}
+
+	prevMeasures := fm.previousSNMPOidDeltaMeasure
+	fm.previousSNMPOidDeltaMeasure = nil
+
+	val := r.val.(uint)
+
+	m["value"] = val
+
+	// calculate delta from previous measure
+	for _, measure := range prevMeasures {
+		if measure.name == check.Oid {
+			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+			delta := float64(delta(measure.val, val))
+			m["delta"] = uint(math.Round(delta / delaySeconds))
+			break
+		}
+	}
+
+	fm.previousSNMPOidDeltaMeasure = append(fm.previousSNMPOidDeltaMeasure, snmpOidDeltaMeasure{
+		timestamp: time.Now(),
+		name:      check.Oid,
+		val:       val,
+	})
+
 	return m
 }
 

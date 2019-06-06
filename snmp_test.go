@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -180,7 +179,9 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
-	require.Equal(t, true, len(res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(string)) > 0)
+
+	part := res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(map[string]interface{})
+	require.Equal(t, true, len(part["value"].(string)) > 0)
 }
 
 func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
@@ -213,8 +214,10 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
-	spew.Dump(res)
-	//require.Equal(t, true, len(res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(string)) > 0)
+	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
+	require.Equal(t, true, part["value"].(uint) > 0)
+
+	// XXX 2nd run to get a delta
 }
 
 // test SNMP v2 invalid community against snmpd
