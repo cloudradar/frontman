@@ -207,7 +207,7 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 		} else {
 			for idx := range res {
 				for _, r := range res[idx] {
-					m[r.key] = fm.filterSNMPOidDeltaResult(r)
+					m[r.key] = fm.filterSNMPOidDeltaResult(check, r)
 				}
 			}
 		}
@@ -224,11 +224,9 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 	return m, nil
 }
 
-func (fm *Frontman) filterSNMPOidDeltaResult(r snmpResult) map[string]interface{} {
-	m := make(map[string]interface{})
-	//m[x.key] = x.val
-
-	m["val"] = r.val.(string)
+func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult) interface{} {
+	var m interface{}
+	m = r.val.(string)
 	return m
 }
 
