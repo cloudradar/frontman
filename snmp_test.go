@@ -187,7 +187,7 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	skipSNMP(t)
 
-	delaySeconds := 1.
+	delaySeconds := 5.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
@@ -217,7 +217,18 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
 	require.Equal(t, true, part["value"].(uint) > 0)
 
-	// XXX 2nd run to get a delta
+	// do 2nd request and check delta values
+	time.Sleep(time.Duration(delaySeconds) * time.Second)
+
+	resultsChan = make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res = <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
+
+	part = res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
+	require.Equal(t, true, part["value"].(uint) > 0)
+	require.Equal(t, true, part["delta"].(uint) >= 0)
 }
 
 // test SNMP v2 invalid community against snmpd
