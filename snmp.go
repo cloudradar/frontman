@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -67,19 +68,19 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 	defer params.Conn.Close()
 
-	oids, form, err := presetToOids(check.Preset)
+	oids, form, err := check.presetToOids()
 	if err != nil {
 		return m, err
 	}
 	var packets []gosnmp.SnmpPDU
-	if form == "bulk" {
+	switch form {
+	case "bulk":
 		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
 		if err != nil {
 			return m, fmt.Errorf("get bulk err: %v", err)
 		}
 		packets = result.Variables
-	} else {
-		// walk
+	case "walk":
 		for _, oid := range oids {
 			pdus, err := params.BulkWalkAll(oid)
 			if err != nil {
@@ -87,9 +88,15 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			}
 			packets = append(packets, pdus...)
 		}
+	case "single":
+		result, err := params.Get(oids)
+		if err != nil {
+			return m, fmt.Errorf("get err: %v", err)
+		}
+		packets = append(packets, result.Variables...)
 	}
 
-	return fm.prepareSNMPResult(check.Preset, packets)
+	return fm.prepareSNMPResult(check, packets)
 }
 
 type snmpResult struct {
@@ -97,7 +104,7 @@ type snmpResult struct {
 	val interface{}
 }
 
-func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
+func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
 	res := make(map[int][]snmpResult)
 	for _, variable := range packets {
 		if err := oidToError(variable.Name); err != nil {
@@ -109,12 +116,21 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		prefix, suffix, err := oidToHumanReadable(variable.Name)
 		if err != nil {
 			logrus.Debug(err)
-			continue
+			prefix = variable.Name
 		}
 
 		switch variable.Type {
 		case gosnmp.OctetString:
-			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: string(variable.Value.([]byte))})
+			val := ""
+			if (check.ValueType == "auto" && oidShouldBeHexString(variable.Name)) || check.ValueType == "hex" {
+				// format hex as "99:aa:bb:cc:dd"
+				val = fmt.Sprintf("% x", variable.Value.([]byte))
+				val = strings.ReplaceAll(val, " ", ":")
+			} else {
+				val = string(variable.Value.([]byte))
+			}
+			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: val})
+			log.Println("into", res[suffix])
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
@@ -123,10 +139,10 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: ""})
 
 		default:
-			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
+			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, variable.Value)
 		}
 	}
-	return fm.filterSNMPResult(preset, res)
+	return fm.filterSNMPResult(check, res)
 }
 
 const (
@@ -146,9 +162,9 @@ func (kv snmpResult) shouldExcludeInterface() bool {
 }
 
 // filters the snmp results according to preset
-func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (map[string]interface{}, error) {
+func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpResult) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
-	if preset == "bandwidth" {
+	if check.Preset == "bandwidth" {
 		prevMeasures := fm.previousSNMPBandwidthMeasure
 		fm.previousSNMPBandwidthMeasure = nil
 		for idx, iface := range res {
@@ -343,6 +359,16 @@ func ignoreSNMPOid(name string) bool {
 	return false
 }
 
+// returns true if oid should be formatted as a hex string (aa:bb:cc:dd)
+func oidShouldBeHexString(name string) bool {
+	prefix, _, _ := oidToHumanReadable(name)
+	switch prefix {
+	case ".1.3.6.1.2.1.2.2.1.6": // ifPhysAddress
+		return true
+	}
+	return false
+}
+
 // returns human readable error if OID is a error
 func oidToError(name string) (err error) {
 	switch name {
@@ -402,14 +428,15 @@ func oidToHumanReadable(name string) (prefix string, suffix int, err error) {
 		prefix = "ifOutOctets"
 
 	default:
+		prefix = name
 		err = fmt.Errorf("unrecognized OID %s", name)
 	}
 	return
 }
 
 // returns a collection of oids for the given preset
-func presetToOids(preset string) (oids []string, form string, err error) {
-	switch preset {
+func (check *SNMPCheckData) presetToOids() (oids []string, form string, err error) {
+	switch check.Preset {
 	case "basedata":
 		oids = []string{
 			"1.3.6.1.2.1.1.1.0", // STRING: SG350-10 10-Port Gigabit Managed Switch
@@ -431,8 +458,11 @@ func presetToOids(preset string) (oids []string, form string, err error) {
 			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
 		}
 		form = "walk"
+	case "oid":
+		oids = []string{check.Oid}
+		form = "single"
 	default:
-		err = fmt.Errorf("unrecognized preset %s", preset)
+		err = fmt.Errorf("unrecognized preset %s", check.Preset)
 	}
 	return
 }
