@@ -2,7 +2,6 @@ package frontman
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -24,9 +23,14 @@ const (
 // used to calculate delta from last snmp bandwidth measure
 type snmpBandwidthMeasure struct {
 	timestamp   time.Time
-	ifName      string
+	name        string
 	ifOutOctets uint
 	ifInOctets  uint
+}
+
+type snmpOidDeltaMeasure struct {
+	timestamp time.Time
+	name      string
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -138,7 +142,6 @@ func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.Snm
 				val = string(variable.Value.([]byte))
 			}
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: val})
-			log.Println("into", res[suffix])
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
@@ -203,8 +206,8 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 			logrus.Debug("unexpected oid result length:", res)
 		} else {
 			for idx := range res {
-				for _, x := range res[idx] {
-					m[x.key] = x.val
+				for _, r := range res[idx] {
+					m[r.key] = fm.filterSNMPOidDeltaResult(r)
 				}
 			}
 		}
@@ -219,6 +222,14 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 		}
 	}
 	return m, nil
+}
+
+func (fm *Frontman) filterSNMPOidDeltaResult(r snmpResult) map[string]interface{} {
+	m := make(map[string]interface{})
+	//m[x.key] = x.val
+
+	m["val"] = r.val.(string)
+	return m
 }
 
 func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevMeasures []snmpBandwidthMeasure) map[string]interface{} {
@@ -252,7 +263,7 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 
 	// calculate delta from previous measure
 	for _, measure := range prevMeasures {
-		if measure.ifName == ifName {
+		if measure.name == ifName {
 			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
 			inDelta := float64(delta(measure.ifInOctets, ifIn))
 			outDelta := float64(delta(measure.ifOutOctets, ifOut))
@@ -271,7 +282,7 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 
 	fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
 		timestamp:   time.Now(),
-		ifName:      ifName,
+		name:        ifName,
 		ifOutOctets: ifOut,
 		ifInOctets:  ifIn,
 	})

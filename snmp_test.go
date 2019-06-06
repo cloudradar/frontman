@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -149,7 +150,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 	}
 }
 
-func TestSNMPv2PresetOid(t *testing.T) {
+func TestSNMPv2PresetOidHexValue(t *testing.T) {
 	skipSNMP(t)
 
 	delaySeconds := 1.
@@ -159,7 +160,7 @@ func TestSNMPv2PresetOid(t *testing.T) {
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_oid",
+			UUID: "snmp_basedata_v2_oid_hex",
 			Check: SNMPCheckData{
 				Connect:   snmpdIP,
 				Port:      161,
@@ -167,7 +168,7 @@ func TestSNMPv2PresetOid(t *testing.T) {
 				Protocol:  "v2",
 				Community: snmpdCommunity,
 				Preset:    "oid",
-				Oid:       ".1.3.6.1.2.1.2.2.1.6.2",
+				Oid:       ".1.3.6.1.2.1.2.2.1.6.2", // IF-MIB::ifPhysAddress.2
 				Name:      "interface mac",
 				ValueType: "hex",
 			},
@@ -180,6 +181,40 @@ func TestSNMPv2PresetOid(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 	require.Equal(t, true, len(res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(string)) > 0)
+}
+
+func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
+	skipSNMP(t)
+
+	delaySeconds := 1.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_oid_delta",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   5.0,
+				Protocol:  "v2",
+				Community: snmpdCommunity,
+				Preset:    "oid",
+				Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
+				ValueType: "delta",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
+
+	spew.Dump(res)
+	//require.Equal(t, true, len(res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(string)) > 0)
 }
 
 // test SNMP v2 invalid community against snmpd

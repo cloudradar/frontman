@@ -697,7 +697,8 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				return
 			}
 
-			if check.Check.ValueType == "" {
+			check.Check.ValueType = strings.ToLower(check.Check.ValueType)
+			if check.Check.ValueType == "" || check.Check.ValueType == "raw" {
 				check.Check.ValueType = "auto"
 			}
 
