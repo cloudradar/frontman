@@ -1,7 +1,7 @@
 package frontman
 
 // In order to run tests, set up snmpd somewhere and
-// $ FRONTMAN_SNMPD_IP="172.16.72.144" go test -v -run TestSNMP
+// $ "FRONTMAN_SNMPD_IP="172.16.72.169" FRONTMAN_SNMPD_COMMUNITY=public go test -v -run TestSNMP"
 
 import (
 	"os"
@@ -13,12 +13,14 @@ import (
 )
 
 var snmpdIP = ""
+var snmpdCommunity = ""
 
 func skipSNMP(t *testing.T) {
 	snmpdIP = os.Getenv("FRONTMAN_SNMPD_IP")
 	if snmpdIP == "" {
 		t.Skip("Skipping test of SNMP")
 	}
+	snmpdCommunity = os.Getenv("FRONTMAN_SNMPD_COMMUNITY")
 }
 
 // test SNMP v1 against snmpd
@@ -38,7 +40,7 @@ func TestSNMPv1(t *testing.T) {
 				Port:      161,
 				Timeout:   5.0,
 				Protocol:  "v1",
-				Community: "public",
+				Community: snmpdCommunity,
 				Preset:    "basedata",
 			},
 		}},
@@ -67,7 +69,7 @@ func TestSNMPv2(t *testing.T) {
 				Port:      161,
 				Timeout:   5.0,
 				Protocol:  "v2",
-				Community: "public",
+				Community: snmpdCommunity,
 				Preset:    "basedata",
 			},
 		}},
@@ -105,7 +107,7 @@ func TestSNMPv2Bandwidth(t *testing.T) {
 				Port:      161,
 				Timeout:   5.0,
 				Protocol:  "v2",
-				Community: "cloudr",
+				Community: snmpdCommunity,
 				Preset:    "bandwidth",
 			},
 		}},

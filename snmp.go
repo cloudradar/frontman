@@ -29,10 +29,10 @@ type snmpBandwidthMeasure struct {
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
-	var done = make(chan struct{})
+	var done = make(chan map[string]interface{})
 	var err error
-	var results map[string]interface{}
 	go func() {
+		var results map[string]interface{}
 		results, err = fm.runSNMPProbe(&check.Check)
 		successKey := "snmpCheck." + check.Check.Preset + ".success"
 		if err != nil {
@@ -40,14 +40,14 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 		} else {
 			results[successKey] = 1
 		}
-		done <- struct{}{}
+		done <- results
 	}()
 
 	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
 	// instead use individual timeouts inside all checks
 	select {
-	case <-done:
-		return results, err
+	case res := <-done:
+		return res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
@@ -101,7 +101,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 	res := make(map[int][]snmpResult)
 	for _, variable := range packets {
 		if err := oidToError(variable.Name); err != nil {
-			return nil, err
+			return make(map[string]interface{}), err
 		}
 		if ignoreSNMPOid(variable.Name) {
 			continue
@@ -290,11 +290,8 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 
 func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityParameters, err error) {
 	// 8+ password length required by the SNMPv3 USM
-	if len(check.AuthenticationPassword) < 8 {
+	if check.SecurityLevel != "noAuthNoPriv" && len(check.AuthenticationPassword) < 8 {
 		return nil, fmt.Errorf("authentication_password must be at least 8 characters")
-	}
-	if len(check.PrivacyPassword) < 8 {
-		return nil, fmt.Errorf("privacy_password must be at least 8 characters")
 	}
 	sp = &gosnmp.UsmSecurityParameters{
 		UserName: check.Username,
@@ -317,6 +314,9 @@ func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityPa
 		sp.PrivacyProtocol = gosnmp.NoPriv
 	default:
 		return sp, fmt.Errorf("invalid privacy_protocol '%s'", check.PrivacyProtocol)
+	}
+	if check.SecurityLevel == "authPriv" && len(check.PrivacyPassword) < 8 {
+		return nil, fmt.Errorf("privacy_password must be at least 8 characters")
 	}
 
 	switch check.SecurityLevel {
