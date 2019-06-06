@@ -29,10 +29,10 @@ type snmpBandwidthMeasure struct {
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
-	var done = make(chan struct{})
+	var done = make(chan map[string]interface{})
 	var err error
-	var results map[string]interface{}
 	go func() {
+		var results map[string]interface{}
 		results, err = fm.runSNMPProbe(&check.Check)
 		successKey := "snmpCheck." + check.Check.Preset + ".success"
 		if err != nil {
@@ -40,14 +40,14 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 		} else {
 			results[successKey] = 1
 		}
-		done <- struct{}{}
+		done <- results
 	}()
 
 	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
 	// instead use individual timeouts inside all checks
 	select {
-	case <-done:
-		return results, err
+	case res := <-done:
+		return res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
@@ -101,7 +101,7 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 	res := make(map[int][]snmpResult)
 	for _, variable := range packets {
 		if err := oidToError(variable.Name); err != nil {
-			return nil, err
+			return make(map[string]interface{}), err
 		}
 		if ignoreSNMPOid(variable.Name) {
 			continue
@@ -118,6 +118,9 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
+
+		case gosnmp.Null:
+			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: ""})
 
 		default:
 			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
@@ -152,6 +155,12 @@ func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (m
 			skip := false
 			for _, kv := range iface {
 				if kv.shouldExcludeInterface() {
+					if kv.key == "ifOperStatus" && kv.val.(int) != ifOperStatusUp {
+						logrus.Debug("Excluding interface ", idx, " since status is ", kv.val)
+					}
+					if kv.key == "ifType" && kv.val.(int) != ifTypeEthernetCsmacd {
+						logrus.Debug("Excluding interface ", idx, " since type is ", kv.val)
+					}
 					skip = true
 					break
 				}
@@ -204,16 +213,19 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 
 	// calculate delta from previous measure
 	for _, measure := range prevMeasures {
-		if measure.ifName == ifName && ifSpeedInBytes > 0 {
+		if measure.ifName == ifName {
 			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
 			inDelta := float64(delta(measure.ifInOctets, ifIn))
 			outDelta := float64(delta(measure.ifOutOctets, ifOut))
-			inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-			outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-			m["ifInUtilization_percent"] = math.Round(inPct*100) / 100
-			m["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
 			m["ifIn_Bps"] = uint(math.Round(inDelta / delaySeconds))
 			m["ifOut_Bps"] = uint(math.Round(outDelta / delaySeconds))
+
+			if ifSpeedInBytes > 0 {
+				inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+				outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
+				m["ifInUtilization_percent"] = math.Round(inPct*100) / 100
+				m["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
+			}
 			break
 		}
 	}
@@ -237,12 +249,14 @@ func delta(v1, v2 uint) uint {
 
 // generates gosnmp parameters for the given check configuration
 func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
+	if check.Timeout < 5 {
+		check.Timeout = 5
+	}
 	params := &gosnmp.GoSNMP{
 		Target:  check.Connect,
 		Port:    check.Port,
 		Timeout: time.Duration(check.Timeout) * time.Second,
 	}
-
 	switch check.Protocol {
 	case protocolSNMPv1:
 		params.Version = gosnmp.Version1
@@ -275,6 +289,10 @@ func buildSNMPParameters(check *SNMPCheckData) (*gosnmp.GoSNMP, error) {
 }
 
 func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityParameters, err error) {
+	// 8+ password length required by the SNMPv3 USM
+	if check.SecurityLevel != "noAuthNoPriv" && len(check.AuthenticationPassword) < 8 {
+		return nil, fmt.Errorf("authentication_password must be at least 8 characters")
+	}
 	sp = &gosnmp.UsmSecurityParameters{
 		UserName: check.Username,
 	}
@@ -296,6 +314,9 @@ func buildSNMPSecurityParameters(check *SNMPCheckData) (sp *gosnmp.UsmSecurityPa
 		sp.PrivacyProtocol = gosnmp.NoPriv
 	default:
 		return sp, fmt.Errorf("invalid privacy_protocol '%s'", check.PrivacyProtocol)
+	}
+	if check.SecurityLevel == "authPriv" && len(check.PrivacyPassword) < 8 {
+		return nil, fmt.Errorf("privacy_password must be at least 8 characters")
 	}
 
 	switch check.SecurityLevel {
