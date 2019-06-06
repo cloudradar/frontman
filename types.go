@@ -72,7 +72,7 @@ type SNMPCheckData struct {
 	// values used by "oid" preset
 	Oid       string `json:"oid,omitempty"`
 	Name      string `json:"name,omitempty"`
-	ValueType string `json:"value_type,omitempty"`
+	ValueType string `json:"value_type,omitempty"` // auto (default), hex, XXX
 	Unit      string `json:"unit,omitempty"`
 }
 

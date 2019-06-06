@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -168,20 +167,19 @@ func TestSNMPv2PresetOid(t *testing.T) {
 				Protocol:  "v2",
 				Community: snmpdCommunity,
 				Preset:    "oid",
-				Oid:       ".1.3.6.1.2.1.2.2.1.20.7",
-				Name:      "ifOutErrors p sec Port 7",
-				ValueType: "delta_per_sec",
-				Unit:      "Eps",
+				Oid:       ".1.3.6.1.2.1.2.2.1.6.2",
+				Name:      "interface mac",
+				ValueType: "hex",
 			},
 		}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
-	require.Equal(t, nil, res.Message)
-	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
 
-	logrus.Println(res)
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
+	require.Equal(t, true, len(res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(string)) > 0)
 }
 
 // test SNMP v2 invalid community against snmpd
