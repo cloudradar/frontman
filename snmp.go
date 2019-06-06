@@ -138,6 +138,9 @@ func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.Snm
 		case gosnmp.Null:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: ""})
 
+		case gosnmp.NoSuchInstance:
+			return make(map[string]interface{}), fmt.Errorf("no such instance")
+
 		default:
 			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, variable.Value)
 		}
