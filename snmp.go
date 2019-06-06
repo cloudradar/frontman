@@ -113,10 +113,18 @@ func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.Snm
 		if ignoreSNMPOid(variable.Name) {
 			continue
 		}
-		prefix, suffix, err := oidToHumanReadable(variable.Name)
-		if err != nil {
-			logrus.Debug(err)
+		var prefix string
+		var suffix int
+		var err error
+
+		if check.Preset == "oid" {
 			prefix = variable.Name
+		} else {
+			prefix, suffix, err = oidToHumanReadable(variable.Name)
+			if err != nil {
+				logrus.Debug(err)
+				prefix = variable.Name
+			}
 		}
 
 		switch variable.Type {
@@ -167,7 +175,8 @@ func (kv snmpResult) shouldExcludeInterface() bool {
 // filters the snmp results according to preset
 func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpResult) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
-	if check.Preset == "bandwidth" {
+	switch check.Preset {
+	case "bandwidth":
 		prevMeasures := fm.previousSNMPBandwidthMeasure
 		fm.previousSNMPBandwidthMeasure = nil
 		for idx, iface := range res {
@@ -189,7 +198,18 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 			}
 			m[fmt.Sprint(idx)] = fm.filterSNMPBandwidthResult(idx, iface, prevMeasures)
 		}
-	} else {
+	case "oid":
+		if len(res) != 1 {
+			logrus.Debug("unexpected oid result length:", res)
+		} else {
+			for idx := range res {
+				for _, x := range res[idx] {
+					m[x.key] = x.val
+				}
+			}
+		}
+
+	default:
 		// flatten
 		if len(res) != 1 {
 			return nil, fmt.Errorf("unexpected index count %d", len(res))
