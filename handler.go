@@ -702,6 +702,14 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				check.Check.ValueType = "auto"
 			}
 
+			switch check.Check.ValueType {
+			case "auto", "hex", "delta", "delta_per_sec":
+				break
+			default:
+				logrus.Errorf("snmpCheck: invalid value_type '%s'", check.Check.ValueType)
+				return
+			}
+
 			res := Result{
 				CheckType: "snmpCheck",
 				CheckUUID: check.UUID,

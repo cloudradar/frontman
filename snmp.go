@@ -229,7 +229,7 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult) map[string]interface{} {
 	m := make(map[string]interface{})
 
-	if check.ValueType != "delta" {
+	if check.ValueType == "auto" || check.ValueType == "hex" {
 		m["value"] = r.val.(string)
 		return m
 	}
@@ -241,13 +241,23 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 
 	m["value"] = val
 
-	// calculate delta from previous measure
-	for _, measure := range prevMeasures {
-		if measure.name == check.Oid {
-			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
-			delta := float64(delta(measure.val, val))
-			m["delta"] = uint(math.Round(delta / delaySeconds))
-			break
+	if check.ValueType == "delta" {
+		// calculate delta from previous measure
+		for _, measure := range prevMeasures {
+			if measure.name == check.Oid {
+				m["delta"] = delta(measure.val, val)
+				break
+			}
+		}
+	} else if check.ValueType == "delta_per_sec" {
+		// calculate delta per second from previous measure
+		for _, measure := range prevMeasures {
+			if measure.name == check.Oid {
+				delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+				delta := float64(delta(measure.val, val))
+				m["delta_per_sec"] = uint(math.Round(delta / delaySeconds))
+				break
+			}
 		}
 	}
 

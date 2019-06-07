@@ -184,7 +184,7 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 	require.Equal(t, true, len(part["value"].(string)) > 0)
 }
 
-func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
+func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	skipSNMP(t)
 
 	delaySeconds := 5.
@@ -194,7 +194,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_oid_delta",
+			UUID: "snmp_basedata_v2_oid_delta_per_sec",
 			Check: SNMPCheckData{
 				Connect:   snmpdIP,
 				Port:      161,
@@ -203,7 +203,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 				Community: snmpdCommunity,
 				Preset:    "oid",
 				Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
-				ValueType: "delta",
+				ValueType: "delta_per_sec",
 			},
 		}},
 	}
@@ -228,7 +228,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 
 	part = res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
 	require.Equal(t, true, part["value"].(uint) > 0)
-	require.Equal(t, true, part["delta"].(uint) >= 0)
+	require.Equal(t, true, part["delta_per_sec"].(uint) >= 0)
 }
 
 // test SNMP v2 invalid community against snmpd
