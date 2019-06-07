@@ -221,8 +221,6 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
-	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
-
 	// do 2nd request and check delta values
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
@@ -232,7 +230,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
-	part = res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
+	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
 	require.Equal(t, true, part["value"].(float64) >= 0)
 
 	require.Equal(t, ".1.3.6.1.2.1.2.2.1.16.2", part["oid"].(string))
@@ -273,8 +271,6 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
-	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
-
 	// do 2nd request and check delta values
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
@@ -284,7 +280,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
-	part = res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
+	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
 	require.Equal(t, true, part["value"].(float64) >= 0)
 
 	require.Equal(t, ".1.3.6.1.2.1.2.2.1.16.2", part["oid"].(string))
