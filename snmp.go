@@ -135,7 +135,7 @@ func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.Snm
 		switch variable.Type {
 		case gosnmp.OctetString:
 			val := ""
-			if (check.ValueType == "auto" && oidShouldBeHexString(variable.Name)) || check.ValueType == "hex" {
+			if (check.ValueType == "raw" && oidShouldBeHexString(variable.Name)) || check.ValueType == "hex" {
 				// format hex as "99:aa:bb:cc:dd"
 				val = fmt.Sprintf("% x", variable.Value.([]byte))
 				val = strings.ReplaceAll(val, " ", ":")
@@ -229,7 +229,13 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult) map[string]interface{} {
 	m := make(map[string]interface{})
 
-	if check.ValueType == "auto" || check.ValueType == "hex" {
+	// pass-through values for easy consumption by frontend
+	m["name"] = check.Name
+	m["oid"] = check.Oid
+	m["value_type"] = check.ValueType
+	m["unit"] = check.Unit
+
+	if check.ValueType == "raw" || check.ValueType == "hex" {
 		m["value"] = r.val.(string)
 		return m
 	}
@@ -239,13 +245,11 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 
 	val := r.val.(uint)
 
-	m["value"] = val
-
 	if check.ValueType == "delta" {
 		// calculate delta from previous measure
 		for _, measure := range prevMeasures {
 			if measure.name == check.Oid {
-				m["delta"] = delta(measure.val, val)
+				m["value"] = deltaFloat(float64(measure.val), float64(val))
 				break
 			}
 		}
@@ -254,8 +258,8 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 		for _, measure := range prevMeasures {
 			if measure.name == check.Oid {
 				delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
-				delta := float64(delta(measure.val, val))
-				m["delta_per_sec"] = uint(math.Round(delta / delaySeconds))
+				delta := deltaFloat(float64(measure.val), float64(val))
+				m["value"] = delta / delaySeconds
 				break
 			}
 		}
@@ -329,6 +333,13 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 }
 
 func delta(v1, v2 uint) uint {
+	if v1 < v2 {
+		return v2 - v1
+	}
+	return v1 - v2
+}
+
+func deltaFloat(v1, v2 float64) float64 {
 	if v1 < v2 {
 		return v2 - v1
 	}

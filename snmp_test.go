@@ -182,6 +182,11 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 
 	part := res.Measurements[".1.3.6.1.2.1.2.2.1.6.2"].(map[string]interface{})
 	require.Equal(t, true, len(part["value"].(string)) > 0)
+
+	require.Equal(t, ".1.3.6.1.2.1.2.2.1.6.2", part["oid"].(string))
+	require.Equal(t, "hex", part["value_type"].(string))
+	require.Equal(t, "interface mac", part["name"].(string))
+	require.Equal(t, "", part["unit"].(string))
 }
 
 func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
@@ -204,6 +209,8 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 				Preset:    "oid",
 				Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
 				ValueType: "delta_per_sec",
+				Name:      "delta-per-sec-value",
+				Unit:      "unit-value",
 			},
 		}},
 	}
@@ -215,7 +222,6 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
 	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
-	require.Equal(t, true, part["value"].(uint) > 0)
 
 	// do 2nd request and check delta values
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
@@ -227,8 +233,64 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
 
 	part = res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
-	require.Equal(t, true, part["value"].(uint) > 0)
-	require.Equal(t, true, part["delta_per_sec"].(uint) >= 0)
+	require.Equal(t, true, part["value"].(float64) >= 0)
+
+	require.Equal(t, ".1.3.6.1.2.1.2.2.1.16.2", part["oid"].(string))
+	require.Equal(t, "delta_per_sec", part["value_type"].(string))
+	require.Equal(t, "delta-per-sec-value", part["name"].(string))
+	require.Equal(t, "unit-value", part["unit"].(string))
+}
+
+func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
+	skipSNMP(t)
+
+	delaySeconds := 5.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_oid_delta",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   5.0,
+				Protocol:  "v2",
+				Community: snmpdCommunity,
+				Preset:    "oid",
+				Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
+				ValueType: "delta",
+				Name:      "delta-value",
+				Unit:      "unit-value",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
+
+	part := res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
+
+	// do 2nd request and check delta values
+	time.Sleep(time.Duration(delaySeconds) * time.Second)
+
+	resultsChan = make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res = <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
+
+	part = res.Measurements[".1.3.6.1.2.1.2.2.1.16.2"].(map[string]interface{})
+	require.Equal(t, true, part["value"].(float64) >= 0)
+
+	require.Equal(t, ".1.3.6.1.2.1.2.2.1.16.2", part["oid"].(string))
+	require.Equal(t, "delta", part["value_type"].(string))
+	require.Equal(t, "delta-value", part["name"].(string))
+	require.Equal(t, "unit-value", part["unit"].(string))
 }
 
 // test SNMP v2 invalid community against snmpd

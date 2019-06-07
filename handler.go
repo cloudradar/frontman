@@ -698,12 +698,8 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			}
 
 			check.Check.ValueType = strings.ToLower(check.Check.ValueType)
-			if check.Check.ValueType == "" || check.Check.ValueType == "raw" {
-				check.Check.ValueType = "auto"
-			}
-
 			switch check.Check.ValueType {
-			case "auto", "hex", "delta", "delta_per_sec":
+			case "raw", "hex", "delta", "delta_per_sec":
 				break
 			default:
 				logrus.Errorf("snmpCheck: invalid value_type '%s'", check.Check.ValueType)
