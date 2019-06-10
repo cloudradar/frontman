@@ -244,7 +244,7 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 	default:
 		// flatten
 		if len(res) != 1 {
-			return nil, fmt.Errorf("unexpected index count %d", len(res))
+			return m, fmt.Errorf("unexpected index count %d", len(res))
 		}
 		for _, x := range res[0] {
 			m[x.key] = x.val
