@@ -289,6 +289,34 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	require.Equal(t, "unit-value", part["unit"].(string))
 }
 
+func TestSNMPv2PresetPorterrors(t *testing.T) {
+	skipSNMP(t)
+
+	delaySeconds := 1.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_porterrors",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   5.0,
+				Protocol:  "v2",
+				Community: snmpdCommunity,
+				Preset:    "porterrors",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
+}
+
 // test SNMP v2 invalid community against snmpd
 func TestSNMPv2InvalidCommunity(t *testing.T) {
 	skipSNMP(t)
