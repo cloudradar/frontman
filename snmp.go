@@ -573,6 +573,16 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 	case "oid":
 		oids = []string{check.Oid}
 		form = "single"
+
+	case "porterrors":
+		oids = []string{
+			"1.3.6.1.2.1.2.2.1.14", // IF-MIB::ifInErrors
+			"1.3.6.1.2.1.2.2.1.20", // IF-MIB::ifOutErrors
+			"1.3.6.1.2.1.2.2.1.13", // IF-MIB::ifInDiscards
+			"1.3.6.1.2.1.2.2.1.19", // IF-MIB::ifOutDiscards
+			"1.3.6.1.2.1.2.2.1.15", // IF-MIB::ifInUnknownProtos
+		}
+		form = "walk"
 	default:
 		err = fmt.Errorf("unrecognized preset %s", check.Preset)
 	}
