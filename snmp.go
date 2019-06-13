@@ -61,6 +61,12 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 }
 
 func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, error) {
+
+	check.ValueType = strings.ToLower(check.ValueType)
+	if check.ValueType == "" {
+		check.ValueType = "raw"
+	}
+
 	m := make(map[string]interface{})
 	params, err := buildSNMPParameters(check)
 	if err != nil {
@@ -263,6 +269,8 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 				break
 			}
 		}
+	} else {
+		logrus.Warnf("snmpCheck: invalid value_type '%s'", check.ValueType)
 	}
 
 	fm.previousSNMPOidDeltaMeasure = append(fm.previousSNMPOidDeltaMeasure, snmpOidDeltaMeasure{
