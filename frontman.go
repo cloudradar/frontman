@@ -70,12 +70,13 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 		if err != nil {
 			logrus.Error("Can't write logs to file: ", err.Error())
 		}
-	}
-
-	if fm.Config.LogSyslog != "" {
-		err := addSyslogHook(fm.Config.LogSyslog)
-		if err != nil {
-			logrus.Error("Can't set up syslog: ", err.Error())
+	} else {
+		// If a logfile is specified, syslog must be disabled and logs are written to that file and nowhere else.
+		if fm.Config.LogSyslog != "" {
+			err := addSyslogHook(fm.Config.LogSyslog)
+			if err != nil {
+				logrus.Error("Can't set up syslog: ", err.Error())
+			}
 		}
 	}
 
