@@ -156,3 +156,34 @@ func (h *LogrusErrorHook) Levels() []logrus.Level {
 		logrus.ErrorLevel,
 	}
 }
+
+func (fm *Frontman) configureLogger() {
+	tfmt := logrus.TextFormatter{FullTimestamp: true, DisableColors: true}
+	logrus.SetFormatter(&tfmt)
+
+	fm.SetLogLevel(fm.Config.LogLevel)
+
+	if fm.Config.LogFile != "" {
+		err := addLogFileHook(fm.Config.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+		if err != nil {
+			logrus.Error("Can't write logs to file: ", err.Error())
+		}
+	}
+	if fm.Config.LogSyslog != "" {
+		err := addSyslogHook(fm.Config.LogSyslog)
+		if err != nil {
+			logrus.Error("Can't set up syslog: ", err.Error())
+		}
+	}
+
+	// Add hook to logrus that updates our LastInternalError statistics
+	// whenever an error log is done
+	addErrorHook(fm.Stats)
+
+	// sets standard logging to /dev/null
+	devNull, err := os.OpenFile(os.DevNull, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		logrus.Error("err", err)
+	}
+	logrus.SetOutput(devNull)
+}

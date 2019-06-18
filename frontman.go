@@ -65,27 +65,9 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 		logrus.Error(err)
 	}
 
-	if fm.Config.LogFile != "" {
-		err := addLogFileHook(fm.Config.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-		if err != nil {
-			logrus.Error("Can't write logs to file: ", err.Error())
-		}
-	}
-
-	if fm.Config.LogSyslog != "" {
-		err := addSyslogHook(fm.Config.LogSyslog)
-		if err != nil {
-			logrus.Error("Can't set up syslog: ", err.Error())
-		}
-	}
-
-	fm.SetLogLevel(fm.Config.LogLevel)
+	fm.configureLogger()
 
 	fm.initHttpTransport()
-
-	// Add hook to logrus that updates our LastInternalError statistics
-	// whenever an error log is done
-	addErrorHook(fm.Stats)
 
 	return fm
 }

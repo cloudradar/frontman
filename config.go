@@ -51,7 +51,7 @@ type Config struct {
 	Sleep float64 `toml:"sleep" comment:"delay before starting a new round of checks in seconds"`
 
 	PidFile   string `toml:"pid" comment:"path to pid file"`
-	LogFile   string `toml:"log" comment:"path to log file"`
+	LogFile   string `toml:"log,omitempty" comment:"path to log file"`
 	LogSyslog string `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
 	StatsFile string `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 
