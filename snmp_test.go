@@ -1,7 +1,7 @@
 package frontman
 
 // In order to run tests, set up snmpd somewhere and
-// $ "FRONTMAN_SNMPD_IP="172.16.72.169" FRONTMAN_SNMPD_COMMUNITY=public go test -v -run TestSNMP"
+// $ FRONTMAN_SNMPD_IP="172.16.72.169" FRONTMAN_SNMPD_COMMUNITY=public go test -v -run TestSNMP
 
 import (
 	"os"
@@ -172,7 +172,7 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
 	// NOTE: the only error we get on invalid community name is a timeout
-	require.Equal(t, "get bulk err: Request timeout (after 0 retries)", res.Message)
+	require.Equal(t, "get err: Request timeout (after 0 retries)", res.Message)
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
 }
 
@@ -204,6 +204,10 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
+
+	// NOTE: if empty, snmpd is not configured correctly
+	require.Equal(t, true, len(res.Measurements["system.contact"].(string)) > 1)
+
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 }
 
@@ -334,6 +338,40 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
 	require.Equal(t, true, len(res.Measurements["system.contact"].(string)) > 1)
 	require.Equal(t, true, len(res.Measurements["system.location"].(string)) > 1)
+}
+
+func TestSNMPv3PresetBandwidthWrongCredentials(t *testing.T) {
+	// this test makes sure that we error out if called with invalid credentials (SNMP v3)
+
+	skipSNMP(t)
+
+	delaySeconds := 1.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v3_bandwidth_wrong_credentials",
+			Check: SNMPCheckData{
+				Connect:                snmpdIP,
+				Port:                   161,
+				Timeout:                5.0,
+				Protocol:               "v3",
+				Preset:                 "bandwidth",
+				SecurityLevel:          "authNoPriv",
+				Username:               "authOnlyUser",
+				AuthenticationProtocol: "sha",
+				AuthenticationPassword: "wrongpassword",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+
+	require.Equal(t, "wrong digests, possibly wrong password", res.Message)
+	require.Equal(t, 0, res.Measurements["snmpCheck.bandwidth.success"])
 }
 
 func TestOidToHumanReadable(t *testing.T) {

@@ -67,10 +67,21 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 	defer params.Conn.Close()
 
+	// do a simple snmp probe to make sure we are authenticated (work around issue https://github.com/soniah/gosnmp/issues/196)
+	authRes, err := params.Get([]string{"1.3.6.1.2.1.1.1.0"})
+	if err != nil {
+		return m, fmt.Errorf("get err: %v", err)
+	}
+
+	if err := getErrorFromVariables(authRes.Variables); err != nil {
+		return m, err
+	}
+
 	oids, form, err := presetToOids(check.Preset)
 	if err != nil {
 		return m, err
 	}
+
 	var packets []gosnmp.SnmpPDU
 	if form == "bulk" {
 		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
@@ -90,6 +101,16 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 
 	return fm.prepareSNMPResult(check.Preset, packets)
+}
+
+// does packets contain errror oid ?
+func getErrorFromVariables(packets []gosnmp.SnmpPDU) error {
+	for _, variable := range packets {
+		if err := oidToError(variable.Name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type snmpResult struct {
