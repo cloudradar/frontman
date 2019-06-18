@@ -121,7 +121,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	return fm.prepareSNMPResult(check, packets)
 }
 
-// does packets contain errror oid ?
+// getErrorFromVariables returns an error if any of the oid:s in the packets contains a recognized oid error
 func getErrorFromVariables(packets []gosnmp.SnmpPDU) error {
 	for _, variable := range packets {
 		if err := oidToError(variable.Name); err != nil {
