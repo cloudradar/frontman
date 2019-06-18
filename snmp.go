@@ -23,9 +23,15 @@ const (
 // used to calculate delta from last snmp bandwidth measure
 type snmpBandwidthMeasure struct {
 	timestamp   time.Time
-	ifName      string
+	name        string
 	ifOutOctets uint
 	ifInOctets  uint
+}
+
+type snmpOidDeltaMeasure struct {
+	timestamp time.Time
+	name      string
+	val       uint
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -55,6 +61,12 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 }
 
 func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, error) {
+
+	check.ValueType = strings.ToLower(check.ValueType)
+	if check.ValueType == "" {
+		check.ValueType = "raw"
+	}
+
 	m := make(map[string]interface{})
 	params, err := buildSNMPParameters(check)
 	if err != nil {
@@ -67,19 +79,19 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	}
 	defer params.Conn.Close()
 
-	oids, form, err := presetToOids(check.Preset)
+	oids, form, err := check.presetToOids()
 	if err != nil {
 		return m, err
 	}
 	var packets []gosnmp.SnmpPDU
-	if form == "bulk" {
+	switch form {
+	case "bulk":
 		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
 		if err != nil {
 			return m, fmt.Errorf("get bulk err: %v", err)
 		}
 		packets = result.Variables
-	} else {
-		// walk
+	case "walk":
 		for _, oid := range oids {
 			pdus, err := params.BulkWalkAll(oid)
 			if err != nil {
@@ -87,9 +99,15 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			}
 			packets = append(packets, pdus...)
 		}
+	case "single":
+		result, err := params.Get(oids)
+		if err != nil {
+			return m, fmt.Errorf("get err: %v", err)
+		}
+		packets = append(packets, result.Variables...)
 	}
 
-	return fm.prepareSNMPResult(check.Preset, packets)
+	return fm.prepareSNMPResult(check, packets)
 }
 
 type snmpResult struct {
@@ -97,7 +115,7 @@ type snmpResult struct {
 	val interface{}
 }
 
-func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
+func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.SnmpPDU) (map[string]interface{}, error) {
 	res := make(map[int][]snmpResult)
 	for _, variable := range packets {
 		if err := oidToError(variable.Name); err != nil {
@@ -106,15 +124,31 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		if ignoreSNMPOid(variable.Name) {
 			continue
 		}
-		prefix, suffix, err := oidToHumanReadable(variable.Name)
-		if err != nil {
-			logrus.Debug(err)
-			continue
+		var prefix string
+		var suffix int
+		var err error
+
+		if check.Preset == "oid" {
+			prefix = variable.Name
+		} else {
+			prefix, suffix, err = oidToHumanReadable(variable.Name)
+			if err != nil {
+				logrus.Debug(err)
+				prefix = variable.Name
+			}
 		}
 
 		switch variable.Type {
 		case gosnmp.OctetString:
-			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: string(variable.Value.([]byte))})
+			val := ""
+			if (check.ValueType == "raw" && oidShouldBeHexString(variable.Name)) || check.ValueType == "hex" {
+				// format hex as "99:aa:bb:cc:dd"
+				val = fmt.Sprintf("% x", variable.Value.([]byte))
+				val = strings.ReplaceAll(val, " ", ":")
+			} else {
+				val = string(variable.Value.([]byte))
+			}
+			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: val})
 
 		case gosnmp.TimeTicks, gosnmp.Integer, gosnmp.Counter32, gosnmp.Gauge32:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: variable.Value})
@@ -122,11 +156,14 @@ func (fm *Frontman) prepareSNMPResult(preset string, packets []gosnmp.SnmpPDU) (
 		case gosnmp.Null:
 			res[suffix] = append(res[suffix], snmpResult{key: prefix, val: ""})
 
+		case gosnmp.NoSuchInstance:
+			return make(map[string]interface{}), fmt.Errorf("no such instance")
+
 		default:
-			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, gosnmp.ToBigInt(variable.Value))
+			logrus.Debugf("SNMP unhandled return type %#v for %s: %d", variable.Type, prefix, variable.Value)
 		}
 	}
-	return fm.filterSNMPResult(preset, res)
+	return fm.filterSNMPResult(check, res)
 }
 
 const (
@@ -146,9 +183,10 @@ func (kv snmpResult) shouldExcludeInterface() bool {
 }
 
 // filters the snmp results according to preset
-func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (map[string]interface{}, error) {
+func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpResult) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
-	if preset == "bandwidth" {
+	switch check.Preset {
+	case "bandwidth":
 		prevMeasures := fm.previousSNMPBandwidthMeasure
 		fm.previousSNMPBandwidthMeasure = nil
 		for idx, iface := range res {
@@ -170,7 +208,19 @@ func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (m
 			}
 			m[fmt.Sprint(idx)] = fm.filterSNMPBandwidthResult(idx, iface, prevMeasures)
 		}
-	} else {
+	case "oid":
+		if len(res) != 1 {
+			logrus.Debug("unexpected oid result length:", res)
+		} else {
+			for idx := range res {
+				for _, r := range res[idx] {
+					m[r.key] = fm.filterSNMPOidDeltaResult(check, r)
+					break
+				}
+			}
+		}
+
+	default:
 		// flatten
 		if len(res) != 1 {
 			return nil, fmt.Errorf("unexpected index count %d", len(res))
@@ -180,6 +230,56 @@ func (fm *Frontman) filterSNMPResult(preset string, res map[int][]snmpResult) (m
 		}
 	}
 	return m, nil
+}
+
+func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	// pass-through values for easy consumption by frontend
+	m["name"] = check.Name
+	m["oid"] = check.Oid
+	m["value_type"] = check.ValueType
+	m["unit"] = check.Unit
+
+	if check.ValueType == "raw" || check.ValueType == "hex" {
+		m["value"] = r.val.(string)
+		return m
+	}
+
+	prevMeasures := fm.previousSNMPOidDeltaMeasure
+	fm.previousSNMPOidDeltaMeasure = nil
+
+	val := r.val.(uint)
+
+	if check.ValueType == "delta" {
+		// calculate delta from previous measure
+		for _, measure := range prevMeasures {
+			if measure.name == check.Oid {
+				m["value"] = deltaFloat(float64(measure.val), float64(val))
+				break
+			}
+		}
+	} else if check.ValueType == "delta_per_sec" {
+		// calculate delta per second from previous measure
+		for _, measure := range prevMeasures {
+			if measure.name == check.Oid {
+				delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+				delta := deltaFloat(float64(measure.val), float64(val))
+				m["value"] = delta / delaySeconds
+				break
+			}
+		}
+	} else {
+		logrus.Warnf("snmpCheck: invalid value_type '%s'", check.ValueType)
+	}
+
+	fm.previousSNMPOidDeltaMeasure = append(fm.previousSNMPOidDeltaMeasure, snmpOidDeltaMeasure{
+		timestamp: time.Now(),
+		name:      check.Oid,
+		val:       val,
+	})
+
+	return m
 }
 
 func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevMeasures []snmpBandwidthMeasure) map[string]interface{} {
@@ -213,7 +313,7 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 
 	// calculate delta from previous measure
 	for _, measure := range prevMeasures {
-		if measure.ifName == ifName {
+		if measure.name == ifName {
 			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
 			inDelta := float64(delta(measure.ifInOctets, ifIn))
 			outDelta := float64(delta(measure.ifOutOctets, ifOut))
@@ -232,7 +332,7 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 
 	fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
 		timestamp:   time.Now(),
-		ifName:      ifName,
+		name:        ifName,
 		ifOutOctets: ifOut,
 		ifInOctets:  ifIn,
 	})
@@ -241,6 +341,13 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 }
 
 func delta(v1, v2 uint) uint {
+	if v1 < v2 {
+		return v2 - v1
+	}
+	return v1 - v2
+}
+
+func deltaFloat(v1, v2 float64) float64 {
 	if v1 < v2 {
 		return v2 - v1
 	}
@@ -343,6 +450,16 @@ func ignoreSNMPOid(name string) bool {
 	return false
 }
 
+// returns true if oid should be formatted as a hex string (aa:bb:cc:dd)
+func oidShouldBeHexString(name string) bool {
+	prefix, _, _ := oidToHumanReadable(name)
+	switch prefix {
+	case ".1.3.6.1.2.1.2.2.1.6": // ifPhysAddress
+		return true
+	}
+	return false
+}
+
 // returns human readable error if OID is a error
 func oidToError(name string) (err error) {
 	switch name {
@@ -402,14 +519,15 @@ func oidToHumanReadable(name string) (prefix string, suffix int, err error) {
 		prefix = "ifOutOctets"
 
 	default:
+		prefix = name
 		err = fmt.Errorf("unrecognized OID %s", name)
 	}
 	return
 }
 
 // returns a collection of oids for the given preset
-func presetToOids(preset string) (oids []string, form string, err error) {
-	switch preset {
+func (check *SNMPCheckData) presetToOids() (oids []string, form string, err error) {
+	switch check.Preset {
 	case "basedata":
 		oids = []string{
 			"1.3.6.1.2.1.1.1.0", // STRING: SG350-10 10-Port Gigabit Managed Switch
@@ -431,8 +549,11 @@ func presetToOids(preset string) (oids []string, form string, err error) {
 			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
 		}
 		form = "walk"
+	case "oid":
+		oids = []string{check.Oid}
+		form = "single"
 	default:
-		err = fmt.Errorf("unrecognized preset %s", preset)
+		err = fmt.Errorf("unrecognized preset %s", check.Preset)
 	}
 	return
 }

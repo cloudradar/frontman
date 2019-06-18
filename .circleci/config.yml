@@ -62,9 +62,9 @@ jobs:
     steps:
       - attach_workspace:
           at: /go/src/github.com/cloudradar-monitoring
-      - run:
-          name: Setup ssh key to access windows signing machine
-          command: echo $SSH_KEY | base64 -d > /tmp/id_ssh && chmod 0600 /tmp/id_ssh
+      - add_ssh_keys:
+          fingerprints:
+            - "b3:b7:b0:59:57:1a:bc:82:6c:3c:91:d6:23:19:f2:08"
       - run: make windows-sign
 
   release-github:

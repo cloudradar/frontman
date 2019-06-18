@@ -33,6 +33,7 @@ type Frontman struct {
 	version string
 
 	previousSNMPBandwidthMeasure []snmpBandwidthMeasure
+	previousSNMPOidDeltaMeasure  []snmpOidDeltaMeasure
 }
 
 func New(cfg *Config, cfgPath, version string) *Frontman {
