@@ -34,6 +34,12 @@ type snmpOidDeltaMeasure struct {
 	val       uint
 }
 
+type snmpPorterrorsMeasure struct {
+	timestamp time.Time
+	name      string
+	val       uint
+}
+
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
 	var done = make(chan map[string]interface{})
 	var err error
@@ -84,7 +90,6 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	if err != nil {
 		return m, fmt.Errorf("get err: %v", err)
 	}
-
 	if err := getErrorFromVariables(authRes.Variables); err != nil {
 		return m, err
 	}
@@ -229,6 +234,30 @@ func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpRes
 			}
 			m[fmt.Sprint(idx)] = fm.filterSNMPBandwidthResult(idx, iface, prevMeasures)
 		}
+
+	case "porterrors":
+		prevMeasures := fm.previousSNMPPorterrorsMeasure
+		fm.previousSNMPPorterrorsMeasure = nil
+		for idx, iface := range res {
+			skip := false
+			for _, kv := range iface {
+				if kv.shouldExcludeInterface() {
+					if kv.key == "ifOperStatus" && kv.val.(int) != ifOperStatusUp {
+						logrus.Debug("Excluding interface ", idx, " since status is ", kv.val)
+					}
+					if kv.key == "ifType" && kv.val.(int) != ifTypeEthernetCsmacd {
+						logrus.Debug("Excluding interface ", idx, " since type is ", kv.val)
+					}
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			m[fmt.Sprint(idx)] = fm.filterSNMPPorterrorsResult(idx, iface, prevMeasures)
+		}
+
 	case "oid":
 		if len(res) != 1 {
 			logrus.Debug("unexpected oid result length:", res)
@@ -560,14 +589,14 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 		form = "bulk"
 	case "bandwidth":
 		oids = []string{
-			".1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
-			".1.3.6.1.2.1.2.2.1.3",     // IF-MIB::ifType (6=ethernetCsmacd)
-			".1.3.6.1.2.1.31.1.1.1.1",  // IF-MIB::ifName
-			".1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
-			".1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
-			".1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
-			".1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
-			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
+			"1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
+			"1.3.6.1.2.1.2.2.1.3",     // IF-MIB::ifType (6=ethernetCsmacd)
+			"1.3.6.1.2.1.31.1.1.1.1",  // IF-MIB::ifName
+			"1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
+			"1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
+			"1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
+			"1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
+			"1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
 		}
 		form = "walk"
 	case "oid":
@@ -576,6 +605,8 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 
 	case "porterrors":
 		oids = []string{
+			"1.3.6.1.2.1.2.2.1.8",  // IF-MIB::ifOperStatus (1=up)
+			"1.3.6.1.2.1.2.2.1.3",  // IF-MIB::ifType (6=ethernetCsmacd)
 			"1.3.6.1.2.1.2.2.1.14", // IF-MIB::ifInErrors
 			"1.3.6.1.2.1.2.2.1.20", // IF-MIB::ifOutErrors
 			"1.3.6.1.2.1.2.2.1.13", // IF-MIB::ifInDiscards
