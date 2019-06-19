@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -35,9 +36,10 @@ type snmpOidDeltaMeasure struct {
 }
 
 type snmpPorterrorsMeasure struct {
-	timestamp time.Time
-	name      string
-	val       uint
+	timestamp   time.Time
+	name        string
+	ifInErrors  uint
+	ifOutErrors uint
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -383,10 +385,57 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 	fm.previousSNMPBandwidthMeasure = append(fm.previousSNMPBandwidthMeasure, snmpBandwidthMeasure{
 		timestamp:   time.Now(),
 		name:        ifName,
-		ifOutOctets: ifOut,
 		ifInOctets:  ifIn,
+		ifOutOctets: ifOut,
 	})
 
+	return m
+}
+
+func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prevMeasures []snmpPorterrorsMeasure) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	log.Println("filterSNMPPorterrorsResult idx", idx, "res:", iface)
+	ifInErrors := uint(0)
+	ifOutErrors := uint(0)
+	ifName := ""
+
+	for _, x := range iface {
+		key := x.key
+		switch x.key {
+		case "ifOperStatus", "ifType":
+			continue
+		case "ifName":
+			ifName = x.val.(string)
+		case "ifInErrors":
+			ifInErrors = x.val.(uint)
+		case "ifOutErrors":
+			ifOutErrors = x.val.(uint)
+		default:
+			log.Println("unrecognized key:", x.key)
+		}
+		m[key] = x.val
+	}
+	m["ifIndex"] = idx
+
+	// calculate delta from previous measure
+	for _, measure := range prevMeasures {
+		if measure.name == ifName {
+			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+			inErrorsDelta := float64(delta(measure.ifInErrors, ifInErrors))
+			outErrorsDelta := float64(delta(measure.ifOutErrors, ifOutErrors))
+			m["ifInErrors_delta"] = uint(math.Round(inErrorsDelta / delaySeconds))
+			m["ifOutErrors_delta"] = uint(math.Round(outErrorsDelta / delaySeconds))
+			break
+		}
+	}
+
+	fm.previousSNMPPorterrorsMeasure = append(fm.previousSNMPPorterrorsMeasure, snmpPorterrorsMeasure{
+		timestamp:   time.Now(),
+		name:        ifName,
+		ifInErrors:  ifInErrors,
+		ifOutErrors: ifOutErrors,
+	})
 	return m
 }
 
@@ -567,6 +616,16 @@ func oidToHumanReadable(name string) (prefix string, suffix int, err error) {
 		prefix = "ifInOctets"
 	case ".1.3.6.1.2.1.2.2.1.16":
 		prefix = "ifOutOctets"
+	case ".1.3.6.1.2.1.2.2.1.14":
+		prefix = "ifInErrors"
+	case ".1.3.6.1.2.1.2.2.1.20":
+		prefix = "ifOutErrors"
+	case ".1.3.6.1.2.1.2.2.1.13":
+		prefix = "ifInDiscards"
+	case ".1.3.6.1.2.1.2.2.1.19":
+		prefix = "ifOutDiscards"
+	case ".1.3.6.1.2.1.2.2.1.15":
+		prefix = "ifInUnknownProtos"
 
 	default:
 		prefix = name
@@ -580,23 +639,23 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 	switch check.Preset {
 	case "basedata":
 		oids = []string{
-			"1.3.6.1.2.1.1.1.0", // STRING: SG350-10 10-Port Gigabit Managed Switch
-			"1.3.6.1.2.1.1.3.0", // Timeticks: (575618700) 66 days, 14:56:27.00
-			"1.3.6.1.2.1.1.4.0", // STRING: ops@cloudradar.io
-			"1.3.6.1.2.1.1.5.0", // STRING: switch-cloudradar
-			"1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
+			".1.3.6.1.2.1.1.1.0", // STRING: SG350-10 10-Port Gigabit Managed Switch
+			".1.3.6.1.2.1.1.3.0", // Timeticks: (575618700) 66 days, 14:56:27.00
+			".1.3.6.1.2.1.1.4.0", // STRING: ops@cloudradar.io
+			".1.3.6.1.2.1.1.5.0", // STRING: switch-cloudradar
+			".1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
 		}
 		form = "bulk"
 	case "bandwidth":
 		oids = []string{
-			"1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
-			"1.3.6.1.2.1.2.2.1.3",     // IF-MIB::ifType (6=ethernetCsmacd)
-			"1.3.6.1.2.1.31.1.1.1.1",  // IF-MIB::ifName
-			"1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
-			"1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
-			"1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
-			"1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
-			"1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
+			".1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
+			".1.3.6.1.2.1.2.2.1.3",     // IF-MIB::ifType (6=ethernetCsmacd)
+			".1.3.6.1.2.1.31.1.1.1.1",  // IF-MIB::ifName
+			".1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
+			".1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
+			".1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
+			".1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
+			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
 		}
 		form = "walk"
 	case "oid":
@@ -605,13 +664,14 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 
 	case "porterrors":
 		oids = []string{
-			"1.3.6.1.2.1.2.2.1.8",  // IF-MIB::ifOperStatus (1=up)
-			"1.3.6.1.2.1.2.2.1.3",  // IF-MIB::ifType (6=ethernetCsmacd)
-			"1.3.6.1.2.1.2.2.1.14", // IF-MIB::ifInErrors
-			"1.3.6.1.2.1.2.2.1.20", // IF-MIB::ifOutErrors
-			"1.3.6.1.2.1.2.2.1.13", // IF-MIB::ifInDiscards
-			"1.3.6.1.2.1.2.2.1.19", // IF-MIB::ifOutDiscards
-			"1.3.6.1.2.1.2.2.1.15", // IF-MIB::ifInUnknownProtos
+			".1.3.6.1.2.1.2.2.1.8",    // IF-MIB::ifOperStatus (1=up)
+			".1.3.6.1.2.1.2.2.1.3",    // IF-MIB::ifType (6=ethernetCsmacd)
+			".1.3.6.1.2.1.31.1.1.1.1", // IF-MIB::ifName
+			".1.3.6.1.2.1.2.2.1.14",   // IF-MIB::ifInErrors
+			".1.3.6.1.2.1.2.2.1.20",   // IF-MIB::ifOutErrors
+			".1.3.6.1.2.1.2.2.1.13",   // IF-MIB::ifInDiscards
+			".1.3.6.1.2.1.2.2.1.19",   // IF-MIB::ifOutDiscards
+			".1.3.6.1.2.1.2.2.1.15",   // IF-MIB::ifInUnknownProtos
 		}
 		form = "walk"
 	default:
