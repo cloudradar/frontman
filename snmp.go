@@ -36,10 +36,12 @@ type snmpOidDeltaMeasure struct {
 }
 
 type snmpPorterrorsMeasure struct {
-	timestamp   time.Time
-	name        string
-	ifInErrors  uint
-	ifOutErrors uint
+	timestamp     time.Time
+	name          string
+	ifInErrors    uint
+	ifOutErrors   uint
+	ifInDiscards  uint
+	ifOutDiscards uint
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -395,9 +397,10 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prevMeasures []snmpPorterrorsMeasure) map[string]interface{} {
 	m := make(map[string]interface{})
 
-	log.Println("filterSNMPPorterrorsResult idx", idx, "res:", iface)
 	ifInErrors := uint(0)
 	ifOutErrors := uint(0)
+	ifInDiscards := uint(0)
+	ifOutDiscards := uint(0)
 	ifName := ""
 
 	for _, x := range iface {
@@ -411,6 +414,10 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 			ifInErrors = x.val.(uint)
 		case "ifOutErrors":
 			ifOutErrors = x.val.(uint)
+		case "ifInDiscards":
+			ifInDiscards = x.val.(uint)
+		case "ifOutDiscards":
+			ifOutDiscards = x.val.(uint)
 		default:
 			log.Println("unrecognized key:", x.key)
 		}
@@ -426,15 +433,22 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 			outErrorsDelta := float64(delta(measure.ifOutErrors, ifOutErrors))
 			m["ifInErrors_delta"] = uint(math.Round(inErrorsDelta / delaySeconds))
 			m["ifOutErrors_delta"] = uint(math.Round(outErrorsDelta / delaySeconds))
+
+			inDiscardsDelta := float64(delta(measure.ifInDiscards, ifInDiscards))
+			outDiscardsDelta := float64(delta(measure.ifOutDiscards, ifOutDiscards))
+			m["ifInDiscards_delta"] = uint(math.Round(inDiscardsDelta / delaySeconds))
+			m["ifOutDiscards_delta"] = uint(math.Round(outDiscardsDelta / delaySeconds))
 			break
 		}
 	}
 
 	fm.previousSNMPPorterrorsMeasure = append(fm.previousSNMPPorterrorsMeasure, snmpPorterrorsMeasure{
-		timestamp:   time.Now(),
-		name:        ifName,
-		ifInErrors:  ifInErrors,
-		ifOutErrors: ifOutErrors,
+		timestamp:     time.Now(),
+		name:          ifName,
+		ifInErrors:    ifInErrors,
+		ifOutErrors:   ifOutErrors,
+		ifInDiscards:  ifInDiscards,
+		ifOutDiscards: ifOutDiscards,
 	})
 	return m
 }

@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -317,40 +316,34 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
 
-	spew.Dump(res)
+	// should be at least 1 network interface + success key in result
+	require.Equal(t, true, len(res.Measurements) >= 2)
 
-	/*
+	// NOTE: test makes some assumptions that may be hard to reproduce
+	// NOTE: test must be performed vs a wired connection, as snmpd don't report interface speed on wireless connections
+	iface := res.Measurements["2"].(map[string]interface{})
+	require.Equal(t, true, len(iface["ifName"].(string)) > 0)
+	require.Equal(t, 2, iface["ifIndex"])
 
-		// should be at least 1 network interface + success key in result
-		require.Equal(t, true, len(res.Measurements) >= 2)
+	// do 2nd request and check delta values
+	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
-		// NOTE: test makes some assumptions that may be hard to reproduce
-		// NOTE: test must be performed vs a wired connection, as snmpd don't report interface speed on wireless connections
-		iface := res.Measurements["2"].(map[string]interface{})
-		require.Equal(t, uint(1000), iface["ifSpeed_mbps"])
-		require.Equal(t, true, len(iface["ifName"].(string)) > 0)
-		require.Equal(t, true, len(iface["ifDescr"].(string)) > 0)
-		require.Equal(t, 2, iface["ifIndex"])
+	resultsChan = make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res = <-resultsChan
 
-		// do 2nd request and check delta values
-		time.Sleep(time.Duration(delaySeconds) * time.Second)
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
+	require.Equal(t, true, len(res.Measurements) >= 2)
 
-		resultsChan = make(chan Result, 100)
-		fm.processInput(inputConfig, resultsChan)
-		res = <-resultsChan
-		require.Equal(t, nil, res.Message)
-		require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
-		require.Equal(t, true, len(res.Measurements) >= 2)
+	iface = res.Measurements["2"].(map[string]interface{})
 
-		iface = res.Measurements["2"].(map[string]interface{})
-
-		if _, ok := iface["ifIn_Bps"]; !ok {
-			t.Errorf("ifIn_Bps key missing")
-		}
-		if _, ok := iface["ifInUtilization_percent"]; !ok {
-			t.Errorf("ifInUtilization_percent key missing")
-		}
-	*/
+	if _, ok := iface["ifInErrors_delta"]; !ok {
+		t.Errorf("ifInErrors_delta key missing")
+	}
+	if _, ok := iface["ifOutErrors_delta"]; !ok {
+		t.Errorf("ifOutErrors_delta key missing")
+	}
 }
 
 // test SNMP v2 invalid community against snmpd
