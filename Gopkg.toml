@@ -20,10 +20,6 @@
   revision = "0e5bec1b9eec14f9070a6f49ad7e0242f1545d66"
 
 [[constraint]]
-  name = "github.com/sparrc/go-ping"
-  revision = "ef3ab45e41b017889941ea5bb796dd502d2b5a1b"
-
-[[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "1.0.6"
 
