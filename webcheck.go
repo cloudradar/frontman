@@ -157,6 +157,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())
 
+	for key, val := range data.Headers {
+		req.Header.Set(key, val)
+	}
+
 	if data.Method == "POST" && data.PostData != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(data.PostData))
 		// close noop closer to bypass lint warnings
