@@ -289,6 +289,63 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	require.Equal(t, "unit-value", part["unit"].(string))
 }
 
+func TestSNMPv2PresetPorterrors(t *testing.T) {
+	skipSNMP(t)
+
+	delaySeconds := 1.
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = delaySeconds
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
+	inputConfig := &Input{
+		SNMPChecks: []SNMPCheck{{
+			UUID: "snmp_basedata_v2_porterrors",
+			Check: SNMPCheckData{
+				Connect:   snmpdIP,
+				Port:      161,
+				Timeout:   5.0,
+				Protocol:  "v2",
+				Community: snmpdCommunity,
+				Preset:    "porterrors",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
+
+	// should be at least 1 network interface + success key in result
+	require.Equal(t, true, len(res.Measurements) >= 2)
+
+	// NOTE: test makes some assumptions that may be hard to reproduce
+	// NOTE: test must be performed vs a wired connection, as snmpd don't report interface speed on wireless connections
+	iface := res.Measurements["2"].(map[string]interface{})
+	require.Equal(t, true, len(iface["ifName"].(string)) > 0)
+	require.Equal(t, 2, iface["ifIndex"])
+
+	// do 2nd request and check delta values
+	time.Sleep(time.Duration(delaySeconds) * time.Second)
+
+	resultsChan = make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res = <-resultsChan
+
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
+	require.Equal(t, true, len(res.Measurements) >= 2)
+
+	iface = res.Measurements["2"].(map[string]interface{})
+
+	if _, ok := iface["ifInErrors_delta"]; !ok {
+		t.Errorf("ifInErrors_delta key missing")
+	}
+	if _, ok := iface["ifOutErrors_delta"]; !ok {
+		t.Errorf("ifOutErrors_delta key missing")
+	}
+}
+
 // test SNMP v2 invalid community against snmpd
 func TestSNMPv2InvalidCommunity(t *testing.T) {
 	skipSNMP(t)
