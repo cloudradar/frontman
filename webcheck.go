@@ -119,13 +119,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		httpTransport = fm.httpTransport
 	}
 
-	var httpClient *httpClientAndError
 	// In case the webcheck disables redirect following we set maxRedirects to 0
-	if data.DontFollowRedirects {
-		httpClient = fm.newClientWithOptions(httpTransport, 0)
-	} else {
-		httpClient = fm.newClientWithOptions(httpTransport, fm.Config.HTTPCheckMaxRedirects)
+	maxRedirects := 0
+	if !data.DontFollowRedirects {
+		maxRedirects = fm.Config.HTTPCheckMaxRedirects
 	}
+	httpClient := fm.newClientWithOptions(httpTransport, maxRedirects)
 
 	timeout := fm.Config.HTTPCheckTimeout
 
@@ -234,8 +233,7 @@ type httpClientAndError struct {
 	Err error
 }
 
-func (fm *Frontman) newClientWithOptions(
-	transport *http.Transport, maxRedirects int) *httpClientAndError {
+func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects int) *httpClientAndError {
 	if transport == nil {
 		return &httpClientAndError{
 			Err: fmt.Errorf("no transport available"),
