@@ -2,7 +2,6 @@ package frontman
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -422,8 +421,6 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 			ifOutDiscards = x.val.(uint)
 		case "ifInUnknownProtos":
 			ifInUnknownProtos = x.val.(uint)
-		default:
-			log.Println("unrecognized key:", x.key)
 		}
 		m[key] = x.val
 	}
