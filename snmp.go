@@ -36,12 +36,13 @@ type snmpOidDeltaMeasure struct {
 }
 
 type snmpPorterrorsMeasure struct {
-	timestamp     time.Time
-	name          string
-	ifInErrors    uint
-	ifOutErrors   uint
-	ifInDiscards  uint
-	ifOutDiscards uint
+	timestamp         time.Time
+	name              string
+	ifInErrors        uint
+	ifOutErrors       uint
+	ifInDiscards      uint
+	ifOutDiscards     uint
+	ifInUnknownProtos uint
 }
 
 func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
@@ -401,6 +402,7 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 	ifOutErrors := uint(0)
 	ifInDiscards := uint(0)
 	ifOutDiscards := uint(0)
+	ifInUnknownProtos := uint(0)
 	ifName := ""
 
 	for _, x := range iface {
@@ -418,6 +420,8 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 			ifInDiscards = x.val.(uint)
 		case "ifOutDiscards":
 			ifOutDiscards = x.val.(uint)
+		case "ifInUnknownProtos":
+			ifInUnknownProtos = x.val.(uint)
 		default:
 			log.Println("unrecognized key:", x.key)
 		}
@@ -438,17 +442,21 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 			outDiscardsDelta := float64(delta(measure.ifOutDiscards, ifOutDiscards))
 			m["ifInDiscards_delta"] = uint(math.Round(inDiscardsDelta / delaySeconds))
 			m["ifOutDiscards_delta"] = uint(math.Round(outDiscardsDelta / delaySeconds))
+
+			inUnknownProtosDelta := float64(delta(measure.ifInUnknownProtos, ifInUnknownProtos))
+			m["ifInUnknownProtos_delta"] = uint(math.Round(inUnknownProtosDelta / delaySeconds))
 			break
 		}
 	}
 
 	fm.previousSNMPPorterrorsMeasure = append(fm.previousSNMPPorterrorsMeasure, snmpPorterrorsMeasure{
-		timestamp:     time.Now(),
-		name:          ifName,
-		ifInErrors:    ifInErrors,
-		ifOutErrors:   ifOutErrors,
-		ifInDiscards:  ifInDiscards,
-		ifOutDiscards: ifOutDiscards,
+		timestamp:         time.Now(),
+		name:              ifName,
+		ifInErrors:        ifInErrors,
+		ifOutErrors:       ifOutErrors,
+		ifInDiscards:      ifInDiscards,
+		ifOutDiscards:     ifOutDiscards,
+		ifInUnknownProtos: ifInUnknownProtos,
 	})
 	return m
 }
