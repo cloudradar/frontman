@@ -9,16 +9,16 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/cloudradar-monitoring/frontman"
 	"github.com/kardianos/service"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/cloudradar-monitoring/frontman"
 )
 
 // set it in case user provided only input(-i) file
@@ -55,6 +55,12 @@ func main() {
 	printConfigPtr := flag.Bool("p", false, "print the active config")
 	versionPtr := flag.Bool("version", false, "show the frontman version")
 	statsPtr := flag.Bool("stats", false, "show the frontman stats")
+	assumeYesPtr := flag.Bool("y", false, "automatic yes to prompts. Assume 'yes' as answer to all prompts and run non-interactively")
+	serviceStatusPtr := flag.Bool("service_status", false, "check service status")
+	serviceStartPtr := flag.Bool("service_start", false, "start service")
+	serviceStopPtr := flag.Bool("service_stop", false, "stop service")
+	serviceRestartPtr := flag.Bool("service_restart", false, "restart service")
+	serviceUpgradePtr := flag.Bool("service_upgrade", false, "upgrade service unit configuration")
 
 	// some OS specific flags
 	if runtime.GOOS == "windows" {
@@ -83,6 +89,11 @@ func main() {
 
 		if *serviceUninstallPtr {
 			fmt.Println("Service uninstall(-u) flag can't be used together with service install(-s) flag")
+			os.Exit(1)
+		}
+
+		if *serviceStartPtr || *serviceRestartPtr || *serviceStopPtr || *serviceStatusPtr {
+			fmt.Println("Service management flags can't be used together with service install(-s) flag")
 			os.Exit(1)
 		}
 	}
@@ -117,8 +128,15 @@ func main() {
 		runUnderOsServiceManager(fm)
 	}
 
+	if ((serviceInstallPtr == nil) || ((serviceInstallPtr != nil) && (!*serviceInstallPtr))) &&
+		((serviceInstallUserPtr == nil) || ((serviceInstallUserPtr != nil) && len(*serviceInstallUserPtr) == 0)) &&
+		!*serviceUninstallPtr {
+		handleServiceCommand(fm, *serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
+	}
+
+	handleFlagServiceUpgrade(fm, *cfgPathPtr, serviceUpgradePtr, serviceInstallUserPtr)
 	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
-	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr)
+	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
 	if cfg.HTTPListener.HTTPListen != "" {
@@ -365,6 +383,99 @@ func handleFlagDaemonizeMode(daemonizeMode bool) {
 	}
 }
 
+func handleServiceCommand(ca *frontman.Frontman, check, start, stop, restart bool) {
+	if !check && !start && !stop && !restart {
+		return
+	}
+
+	svc, err := getServiceFromFlags(ca, "", "")
+	if err != nil {
+		log.WithError(err).Fatalln("can't find service")
+	}
+
+	var status service.Status
+	if status, err = svc.Status(); err != nil {
+		log.WithError(err).Fatalln("can't get service status")
+	}
+
+	if check {
+		switch status {
+		case service.StatusRunning:
+			fmt.Println("running")
+		case service.StatusStopped:
+			fmt.Println("stopped")
+		case service.StatusUnknown:
+			fmt.Println("unknown")
+		}
+
+		os.Exit(0)
+	}
+
+	if stop && (status == service.StatusRunning) {
+		if err = svc.Stop(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("stopped")
+		os.Exit(0)
+	} else if stop {
+		fmt.Println("service is not running")
+		os.Exit(0)
+	}
+
+	if start {
+		if status == service.StatusRunning {
+			fmt.Println("already")
+			os.Exit(1)
+		}
+
+		if err = svc.Start(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("started")
+		os.Exit(0)
+	}
+
+	if restart {
+		if err = svc.Restart(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("restarted")
+		os.Exit(0)
+	}
+}
+
+func handleFlagServiceUpgrade(
+	ca *frontman.Frontman,
+	cfgPath string,
+	serviceUpgradeFlag *bool,
+	serviceInstallUserPtr *string,
+) {
+	if serviceUpgradeFlag == nil || !*serviceUpgradeFlag {
+		return
+	}
+
+	installUser := ""
+	if serviceInstallUserPtr != nil {
+		installUser = *serviceInstallUserPtr
+	}
+
+	systemService, err := getServiceFromFlags(ca, cfgPath, installUser)
+	if err != nil {
+		log.WithError(err).Fatalln("Failed to get system service")
+	}
+
+	updateServiceConfig(ca, installUser)
+	tryUpgradeServiceUnit(systemService)
+
+	os.Exit(0)
+}
+
 func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
 	if !serviceUninstallPtr {
 		return
@@ -397,7 +508,7 @@ func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool)
 	os.Exit(0)
 }
 
-func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.System, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string) {
+func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.System, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string, assumeYesPtr *bool) {
 	// serviceInstallPtr is currently used on windows
 	// serviceInstallUserPtr is used on other systems
 	// if both of them are empty - just return
@@ -417,67 +528,9 @@ func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.Syste
 		os.Exit(1)
 	}
 
-	if runtime.GOOS != "windows" {
-		userName := *serviceInstallUserPtr
-		u, err := user.Lookup(userName)
-		if err != nil {
-			fmt.Printf("Failed to find the user '%s'\n", userName)
-			os.Exit(1)
-		}
-
-		svcConfig.UserName = userName
-		// we need to chown log file with user who will run service
-		// because installer can be run under root so the log file will be also created under root
-		err = chownFile(fm.Config.LogFile, u)
-		if err != nil {
-			fmt.Printf("Failed to chown log file for '%s' user\n", userName)
-		}
-	}
-	const maxAttempts = 3
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		err = s.Install()
-		// Check error case where the service already exists
-		if err != nil && strings.Contains(err.Error(), "already exists") {
-			fmt.Printf("Frontman service(%s) already installed: %s\n", systemManager.String(), err.Error())
-
-			if attempt == maxAttempts {
-				fmt.Printf("Give up after %d attempts\n", maxAttempts)
-				os.Exit(1)
-			}
-
-			osSpecificNote := ""
-			if runtime.GOOS == "windows" {
-				osSpecificNote = " Windows Services Manager app should not be opened!"
-			}
-			if askForConfirmation("Do you want to overwrite it?" + osSpecificNote) {
-				err = s.Stop()
-				if err != nil {
-					fmt.Println("Failed to stop the service: ", err.Error())
-				}
-
-				// lets try to uninstall despite of this error
-				err := s.Uninstall()
-				if err != nil {
-					fmt.Println("Failed to unistall the service: ", err.Error())
-					os.Exit(1)
-				}
-			}
-
-			// Check general error case
-		} else if err != nil {
-			fmt.Printf("Frontman service(%s) installing error: %s\n", systemManager.String(), err.Error())
-			os.Exit(1)
-			// Service install was success so we can exit the loop
-		} else {
-			break
-		}
-	}
-
-	fmt.Printf("Frontman service(%s) installed. Starting...\n", systemManager.String())
-	err = s.Start()
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+	updateServiceConfig(fm, username)
+	tryInstallService(s, assumeYesPtr)
+	tryStartService(s)
 
 	fmt.Printf("Log file located at: %s\n", fm.Config.LogFile)
 	fmt.Printf("Config file located at: %s\n", cfgPath)
@@ -590,20 +643,6 @@ func rerunDetached() error {
 	fmt.Printf("Frontman will continue in background...\nPID %d", cmd.Process.Pid)
 
 	return cmd.Process.Release()
-}
-
-func chownFile(filePath string, u *user.User) error {
-	uid, err := strconv.Atoi(u.Uid)
-	if err != nil {
-		return fmt.Errorf("Chown files: error converting UID(%s) to int", u.Uid)
-	}
-
-	gid, err := strconv.Atoi(u.Gid)
-	if err != nil {
-		return fmt.Errorf("Chown files: error converting GID(%s) to int", u.Gid)
-	}
-
-	return os.Chown(filePath, uid, gid)
 }
 
 func askForConfirmation(s string) bool {

@@ -1,4 +1,5 @@
 .idea
 frontman
 var/ 
+dist/
 *.spk
