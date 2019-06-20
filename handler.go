@@ -23,7 +23,6 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
-	ping "github.com/sparrc/go-ping"
 )
 
 var ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
@@ -392,7 +391,7 @@ func (fm *Frontman) HealthCheck() error {
 
 	wg := new(sync.WaitGroup)
 	for _, addr := range hcfg.ReferencePingHosts {
-		p, err := ping.NewPinger(addr)
+		p, err := NewPinger(addr)
 		if err != nil {
 			logrus.WithError(err).Warningln("failed to parse host for ICMP ping")
 			continue
