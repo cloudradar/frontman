@@ -52,7 +52,7 @@ jobs:
           at: /go/src/github.com/cloudradar-monitoring
       - setup_remote_docker
       - run: docker login --username ${DOCKERHUB_USER} --password ${DOCKERHUB_PASS}
-      - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/fontman:${CIRCLE_TAG} .
+      - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/frontman:${CIRCLE_TAG} .
       - run: docker push cloudradario/frontman:${CIRCLE_TAG}
 
   build-sign-msi:
