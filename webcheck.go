@@ -223,6 +223,14 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 	client := &http.Client{Transport: transport}
 
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		// copies headers from previous request (go strips Authorization header on redirects)
+		lastRequest := via[len(via)-1]
+		for attr, val := range lastRequest.Header {
+			if _, ok := req.Header[attr]; !ok {
+				req.Header[attr] = val
+			}
+		}
+
 		if maxRedirects <= 0 {
 			logrus.Println("CheckRedirect: redirects are not allowed")
 			return http.ErrUseLastResponse
