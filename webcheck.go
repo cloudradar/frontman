@@ -10,12 +10,12 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/httptrace"
 	"strings"
 	"time"
 
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 )
 
@@ -143,17 +143,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	defer func() {
 		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 	}()
-	var wroteRequestAt time.Time
-
-	trace := &httptrace.ClientTrace{
-		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			wroteRequestAt = time.Now()
-		},
-	}
 
 	ctx, cancel := context.WithTimeout(req.Context(), secToDuration(timeout))
 	defer cancel()
-	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
+
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())
 
@@ -168,16 +161,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
+	wroteRequestAt := time.Now()
 	resp, err := httpClient.Do(req)
-
-	// Error checks for httpClient.Do
-	if !data.DontFollowRedirects && httpClient.Err != nil {
-		// if request exceed the number of globally allowed redirects
-		// we need to stop and return the error
-		//
-		// But in case we have DontFollowRedirects mode we don't need to return here
-		// because user may want to check the HTTP code or content of 30x page
-		return m, httpClient.Err
+	if err != nil {
+		return m, err
 	}
 	if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
@@ -232,33 +219,19 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	return m, nil
 }
 
-type httpClientAndError struct {
-	*http.Client
-	Err error
-}
+func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects int) *http.Client {
+	client := &http.Client{Transport: transport}
 
-func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects int) *httpClientAndError {
-	if transport == nil {
-		return &httpClientAndError{
-			Err: fmt.Errorf("no transport available"),
-		}
-	}
-
-	// httpClientAndError used to set the error related to the httpClient from the within CheckRedirect function
-	// we can't return it inside CheckRedirect, because it will prevent the HTTP client to provide the intermediate response with headers&body
-	client := &httpClientAndError{
-		&http.Client{Transport: transport},
-		nil,
-	}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if maxRedirects <= 0 {
-			client.Err = fmt.Errorf("redirects are not allowed")
+			logrus.Println("CheckRedirect: redirects are not allowed")
 			return http.ErrUseLastResponse
 		} else if len(via) > maxRedirects {
-			client.Err = fmt.Errorf("too many(>%d) redirects", maxRedirects)
+			logrus.Printf("CheckRedirect: too many(>%d) redirects", maxRedirects)
 			return http.ErrUseLastResponse
 		}
 		return nil
 	}
+
 	return client
 }
