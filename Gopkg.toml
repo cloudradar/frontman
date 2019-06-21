@@ -17,7 +17,8 @@
 
 [[constraint]]
   name = "github.com/kardianos/service"
-  revision = "0e5bec1b9eec14f9070a6f49ad7e0242f1545d66"
+  revision = "c1c4306577988c5b299c64af2f0ccea15d1f7d54"
+  source = "github.com/cloudradar-monitoring/service"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"

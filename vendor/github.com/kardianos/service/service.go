@@ -77,10 +77,15 @@ const (
 	optionSessionCreateDefault = false
 	optionLogOutput            = "LogOutput"
 	optionLogOutputDefault     = false
+	optionEnabled              = "Enabled"
+	optionEnabledDefault       = true
 
 	optionRunWait      = "RunWait"
 	optionReloadSignal = "ReloadSignal"
 	optionPIDFile      = "PIDFile"
+	optionRestart      = "Restart"
+
+	optionSuccessExitStatus = "SuccessExitStatus"
 
 	optionSystemdScript = "SystemdScript"
 	optionSysvScript    = "SysvScript"
@@ -139,6 +144,11 @@ type Config struct {
 	//    - ReloadSignal  string () [USR1, ...]     - Signal to send on reaload.
 	//    - PIDFile       string () [/run/prog.pid] - Location of the PID file.
 	//    - LogOutput     bool   (false)            - Redirect StdErr & StdOut to files.
+	//    - Restart       string (always)           - How shall service be restarted.
+	//    - SuccessExitStatus string ()             - The list of exit status that shall be considered as successful,
+	//                                                in addition to the default ones.
+	//  * SysV and Systemd only
+	//    - Enabled       bool   (true) - Enable service just after installation.
 	Option KeyValue
 }
 

@@ -45,11 +45,12 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:46da7427e7bed7f7cbf5ff8df4c8f588a5e680dc0e0b4fe524fd5b68c846b47f"
+  digest = "1:90ed64fe94fa51071158465da85b56eaf644e5d9f5815faf1eead13c242d7de2"
   name = "github.com/kardianos/service"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "0e5bec1b9eec14f9070a6f49ad7e0242f1545d66"
+  revision = "c1c4306577988c5b299c64af2f0ccea15d1f7d54"
+  source = "github.com/cloudradar-monitoring/service"
 
 [[projects]]
   digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
