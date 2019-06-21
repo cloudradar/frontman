@@ -119,13 +119,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		httpTransport = fm.httpTransport
 	}
 
-	var httpClient *httpClientAndError
 	// In case the webcheck disables redirect following we set maxRedirects to 0
-	if data.DontFollowRedirects {
-		httpClient = fm.newClientWithOptions(httpTransport, 0)
-	} else {
-		httpClient = fm.newClientWithOptions(httpTransport, fm.Config.HTTPCheckMaxRedirects)
+	maxRedirects := 0
+	if !data.DontFollowRedirects {
+		maxRedirects = fm.Config.HTTPCheckMaxRedirects
 	}
+	httpClient := fm.newClientWithOptions(httpTransport, maxRedirects)
 
 	timeout := fm.Config.HTTPCheckTimeout
 
@@ -157,6 +156,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())
+
+	for key, val := range data.Headers {
+		req.Header.Set(key, val)
+	}
 
 	if data.Method == "POST" && data.PostData != "" {
 		req.Body = ioutil.NopCloser(strings.NewReader(data.PostData))
@@ -234,8 +237,7 @@ type httpClientAndError struct {
 	Err error
 }
 
-func (fm *Frontman) newClientWithOptions(
-	transport *http.Transport, maxRedirects int) *httpClientAndError {
+func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects int) *httpClientAndError {
 	if transport == nil {
 		return &httpClientAndError{
 			Err: fmt.Errorf("no transport available"),
