@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (fm *Frontman) PostResultsToHub(results []Result) error {
+func (fm *Frontman) postResultsToHub(results []Result) error {
 	fm.initHubClient()
 	for _, res := range results {
 		if s, ok := res.Message.(string); ok {
@@ -134,14 +134,16 @@ func (fm *Frontman) sendResultsChanToFile(resultsChan chan Result, outputFile *o
 	return jsonEncoder.Encode(results)
 }
 
+// used when sender_mode == "wait" (post results to hub after each round)
 func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 	var results []Result
 	for res := range resultsChan {
 		results = append(results, res)
 	}
-	err := fm.PostResultsToHub(results)
+	logrus.Println("sender_mode WAIT, postResultsToHub")
+	err := fm.postResultsToHub(results)
 	if err != nil {
-		return fmt.Errorf("PostResultsToHub: %s", err.Error())
+		return fmt.Errorf("postResultsToHub: %s", err.Error())
 	}
 
 	fm.Stats.CheckResultsSentToHub += uint64(len(results))
@@ -150,6 +152,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 	return nil
 }
 
+// used when sender_mode == "interval" (post results to hub by fixed interval)
 func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) error {
 	sendResultsTicker := time.NewTicker(secToDuration(fm.Config.SenderModeInterval))
 	defer sendResultsTicker.Stop()
@@ -168,16 +171,16 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 			}
 
 			results = append(results, res)
-			// skip PostResultsToHub
+			// skip postResultsToHub
 			continue
 		case <-sendResultsTicker.C:
 			break
 		}
 
 		logrus.Debugf("SenderModeInterval: send %d results", len(results))
-		err := fm.PostResultsToHub(results)
+		err := fm.postResultsToHub(results)
 		if err != nil {
-			err = fmt.Errorf("PostResultsToHub error: %s", err.Error())
+			err = fmt.Errorf("postResultsToHub error: %s", err.Error())
 		}
 
 		if shouldReturn {
