@@ -10,19 +10,36 @@ if [ "$1" = configure ]; then
         serviceStatus=`/usr/bin/frontman -y -service_status -c ${CONFIG_PATH}`
         echo "current service status: $serviceStatus."
 
-        if [ "$serviceStatus" != stopped ]; then
-            echo "stopping service..."
-            /usr/bin/frontman -service_stop || true
-        fi
+        case "$serviceStatus" in
+            unknown|failed)
+                echo "trying to repair service..."
+                /usr/bin/frontman -u || true
+                /usr/bin/frontman -y -s frontman -c ${CONFIG_PATH}
+                ;;
 
-        echo "upgrading service unit... "
-        /usr/bin/frontman -y -s frontman -service_upgrade -c ${CONFIG_PATH}
+            running|stopped)
+                # try to upgrade service unit config
 
-        # restart only if it was active before
-        if [ "$serviceStatus" != stopped ]; then
-            echo "restarting service... "
-            /usr/bin/frontman -y -service_restart -c ${CONFIG_PATH}
-        fi
+                if [ "$serviceStatus" = running ]; then
+                    echo "stopping service..."
+                    /usr/bin/frontman -service_stop || true
+                fi
+
+                echo "upgrading service unit... "
+                /usr/bin/frontman -y -s frontman -service_upgrade -c ${CONFIG_PATH}
+
+                # restart only if it was active before
+                if [ "$serviceStatus" = running ]; then
+                    echo "starting service... "
+                    /usr/bin/frontman -y -service_start -c ${CONFIG_PATH}
+                fi
+                ;;
+
+            *)
+                echo "unknown service status. Exiting..."
+                exit 1
+                ;;
+        esac
     fi
 fi
 
