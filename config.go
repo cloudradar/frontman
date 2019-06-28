@@ -77,6 +77,9 @@ type Config struct {
 	HealthChecks HealthCheckConfig `toml:"health_checks" commented:"true"`
 
 	HTTPListener HTTPListenerConfig `toml:"http_listener" comment:"Perform checks requested via HTTP POST requests"`
+
+	FailureConfirmation      int     `toml:"failure_confirmation" comment:"In case a web or service check fails, frontman will check again after a short delay (seconds). The failure must be confirmed N times.\nfailure_confirmation = 0 switches off the confirmation of failures\nDoes not affect snmp checks"`
+	FailureConfirmationDelay float64 `toml:"failure_confirmation_delay" commented:"true"`
 }
 
 type HealthCheckConfig struct {
