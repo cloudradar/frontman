@@ -207,6 +207,12 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 
 func (fm *Frontman) PostResultsToHub(results []Result) error {
 	fm.initHubClient()
+	for _, res := range results {
+		if strings.Contains(res.Message.(string), "too many open files") {
+			// NOTE: work-around for too many open files. Remove this when resolved
+			return fmt.Errorf("skipping post to hub because of %v", res.Message)
+		}
+	}
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	b, err := json.Marshal(Results{
