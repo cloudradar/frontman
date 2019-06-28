@@ -639,8 +639,27 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				var err error
 				res.Measurements, err = fm.runServiceCheck(check)
 				if err != nil {
-					res.Message = err.Error()
-				} else {
+					recovered := false
+					if fm.Config.FailureConfirmation > 0 {
+						logrus.Debugf("serviceCheck failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.UUID, err.Error())
+
+						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
+							res.Measurements, err = fm.runServiceCheck(check)
+							if err == nil {
+								recovered = true
+								break
+							}
+						}
+					}
+					if !recovered {
+						logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+						res.Message = err.Error()
+					}
+				}
+
+				if res.Message == nil {
 					succeed++
 				}
 			}
@@ -678,8 +697,24 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 				var err error
 				res.Measurements, err = fm.runWebCheck(check.Check)
 				if err != nil {
-					logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())
-					res.Message = err.Error()
+					recovered := false
+					if fm.Config.FailureConfirmation > 0 {
+						logrus.Debugf("webCheck failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.UUID, err.Error())
+
+						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
+							res.Measurements, err = fm.runWebCheck(check.Check)
+							if err == nil {
+								recovered = true
+								break
+							}
+						}
+					}
+					if !recovered {
+						logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())
+						res.Message = err.Error()
+					}
 				}
 			}
 
