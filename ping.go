@@ -436,7 +436,7 @@ func (p *Pinger) processPacket(recv *packet) error {
 		}
 		outPkt.Rtt = time.Since(bytesToTime(data.Bytes))
 		outPkt.Seq = pkt.Seq
-		p.PacketsRecv += 1
+		p.PacketsRecv++
 	default:
 		// Very bad, not sure how this can happen
 		return fmt.Errorf("invalid ICMP echo reply. Body type: %T, %s", pkt, pkt)
@@ -501,8 +501,8 @@ func (p *Pinger) sendICMP(conn *icmp.PacketConn) error {
 				}
 			}
 		}
-		p.PacketsSent += 1
-		p.sequence += 1
+		p.PacketsSent++
+		p.sequence++
 		break
 	}
 	return nil
