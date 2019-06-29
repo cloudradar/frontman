@@ -164,13 +164,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	wroteRequestAt := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
 	if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
-	}
-	if err != nil {
-		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
 
 	// Set the httpStatusCode in case we got a response
