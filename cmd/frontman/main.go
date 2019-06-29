@@ -128,8 +128,8 @@ func main() {
 		runUnderOsServiceManager(fm)
 	}
 
-	if ((serviceInstallPtr == nil) || ((serviceInstallPtr != nil) && (!*serviceInstallPtr))) &&
-		((serviceInstallUserPtr == nil) || ((serviceInstallUserPtr != nil) && len(*serviceInstallUserPtr) == 0)) &&
+	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
+		(serviceInstallUserPtr == nil || len(*serviceInstallUserPtr) == 0) &&
 		!*serviceUninstallPtr {
 		handleServiceCommand(fm, *serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
 	}
