@@ -50,7 +50,7 @@ loopDom:
 	return
 }
 
-func defaultHttpTransport() *http.Transport {
+func defaultHTTPTransport() *http.Transport {
 	return &http.Transport{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
@@ -65,8 +65,8 @@ func defaultHttpTransport() *http.Transport {
 	}
 }
 
-func (fm *Frontman) initHttpTransport() {
-	fm.httpTransport = defaultHttpTransport()
+func (fm *Frontman) initHTTPTransport() {
+	fm.httpTransport = defaultHTTPTransport()
 
 	if fm.Config.IgnoreSSLErrors {
 		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
@@ -76,7 +76,7 @@ func (fm *Frontman) initHttpTransport() {
 // transportWithInsecureSSL creates a default http.Transport,
 // sets the option to skip verification of insecure TLS.
 func transportWithInsecureSSL(rootCAs *x509.CertPool) *http.Transport {
-	transport := defaultHttpTransport()
+	transport := defaultHTTPTransport()
 	transport.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
 		RootCAs:            rootCAs,

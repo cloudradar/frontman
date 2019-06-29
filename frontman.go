@@ -69,7 +69,7 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 
 	fm.configureLogger()
 
-	fm.initHttpTransport()
+	fm.initHTTPTransport()
 
 	return fm
 }
