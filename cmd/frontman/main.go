@@ -328,9 +328,9 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 	mode := os.O_WRONLY | os.O_CREATE
 
 	if oneRunOnlyMode {
-		mode = mode | os.O_TRUNC
+		mode |= os.O_TRUNC
 	} else {
-		mode = mode | os.O_APPEND
+		mode |= os.O_APPEND
 	}
 
 	output, err = os.OpenFile(outputFile, mode, 0644)
