@@ -49,7 +49,7 @@ func main() {
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	testConfigPtr := flag.Bool("t", false, "test the Hub config and exit")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
-	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
+	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the process in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
 	serviceUninstallPtr := flag.Bool("u", false, fmt.Sprintf("stop and uninstall the system service(%s)", systemManager.String()))
 	printConfigPtr := flag.Bool("p", false, "print the active config")

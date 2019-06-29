@@ -31,7 +31,7 @@ Use `ctrl-c` to stop it
 ```
 Usage of frontman:
   -c  config file path (default depends on OS)
-  -d  daemonize – run the proccess in background
+  -d  daemonize – run the process in background
   -i  JSON file to read the list (required if no hub_url specified in the config)
   -o  file to write the results (default ./results.out)
   -r  one run only – perform checks once and exit. Overwrites output file

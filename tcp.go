@@ -76,7 +76,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
 
-	// Mark check as successfull
+	// Mark check as successful
 	m[prefix+"success"] = 1
 
 	return m, nil
