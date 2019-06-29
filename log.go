@@ -72,13 +72,15 @@ func addErrorHook(stats *stats.FrontmanStats) {
 // Fire event
 func (hook *logrusFileHook) Fire(entry *logrus.Entry) error {
 	plainformat, err := hook.formatter.Format(entry)
+	if err != nil {
+		return err
+	}
 	line := string(plainformat)
 	_, err = hook.file.WriteString(line)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to write file on filehook(entry.String)%v", err)
 		return err
 	}
-
 	return nil
 }
 
