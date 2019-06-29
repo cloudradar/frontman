@@ -42,7 +42,7 @@ func TestHttpCheckHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	var f interface{}
-	err = json.Unmarshal([]byte(rr.Body.Bytes()), &f)
+	err = json.Unmarshal(rr.Body.Bytes(), &f)
 	assert.Equal(t, nil, err)
 	dec := f.(map[string]interface{})
 	measurements := dec["measurements"].(map[string]interface{})
