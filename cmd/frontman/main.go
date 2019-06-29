@@ -594,7 +594,7 @@ func getServiceFromFlags(fm *frontman.Frontman, configPath, userName string) (se
 			var err error
 			configPath, err = filepath.Abs(configPath)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to get absolute path to config at '%s': %s", configPath, err)
+				return nil, fmt.Errorf("failed to get absolute path to config at '%s': %s", configPath, err)
 			}
 		}
 		svcConfig.Arguments = []string{"-c", configPath}

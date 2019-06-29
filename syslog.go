@@ -19,7 +19,7 @@ func addSyslogHook(syslogURL string) error {
 	if syslogURL != "local" {
 		u, err := url.Parse(syslogURL)
 		if err != nil {
-			return fmt.Errorf("Wrong format of syslogURL: %s", err.Error())
+			return fmt.Errorf("wrong format of syslogURL: %s", err.Error())
 		}
 		network = u.Scheme
 		raddr = u.Host

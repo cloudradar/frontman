@@ -49,7 +49,7 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	plainFormatter := &logrus.TextFormatter{FullTimestamp: true, DisableColors: true}
 	logFile, err := os.OpenFile(file, flag, chmod)
 	if err != nil {
-		return fmt.Errorf("Unable to write log file: %s", err.Error())
+		return fmt.Errorf("unable to write log file: %s", err.Error())
 	}
 
 	hook := &logrusFileHook{logFile, flag, chmod, plainFormatter}

@@ -393,7 +393,7 @@ func (p *Pinger) processPacket(recv *packet) error {
 	var m *icmp.Message
 	var err error
 	if m, err = icmp.ParseMessage(proto, bytes[:recv.nbytes]); err != nil {
-		return fmt.Errorf("Error parsing icmp message")
+		return fmt.Errorf("error parsing icmp message: %s", err.Error())
 	}
 
 	if m.Type != ipv4.ICMPTypeEchoReply && m.Type != ipv6.ICMPTypeEchoReply {
@@ -439,8 +439,7 @@ func (p *Pinger) processPacket(recv *packet) error {
 		p.PacketsRecv += 1
 	default:
 		// Very bad, not sure how this can happen
-		return fmt.Errorf("Error, invalid ICMP echo reply. Body type: %T, %s",
-			pkt, pkt)
+		return fmt.Errorf("invalid ICMP echo reply. Body type: %T, %s", pkt, pkt)
 	}
 
 	p.rtts = append(p.rtts, outPkt.Rtt)
@@ -477,7 +476,7 @@ func (p *Pinger) sendICMP(conn *icmp.PacketConn) error {
 
 	data, err := json.Marshal(IcmpData{Bytes: t, Tracker: p.Tracker})
 	if err != nil {
-		return fmt.Errorf("Unable to marshal data %s", err)
+		return fmt.Errorf("unable to marshal data %s", err)
 	}
 	body := &icmp.Echo{
 		ID:   p.id,

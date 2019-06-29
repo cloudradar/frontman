@@ -37,12 +37,12 @@ func updateServiceConfig(ca *frontman.Frontman, userName string) {
 func chownFile(filePath string, u *user.User) error {
 	uid, err := strconv.Atoi(u.Uid)
 	if err != nil {
-		return fmt.Errorf("Chown files: error converting UID(%s) to int", u.Uid)
+		return fmt.Errorf("chown files: error converting UID(%s) to int", u.Uid)
 	}
 
 	gid, err := strconv.Atoi(u.Gid)
 	if err != nil {
-		return fmt.Errorf("Chown files: error converting GID(%s) to int", u.Gid)
+		return fmt.Errorf("chown files: error converting GID(%s) to int", u.Gid)
 	}
 
 	return os.Chown(filePath, uid, gid)

@@ -472,7 +472,7 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	}
 
 	if err != nil {
-		return fmt.Errorf("Failed to process results: %s", err.Error())
+		return fmt.Errorf("failed to process results: %s", err.Error())
 	}
 
 	return nil
