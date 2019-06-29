@@ -22,7 +22,8 @@ func tryInstallService(s service.Service, assumeYesPtr *bool) {
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		err := s.Install()
 		// Check error case where the service already exists
-		if err != nil && strings.Contains(err.Error(), "already exists") {
+		switch {
+		case err != nil && strings.Contains(err.Error(), "already exists"):
 			if attempt == maxAttempts {
 				logrus.Fatalf("Giving up after %d attempts", maxAttempts)
 			}
@@ -46,11 +47,11 @@ func tryInstallService(s service.Service, assumeYesPtr *bool) {
 					logrus.WithError(err).Fatalln("Failed to uninstall the service")
 				}
 			}
-		} else if err != nil {
+		case err != nil:
 			logrus.WithError(err).Fatalf("Frontman service(%s) installation failed", s.Platform())
-		} else {
+		default:
 			logrus.Infof("Frontman service(%s) has been installed.", s.Platform())
-			break
+			return
 		}
 	}
 }

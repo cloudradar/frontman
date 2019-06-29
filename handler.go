@@ -461,13 +461,14 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		close(resultsChan)
 	}
 
-	if outputFile != nil && writeResultsChanToFileContinously {
+	switch {
+	case outputFile != nil && writeResultsChanToFileContinously:
 		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
-	} else if outputFile != nil {
+	case outputFile != nil:
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
-	} else if fm.Config.SenderMode == SenderModeInterval {
+	case fm.Config.SenderMode == SenderModeInterval:
 		err = fm.sendResultsChanToHubWithInterval(resultsChan)
-	} else if fm.Config.SenderMode == SenderModeWait {
+	case fm.Config.SenderMode == SenderModeWait:
 		err = fm.sendResultsChanToHub(resultsChan)
 	}
 
@@ -530,15 +531,16 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		}
 
 		input, err := fm.FetchInput(inputFilePath)
-		if err != nil && err == ErrorMissingHubOrInput {
+		switch {
+		case err != nil && err == ErrorMissingHubOrInput:
 			logrus.Warnln(err)
 			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
 			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
 			time.Sleep(10 * time.Second)
 			os.Exit(0)
-		} else if err != nil {
+		case err != nil:
 			logrus.Error(err)
-		} else {
+		default:
 			err := fm.RunOnce(input, outputFile, interrupt, false)
 			if err != nil {
 				logrus.Error(err)
@@ -687,13 +689,14 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 			res.Check = check.Check
 
-			if check.Check.Method == "" {
+			switch {
+			case check.Check.Method == "":
 				logrus.Errorf("webCheck: missing check.method key")
 				res.Message = "Missing check.method key"
-			} else if check.Check.URL == "" {
+			case check.Check.URL == "":
 				logrus.Errorf("webCheck: missing check.url key")
 				res.Message = "Missing check.url key"
-			} else {
+			default:
 				var err error
 				res.Measurements, err = fm.runWebCheck(check.Check)
 				if err != nil {

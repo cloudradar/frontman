@@ -305,7 +305,8 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 
 	val := r.val.(uint)
 
-	if check.ValueType == "delta" {
+	switch check.ValueType {
+	case "delta":
 		// calculate delta from previous measure
 		for _, measure := range prevMeasures {
 			if measure.name == check.Oid {
@@ -313,7 +314,7 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 				break
 			}
 		}
-	} else if check.ValueType == "delta_per_sec" {
+	case "delta_per_sec":
 		// calculate delta per second from previous measure
 		for _, measure := range prevMeasures {
 			if measure.name == check.Oid {
@@ -323,7 +324,7 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 				break
 			}
 		}
-	} else {
+	default:
 		logrus.Warnf("snmpCheck: invalid value_type '%s'", check.ValueType)
 	}
 
