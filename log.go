@@ -49,7 +49,7 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	plainFormatter := &logrus.TextFormatter{FullTimestamp: true, DisableColors: true}
 	logFile, err := os.OpenFile(file, flag, chmod)
 	if err != nil {
-		return fmt.Errorf("Unable to write log file: %s", err.Error())
+		return fmt.Errorf("unable to write log file: %s", err.Error())
 	}
 
 	hook := &logrusFileHook{logFile, flag, chmod, plainFormatter}
@@ -72,13 +72,15 @@ func addErrorHook(stats *stats.FrontmanStats) {
 // Fire event
 func (hook *logrusFileHook) Fire(entry *logrus.Entry) error {
 	plainformat, err := hook.formatter.Format(entry)
+	if err != nil {
+		return err
+	}
 	line := string(plainformat)
 	_, err = hook.file.WriteString(line)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to write file on filehook(entry.String)%v", err)
 		return err
 	}
-
 	return nil
 }
 

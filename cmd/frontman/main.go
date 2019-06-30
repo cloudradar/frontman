@@ -49,7 +49,7 @@ func main() {
 	cfgPathPtr := flag.String("c", frontman.DefaultCfgPath, "config file path")
 	testConfigPtr := flag.Bool("t", false, "test the Hub config and exit")
 	logLevelPtr := flag.String("v", "", "log level – overrides the level in config file (values \"error\",\"info\",\"debug\")")
-	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the proccess in background")
+	daemonizeModePtr := flag.Bool("d", false, "daemonize – run the process in background")
 	oneRunOnlyModePtr := flag.Bool("r", false, "one run only – perform checks once and exit. Overwrites output file")
 	serviceUninstallPtr := flag.Bool("u", false, fmt.Sprintf("stop and uninstall the system service(%s)", systemManager.String()))
 	printConfigPtr := flag.Bool("p", false, "print the active config")
@@ -128,8 +128,8 @@ func main() {
 		runUnderOsServiceManager(fm)
 	}
 
-	if ((serviceInstallPtr == nil) || ((serviceInstallPtr != nil) && (!*serviceInstallPtr))) &&
-		((serviceInstallUserPtr == nil) || ((serviceInstallUserPtr != nil) && len(*serviceInstallUserPtr) == 0)) &&
+	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
+		(serviceInstallUserPtr == nil || len(*serviceInstallUserPtr) == 0) &&
 		!*serviceUninstallPtr {
 		handleServiceCommand(fm, *serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
 	}
@@ -328,9 +328,9 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 	mode := os.O_WRONLY | os.O_CREATE
 
 	if oneRunOnlyMode {
-		mode = mode | os.O_TRUNC
+		mode |= os.O_TRUNC
 	} else {
-		mode = mode | os.O_APPEND
+		mode |= os.O_APPEND
 	}
 
 	output, err = os.OpenFile(outputFile, mode, 0644)
@@ -594,7 +594,7 @@ func getServiceFromFlags(fm *frontman.Frontman, configPath, userName string) (se
 			var err error
 			configPath, err = filepath.Abs(configPath)
 			if err != nil {
-				return nil, fmt.Errorf("Failed to get absolute path to config at '%s': %s", configPath, err)
+				return nil, fmt.Errorf("failed to get absolute path to config at '%s': %s", configPath, err)
 			}
 		}
 		svcConfig.Arguments = []string{"-c", configPath}

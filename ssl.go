@@ -62,7 +62,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 
 	m[prefix+"expiryDaysRemaining"] = math.MaxFloat64
 	for _, cert := range connection.ConnectionState().PeerCertificates {
-		remainingValidity := cert.NotAfter.Sub(time.Now()).Hours() / 24
+		remainingValidity := time.Until(cert.NotAfter).Hours() / 24
 
 		if remainingValidity < m[prefix+"expiryDaysRemaining"].(float64) {
 			m[prefix+"expiryDaysRemaining"] = remainingValidity

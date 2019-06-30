@@ -50,7 +50,7 @@ loopDom:
 	return
 }
 
-func defaultHttpTransport() *http.Transport {
+func defaultHTTPTransport() *http.Transport {
 	return &http.Transport{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
@@ -65,8 +65,8 @@ func defaultHttpTransport() *http.Transport {
 	}
 }
 
-func (fm *Frontman) initHttpTransport() {
-	fm.httpTransport = defaultHttpTransport()
+func (fm *Frontman) initHTTPTransport() {
+	fm.httpTransport = defaultHTTPTransport()
 
 	if fm.Config.IgnoreSSLErrors {
 		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
@@ -76,7 +76,7 @@ func (fm *Frontman) initHttpTransport() {
 // transportWithInsecureSSL creates a default http.Transport,
 // sets the option to skip verification of insecure TLS.
 func transportWithInsecureSSL(rootCAs *x509.CertPool) *http.Transport {
-	transport := defaultHttpTransport()
+	transport := defaultHTTPTransport()
 	transport.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
 		RootCAs:            rootCAs,
@@ -164,13 +164,10 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	wroteRequestAt := time.Now()
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return m, err
+		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
 	if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
-	}
-	if err != nil {
-		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
 
 	// Set the httpStatusCode in case we got a response

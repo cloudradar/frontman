@@ -1,8 +1,8 @@
 package gzipreader
 
 import (
-	"io"
 	"compress/gzip"
+	"io"
 )
 
 // GzipReader wraps a ReadCloser

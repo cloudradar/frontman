@@ -76,7 +76,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
 
-	// Mark check as successfull
+	// Mark check as successful
 	m[prefix+"success"] = 1
 
 	return m, nil
@@ -88,50 +88,35 @@ func executeServiceCheck(conn net.Conn, tcpTimeout float64, service, hostname st
 	switch service {
 	case "ftp":
 		err = checkFTP(conn, secToDuration(tcpTimeout))
-		break
 	case "ftps":
 		err = checkFTPS(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "imap":
 		err = checkIMAP(conn, secToDuration(tcpTimeout))
-		break
 	case "imaps":
 		err = checkIMAPS(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "smtp":
 		err = checkSMTP(conn, secToDuration(tcpTimeout))
-		break
 	case "smtps":
 		err = checkSMTPS(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "pop3":
 		err = checkPOP3(conn, secToDuration(tcpTimeout))
-		break
 	case "pop3s":
 		err = checkPOP3S(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "ssh":
 		err = checkSSH(conn, secToDuration(tcpTimeout))
-		break
 	case "nntp":
 		err = checkNNTP(conn, secToDuration(tcpTimeout))
-		break
 	case "ldap":
 		err = checkLDAP(conn, secToDuration(tcpTimeout))
-		break
 	case "ldaps":
 		err = checkLDAPS(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "http":
 		err = checkHTTP(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "https":
 		err = checkHTTPS(conn, hostname, secToDuration(tcpTimeout))
-		break
 	case "tcp":
 		// In the previous call to net.Dial the test basically already happened while establishing the connection
 		// so we don't have to do anything additional here.
-		break
 	default:
 		err = fmt.Errorf("unknown service '%s'", service)
 	}
