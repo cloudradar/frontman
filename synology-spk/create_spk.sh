@@ -51,7 +51,7 @@ git checkout 2_create_project/INFO
 # AMD64
 sed -i.bak "s/{PKG_VERSION}/$1/g" 2_create_project/INFO
 rm 2_create_project/INFO.bak
-sed -i.bak "s/{PKG_ARCH}/x86_64/g" 2_create_project/INFO
+sed -i.bak "s/{PKG_ARCH}/x86_64 cedarview bromolow broadwell/g" 2_create_project/INFO
 rm 2_create_project/INFO.bak
 
 GOOS=linux GOARCH=amd64 go build github.com/cloudradar-monitoring/frontman/cmd/frontman/...
