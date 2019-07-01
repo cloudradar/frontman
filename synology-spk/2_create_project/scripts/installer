@@ -47,6 +47,16 @@ postinst ()
     mkdir -p /var/log/frontman
     chown frontman:frontman /var/log/frontman
 
+    # allow ICMP pings
+cat << EOF > /usr/local/etc/rc.d/frontman-ping.sh
+#!/bin/sh
+if [ \$1 = "start" ]
+  then sysctl -w net.ipv4.ping_group_range="0 2147483647"
+fi
+EOF
+    chmod 755 /usr/local/etc/rc.d/frontman-ping.sh
+    sysctl -w net.ipv4.ping_group_range="0 2147483647" > /dev/null
+
     exit 0
 }
 
@@ -70,6 +80,9 @@ postuninst ()
 
     # remove log file
     rm -f ${LOG_FILE}
+
+    # remove ICMP ping settings
+    rm -f /usr/local/etc/rc.d/frontman-ping.sh
 
     exit 0
 }
