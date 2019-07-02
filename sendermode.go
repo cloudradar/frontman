@@ -140,7 +140,6 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 	for res := range resultsChan {
 		results = append(results, res)
 	}
-	logrus.Println("sender_mode WAIT, postResultsToHub")
 	err := fm.postResultsToHub(results)
 	if err != nil {
 		return fmt.Errorf("postResultsToHub: %s", err.Error())
