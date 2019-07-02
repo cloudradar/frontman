@@ -220,8 +220,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		case err != nil:
 			logrus.Error(err)
 		default:
-			err := fm.RunOnce(input, outputFile, interrupt, false)
-			if err != nil {
+			if err := fm.RunOnce(input, outputFile, interrupt, false); err != nil {
 				logrus.Error(err)
 			}
 		}
