@@ -143,7 +143,7 @@ func newFieldError(name string, err error) error {
 	return errors.Wrapf(err, "%s field verification failed", name)
 }
 
-func (fm *Frontman) InputFromHub() (*Input, error) {
+func (fm *Frontman) inputFromHub() (*Input, error) {
 	fm.initHubClient()
 
 	if fm.Config.HubURL == "" {
@@ -249,88 +249,6 @@ func (fm *Frontman) HealthCheck() error {
 	return nil
 }
 
-func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
-	var err error
-	var hostInfo MeasurementsMap
-
-	// in case HUB server will hang on response we will need a buffer to continue perform checks
-	resultsChan := make(chan Result, 100)
-
-	// since fm.Run calls fm.RunOnce over and over again, we need this check here
-	if !fm.hostInfoSent {
-		// Only try to collect HostInfo when defined in config
-		if len(fm.Config.HostInfo) > 0 {
-			hostInfo, err = fm.HostInfoResults()
-			if err != nil {
-				logrus.Warnf("Failed to fetch HostInfo: %s", err)
-				hostInfo["error"] = err.Error()
-			}
-		}
-
-		// Send hostInfo as first result
-		resultsChan <- Result{
-			Measurements: hostInfo,
-			CheckType:    "hostInfo",
-			Timestamp:    time.Now().Unix(),
-		}
-		fm.hostInfoSent = true
-	}
-
-	if input != nil {
-		go fm.processInput(input, resultsChan)
-	} else {
-		close(resultsChan)
-	}
-
-	switch {
-	case outputFile != nil && writeResultsChanToFileContinously:
-		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
-	case outputFile != nil:
-		err = fm.sendResultsChanToFile(resultsChan, outputFile)
-	case fm.Config.SenderMode == SenderModeInterval:
-		err = fm.sendResultsChanToHubWithInterval(resultsChan)
-	case fm.Config.SenderMode == SenderModeWait:
-		err = fm.sendResultsChanToHub(resultsChan)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to process results: %s", err.Error())
-	}
-
-	return nil
-}
-
-func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
-	var input *Input
-	var err error
-
-	if inputFilePath != "" {
-		input, err = InputFromFile(inputFilePath)
-		if err != nil {
-			return nil, fmt.Errorf("InputFromFile(%s) error: %s", inputFilePath, err.Error())
-		}
-		return input, nil
-	}
-
-	if fm.Config.HubURL == "" {
-		return nil, ErrorMissingHubOrInput
-	}
-
-	// in case input file not specified this means we should request HUB instead
-	input, err = fm.InputFromHub()
-	if err != nil {
-		if fm.Config.HubUser != "" {
-			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
-			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
-			return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.Config.HubUser, err.Error())
-		}
-
-		return nil, fmt.Errorf("InputFromHub: %s", err.Error())
-	}
-
-	return input, nil
-}
-
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
 	fm.Stats.StartedAt = time.Now()
 	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
@@ -375,6 +293,93 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			continue
 		}
 	}
+}
+
+func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
+	var err error
+	var hostInfo MeasurementsMap
+
+	// in case HUB server will hang on response we will need a buffer to continue perform checks
+	resultsChan := make(chan Result, 100)
+
+	// since fm.Run calls fm.RunOnce over and over again, we need this check here
+	if !fm.hostInfoSent {
+		// Only try to collect HostInfo when defined in config
+		if len(fm.Config.HostInfo) > 0 {
+			hostInfo, err = fm.HostInfoResults()
+			if err != nil {
+				logrus.Warnf("Failed to fetch HostInfo: %s", err)
+				hostInfo["error"] = err.Error()
+			}
+		}
+
+		// Send hostInfo as first result
+		resultsChan <- Result{
+			Measurements: hostInfo,
+			CheckType:    "hostInfo",
+			Timestamp:    time.Now().Unix(),
+		}
+		fm.hostInfoSent = true
+	}
+
+	if input != nil {
+		go fm.processInput(input, resultsChan)
+	} else {
+		close(resultsChan)
+	}
+
+	logrus.Println("RunOnce ...")
+
+	switch {
+	case outputFile != nil && writeResultsChanToFileContinously:
+		logrus.Println("sender_mode sendResultsChanToFileContinuously")
+		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
+	case outputFile != nil:
+		logrus.Println("sender_mode sendResultsChanToFile")
+		err = fm.sendResultsChanToFile(resultsChan, outputFile)
+	case fm.Config.SenderMode == SenderModeInterval:
+		logrus.Println("sender_mode INTERVAL")
+		err = fm.sendResultsChanToHubWithInterval(resultsChan)
+	case fm.Config.SenderMode == SenderModeWait:
+		logrus.Println("sender_mode WAIT")
+		err = fm.sendResultsChanToHub(resultsChan)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to process results: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
+	var input *Input
+	var err error
+
+	if inputFilePath != "" {
+		input, err = InputFromFile(inputFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("InputFromFile(%s) error: %s", inputFilePath, err.Error())
+		}
+		return input, nil
+	}
+
+	if fm.Config.HubURL == "" {
+		return nil, ErrorMissingHubOrInput
+	}
+
+	// in case input file not specified this means we should request HUB instead
+	input, err = fm.inputFromHub()
+	if err != nil {
+		if fm.Config.HubUser != "" {
+			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
+			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
+			return nil, fmt.Errorf("inputFromHub(%s:***): %s", fm.Config.HubUser, err.Error())
+		}
+		return nil, fmt.Errorf("inputFromHub: %s", err.Error())
+	}
+
+	return input, nil
 }
 
 func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{}, error) {
