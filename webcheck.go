@@ -166,6 +166,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	if err != nil {
 		return m, fmt.Errorf("got error while performing request: %s", err.Error())
 	}
+	defer resp.Body.Close()
+
 	if ctx.Err() == context.DeadlineExceeded {
 		return m, fmt.Errorf("got timeout while performing request")
 	}
@@ -185,11 +187,6 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		// wrap body reader with gzip reader
 		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
 	}
-	defer func() {
-		// don't care about body close error
-		// because it doesn't affects any kind of checks we have
-		_ = resp.Body.Close()
-	}()
 
 	if data.ExpectedPattern != "" {
 		err = checkBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, !data.SearchHTMLSource)
