@@ -326,6 +326,8 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	startedAt := time.Now()
 	succeed := 0
 
+	logrus.Debug("processInput start")
+
 	for _, check := range input.ServiceChecks {
 		wg.Add(1)
 		go func(check ServiceCheck) {

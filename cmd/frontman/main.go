@@ -299,11 +299,6 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 		return nil
 	}
 
-	if inputFile != "" && outputFile == "" {
-		fmt.Printf("Output file not specified. Will use the default one: %s\n", defaultOutputFile)
-		outputFile = defaultOutputFile
-	}
-
 	var output *os.File
 	var err error
 
@@ -333,11 +328,12 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 		mode |= os.O_APPEND
 	}
 
-	output, err = os.OpenFile(outputFile, mode, 0644)
-	if err != nil {
-		log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
+	if output != nil {
+		output, err = os.OpenFile(outputFile, mode, 0644)
+		if err != nil {
+			log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
+		}
 	}
-
 	return output
 }
 
