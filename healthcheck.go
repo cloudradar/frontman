@@ -28,18 +28,18 @@ func (fm *Frontman) HealthCheck() error {
 
 	wg := new(sync.WaitGroup)
 	for _, addr := range hcfg.ReferencePingHosts {
-		p, err := NewPinger(addr)
+		pinger, err := NewPinger(addr)
 		if err != nil {
 			logrus.WithError(err).Warningln("failed to parse host for ICMP ping")
 			continue
 		}
-		p.Timeout = timeout
-		p.Count = hcfg.ReferencePingCount
+		pinger.Timeout = timeout
+		pinger.Count = hcfg.ReferencePingCount
 		wg.Add(1)
 		go func(addr string) {
 			defer wg.Done()
-			p.Run()
-			if p.Statistics().PacketLoss > 0 {
+			pinger.Run()
+			if pinger.Statistics().PacketLoss > 0 {
 				failC <- addr
 			}
 		}(addr)
