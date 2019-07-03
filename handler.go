@@ -228,7 +228,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		select {
 		case <-interrupt:
 			return
-		case <-time.After(secToDuration(fm.Config.Sleep)):
+		default:
 			continue
 		}
 	}
@@ -281,7 +281,13 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		err = fm.sendResultsChanToHubWithInterval(resultsChan)
 	case fm.Config.SenderMode == SenderModeWait:
 		logrus.Println("sender_mode WAIT")
+		sleepTime := secToDuration(fm.Config.Sleep)
+		start := time.Now()
 		err = fm.sendResultsChanToHub(resultsChan)
+		sleepTime -= time.Since(start)
+		if sleepTime > 0 {
+			time.Sleep(sleepTime)
+		}
 	}
 
 	if err != nil {
