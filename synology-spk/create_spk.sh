@@ -27,6 +27,7 @@ cd ..
 git diff
 git checkout 2_create_project/INFO
 
+# IMPORTANT: CGO_ENABLED=0 is used to force binaries to be statically linked
 
 # ARMv8
 sed -i.bak "s/{PKG_VERSION}/$1/g" 2_create_project/INFO
