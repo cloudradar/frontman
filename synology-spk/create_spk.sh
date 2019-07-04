@@ -24,6 +24,7 @@ mv frontman.spk ../frontman-armv7.spk
 rm -f package.tgz
 cd ..
 
+git diff
 git checkout 2_create_project/INFO
 
 
@@ -45,6 +46,7 @@ mv frontman.spk ../frontman-armv8.spk
 rm -f package.tgz
 cd ..
 
+git diff
 git checkout 2_create_project/INFO
 
 
@@ -66,4 +68,5 @@ mv frontman.spk ../frontman-amd64.spk
 rm -f package.tgz
 cd ..
 
+git diff
 git checkout 2_create_project/INFO
