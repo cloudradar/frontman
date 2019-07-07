@@ -328,7 +328,7 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 		mode |= os.O_APPEND
 	}
 
-	if output != nil {
+	if outputFile != "" {
 		output, err = os.OpenFile(outputFile, mode, 0644)
 		if err != nil {
 			log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
