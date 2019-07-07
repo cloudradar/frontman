@@ -94,7 +94,8 @@ func (se *setupErrors) Describe() string {
 // saveAndReloadProxySettings saves the proxy settings to the config and reloads the service
 func (ui *UI) saveAndReloadProxySettings() {
 	setupStatus := &setupErrors{}
-	err := frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
+	mvc := frontman.NewMinimumConfig()
+	err := mvc.SaveConfigFile(ui.frontman.ConfigLocation)
 	if err != nil {
 		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
 		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
@@ -106,7 +107,8 @@ func (ui *UI) saveAndReloadProxySettings() {
 // saveAndReloadLogSettings saves the log settings to the config and reloads the service
 func (ui *UI) saveAndReloadLogSettings() {
 	setupStatus := &setupErrors{}
-	err := frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
+	mvc := frontman.NewMinimumConfig()
+	err := mvc.SaveConfigFile(ui.frontman.ConfigLocation)
 	if err != nil {
 		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
 		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
@@ -153,8 +155,9 @@ func (ui *UI) testSaveAndReloadHubSettings(testOnly bool) {
 
 	ui.SaveButton.SetText("Saving...")
 
-	ui.frontman.Config.MinValuableConfig.IOMode = frontman.IOModeHTTP
-	err = frontman.SaveConfigFile(&ui.frontman.Config.MinValuableConfig, ui.frontman.ConfigLocation)
+	mvc := frontman.NewMinimumConfig()
+	mvc.IOMode = frontman.IOModeHTTP
+	err = mvc.SaveConfigFile(ui.frontman.ConfigLocation)
 	if err != nil {
 		setupStatus.SetConfigError(errors.Wrap(err, "Failed to write config file"))
 		runDialog(ui.MainWindow, ui.ErrorIcon, "Error", setupStatus.Describe(), nil)
