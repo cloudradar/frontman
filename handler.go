@@ -267,20 +267,18 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		close(resultsChan)
 	}
 
-	logrus.Println("RunOnce ...")
-
 	switch {
 	case outputFile != nil && writeResultsChanToFileContinously:
-		logrus.Println("sender_mode sendResultsChanToFileContinuously")
+		logrus.Debugf("sender_mode sendResultsChanToFileContinuously")
 		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
 	case outputFile != nil:
-		logrus.Println("sender_mode sendResultsChanToFile")
+		logrus.Debugf("sender_mode sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
 	case fm.Config.SenderMode == SenderModeInterval:
-		logrus.Println("sender_mode INTERVAL")
+		logrus.Debugf("sender_mode INTERVAL")
 		err = fm.sendResultsChanToHubWithInterval(resultsChan)
 	case fm.Config.SenderMode == SenderModeWait:
-		logrus.Println("sender_mode WAIT")
+		logrus.Debugf("sender_mode WAIT")
 		sleepTime := secToDuration(fm.Config.Sleep)
 		start := time.Now()
 		err = fm.sendResultsChanToHub(resultsChan)
@@ -331,8 +329,6 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
 	succeed := 0
-
-	logrus.Debug("processInput start")
 
 	for _, check := range input.ServiceChecks {
 		wg.Add(1)
