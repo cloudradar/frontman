@@ -56,8 +56,11 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	if fm.Config.HubGzip {
 		var buffer bytes.Buffer
 		zw := gzip.NewWriter(&buffer)
-		zw.Write(b)
-		zw.Close()
+		defer zw.Close()
+		if _, err := zw.Write(b); err != nil {
+			return err
+		}
+
 		req, err = http.NewRequest("POST", fm.Config.HubURL, &buffer)
 		bodyLength = buffer.Len()
 		req.Header.Set("Content-Encoding", "gzip")
