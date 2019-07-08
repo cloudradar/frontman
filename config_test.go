@@ -32,15 +32,11 @@ func TestNewMinimumConfig(t *testing.T) {
 }
 
 func TestTryUpdateConfigFromFile(t *testing.T) {
-	config := Config{
-		PidFile:         "fooPID",
-		Sleep:           0.1337,
-		IgnoreSSLErrors: false,
-	}
+	cfg := NewConfig()
 
 	const sampleConfig = `
 pid = "/pid"
-sleep = 1.0
+sleep = 1.23
 ignore_ssl_errors = true
 `
 
@@ -51,35 +47,15 @@ ignore_ssl_errors = true
 	err = ioutil.WriteFile(tmpFile.Name(), []byte(sampleConfig), 0755)
 	assert.Nil(t, err)
 
-	err = TryUpdateConfigFromFile(&config, tmpFile.Name())
+	err = cfg.TryUpdateConfigFromFile(tmpFile.Name())
 	assert.Nil(t, err)
 
-	assert.Equal(t, "/pid", config.PidFile)
-	assert.Equal(t, 1.0, config.Sleep)
-	assert.Equal(t, true, config.IgnoreSSLErrors)
-}
+	assert.Equal(t, "/pid", cfg.PidFile)
+	assert.Equal(t, 1.23, cfg.Sleep)
+	assert.Equal(t, true, cfg.IgnoreSSLErrors)
 
-func TestGenerateDefaultConfigFile(t *testing.T) {
-	mvc := &MinValuableConfig{
-		LogLevel: "debug",
-		IOMode:   "foo",
-		HubUser:  "bar",
-	}
-
-	tmpFile, err := ioutil.TempFile("", "")
-	assert.Nil(t, err)
-	defer os.Remove(tmpFile.Name())
-
-	err = GenerateDefaultConfigFile(mvc, tmpFile.Name())
-	assert.Nil(t, err)
-
-	loadedMVC := &MinValuableConfig{}
-	_, err = toml.DecodeReader(tmpFile, loadedMVC)
-	assert.Nil(t, err)
-
-	if !assert.ObjectsAreEqual(*mvc, *loadedMVC) {
-		t.Errorf("expected %+v, got %+v", *mvc, *loadedMVC)
-	}
+	// make sure default values are propagated
+	assert.Equal(t, []string{"uname", "os_kernel", "os_family", "os_arch", "cpu_model", "fqdn", "memory_total_B"}, cfg.HostInfo)
 }
 
 func TestHandleAllConfigSetup(t *testing.T) {
