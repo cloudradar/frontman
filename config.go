@@ -133,6 +133,10 @@ func NewConfig() *Config {
 		HTTPCheckTimeout:       15,
 		NetTCPTimeout:          3,
 		SSLCertExpiryThreshold: 7,
+		HealthChecks: HealthCheckConfig{
+			ReferencePingTimeout: 1,
+			ReferencePingCount:   1,
+		},
 	}
 	return cfg
 }
