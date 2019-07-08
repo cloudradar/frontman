@@ -584,7 +584,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case "":
-			logrus.Errorf("serviceCheck: missing check.protocol")
+			logrus.Info("serviceCheck: missing check.protocol")
 			err = errors.New("Missing check.protocol")
 		default:
 			logrus.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
@@ -616,7 +616,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 			if check.UUID == "" {
 				// in case checkUuid is missing we can ignore this item
-				logrus.Errorf("serviceCheck: missing checkUuid key")
+				logrus.Info("serviceCheck: missing checkUuid key")
 				return
 			}
 
@@ -629,7 +629,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 			res.Check = check.Check
 
 			if check.Check.Connect == "" {
-				logrus.Errorf("serviceCheck: missing data.connect key")
+				logrus.Info("serviceCheck: missing data.connect key")
 				res.Message = "Missing data.connect key"
 			} else {
 				var err error
