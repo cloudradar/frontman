@@ -74,7 +74,7 @@ type Config struct {
 	SenderMode         string  `toml:"sender_mode" comment:"\"wait\" – to post results to HUB after each round; \"interval\" – to post results to HUB by fixed interval"`
 	SenderModeInterval float64 `toml:"sender_mode_interval" comment:"interval in seconds to post results to HUB server"`
 
-	HealthChecks HealthCheckConfig `toml:"health_checks" commented:"true"`
+	HealthChecks HealthCheckConfig `toml:"health_checks" comment:"Frontman can verify a reliable internet uplink by pinging some reference hosts before each check round starts.\nPing all hosts of the list.\nOnly if frontman gets a positive answer form all of them, frontman continues.\nOtherwise, the entire check round is skipped. No data is sent back.\nFailed health checks are recorded to the log.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel.\nDisabled by default. Enable by declaring reference_ping_hosts targets\n"`
 
 	HTTPListener HTTPListenerConfig `toml:"http_listener" comment:"Perform checks requested via HTTP POST requests"`
 
