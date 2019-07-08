@@ -369,11 +369,7 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 	// calculate delta from previous measure
 	for _, measure := range prevMeasures {
 		if measure.name == ifName {
-			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
-			if delaySeconds <= 0 {
-				logrus.Warnf("snmp bandwidth: negative timestamp: %v, now: %v", measure.timestamp, time.Now())
-				continue
-			}
+			delaySeconds := float64(time.Since(measure.timestamp)) / float64(time.Second)
 			inDelta := float64(delta(measure.ifInOctets, ifIn))
 			outDelta := float64(delta(measure.ifOutOctets, ifOut))
 			m["ifIn_Bps"] = math.Round(inDelta / delaySeconds)
@@ -433,7 +429,7 @@ func (fm *Frontman) filterSNMPPorterrorsResult(idx int, iface []snmpResult, prev
 	// calculate delta from previous measure
 	for _, measure := range prevMeasures {
 		if measure.name == ifName {
-			delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
+			delaySeconds := float64(time.Since(measure.timestamp)) / float64(time.Second)
 			inErrorsDelta := float64(delta(measure.ifInErrors, ifInErrors))
 			outErrorsDelta := float64(delta(measure.ifOutErrors, ifOutErrors))
 			m["ifInErrors_delta"] = uint(math.Round(inErrorsDelta / delaySeconds))
