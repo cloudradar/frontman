@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -368,6 +369,22 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 								recovered = true
 								break
 							}
+						}
+					}
+					if !recovered && fm.Config.AskNeigbors {
+						logrus.Debug("asking neighbors...")
+
+						for _, neighbor := range fm.Config.Neighbors {
+							logrus.Debug("asking neighbor", neighbor.Name)
+							url, err := url.Parse(neighbor.URL)
+							if err != nil {
+								logrus.Warnf("Invalid neighbor url in config: '%s': %s", neighbor.URL, err.Error())
+								continue
+							}
+							url.Path = path.Join(url.Path, "check")
+							logrus.Debug("connecting to ", url.String())
+
+							// XXX ask neighbor
 						}
 					}
 					if !recovered {
