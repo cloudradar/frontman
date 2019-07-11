@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -374,6 +375,8 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 					if !recovered && fm.Config.AskNeigbors {
 						logrus.Debug("asking neighbors...")
 
+						var responses []http.Response
+
 						for _, neighbor := range fm.Config.Neighbors {
 							logrus.Debug("asking neighbor", neighbor.Name)
 							url, err := url.Parse(neighbor.URL)
@@ -384,7 +387,20 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 							url.Path = path.Join(url.Path, "check")
 							logrus.Debug("connecting to ", url.String())
 
-							// XXX ask neighbor
+							// ask neighbor
+							client := &http.Client{}
+							req, _ := http.NewRequest("GET", url.String(), nil)
+							res, err := client.Do(req)
+							if err != nil {
+								logrus.Warnf("Failed to ask neighbor: %s", err.Error())
+							} else {
+								responses = append(responses, *res)
+							}
+						}
+
+						if len(responses) > 0 {
+							// XXX pick "fastest result" and send it back
+							spew.Dump(responses)
 						}
 					}
 					if !recovered {
