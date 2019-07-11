@@ -401,6 +401,9 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 						if len(responses) > 0 {
 							// XXX pick "fastest result" and send it back
 							spew.Dump(responses)
+
+							// XXX create a new result message with fastest result + group_measurements with all responses
+							// XXX attach new messagew to result: "message": "Check failed locally and on 2 neigbors but succeded on Frontman EU"
 						}
 					}
 					if !recovered {
