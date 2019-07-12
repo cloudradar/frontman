@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
@@ -236,4 +237,65 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 	}
 
 	return client
+}
+
+func (checkList *WebCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, succeed *int) {
+	for _, check := range checkList.Checks {
+		wg.Add(1)
+		go func(check WebCheck) {
+			defer wg.Done()
+
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				logrus.Errorf("webCheck: missing checkUuid key")
+				return
+			}
+
+			res := Result{
+				CheckType: "webCheck",
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+
+			res.Check = check.Check
+
+			switch {
+			case check.Check.Method == "":
+				logrus.Errorf("webCheck: missing check.method key")
+				res.Message = "Missing check.method key"
+			case check.Check.URL == "":
+				logrus.Errorf("webCheck: missing check.url key")
+				res.Message = "Missing check.url key"
+			default:
+				var err error
+				res.Measurements, err = fm.runWebCheck(check.Check)
+				if err != nil {
+					recovered := false
+					if fm.Config.FailureConfirmation > 0 {
+						logrus.Debugf("webCheck failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.UUID, err.Error())
+
+						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
+							res.Measurements, err = fm.runWebCheck(check.Check)
+							if err == nil {
+								recovered = true
+								break
+							}
+						}
+					}
+					if !recovered {
+						logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())
+						res.Message = err.Error()
+					}
+				}
+			}
+
+			if res.Message == nil {
+				*succeed++
+			}
+
+			resultsChan <- res
+		}(check)
+	}
 }
