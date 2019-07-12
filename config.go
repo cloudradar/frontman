@@ -128,7 +128,8 @@ func NewConfig() *Config {
 		StatsFile:              defaultStatsFilePath,
 		ICMPTimeout:            0.1,
 		Sleep:                  30,
-		SenderMode:             SenderModeWait,
+		SenderMode:             SenderModeInterval,
+		SenderModeInterval:     20,
 		HTTPCheckMaxRedirects:  10,
 		HTTPCheckTimeout:       15,
 		NetTCPTimeout:          3,
@@ -272,10 +273,10 @@ func HandleAllConfigSetup(configFilePath string) (*Config, error) {
 		cfg.MinValuableConfig = *mvc
 	} else if err != nil {
 		if strings.Contains(err.Error(), "cannot load TOML value of type int64 into a Go float") {
-			return nil, fmt.Errorf("config load error: please use numbers with a decimal point for numerical values")
+			return nil, fmt.Errorf("config load '%s' error: please use numbers with a decimal point for numerical values", configFilePath)
 		}
 
-		return nil, fmt.Errorf("config load error: %s", err.Error())
+		return nil, fmt.Errorf("config load '%s' error: %s", configFilePath, err.Error())
 	}
 
 	return cfg, nil

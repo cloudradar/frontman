@@ -1,27 +1,20 @@
 package frontman
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
 )
 
@@ -140,16 +133,7 @@ func (fm *Frontman) checkClientError(resp *http.Response, err error, fieldHubUse
 	return nil
 }
 
-func newEmptyFieldError(name string) error {
-	err := errors.Errorf("unexpected empty field %s", name)
-	return errors.Wrap(err, "the field must be filled with details of your Cloudradar account")
-}
-
-func newFieldError(name string, err error) error {
-	return errors.Wrapf(err, "%s field verification failed", name)
-}
-
-func (fm *Frontman) InputFromHub() (*Input, error) {
+func (fm *Frontman) inputFromHub() (*Input, error) {
 	fm.initHubClient()
 
 	if fm.Config.HubURL == "" {
@@ -205,221 +189,49 @@ func (fm *Frontman) InputFromHub() (*Input, error) {
 	return &i, nil
 }
 
-func (fm *Frontman) PostResultsToHub(results []Result) error {
-	fm.initHubClient()
-
-	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
-	b, err := json.Marshal(Results{
-		Results: fm.offlineResultsBuffer,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	// in case we have HubMaxOfflineBufferBytes set(>0) and buffer + results exceed HubMaxOfflineBufferBytes -> reset buffer
-	if fm.Config.HubMaxOfflineBufferBytes > 0 && len(b) > fm.Config.HubMaxOfflineBufferBytes && len(fm.offlineResultsBuffer) > 0 {
-		logrus.Errorf("hub_max_offline_buffer_bytes(%d bytes) exceed with %d results. Flushing the buffer...",
-			fm.Config.HubMaxOfflineBufferBytes,
-			len(results))
-
-		fm.offlineResultsBuffer = []Result{}
-		b, err = json.Marshal(Results{Results: results})
-		if err != nil {
-			return err
-		}
-	}
-
-	if fm.Config.HubURL == "" {
-		return newEmptyFieldError("hub_url")
-	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
-		err = errors.WithStack(err)
-		return newFieldError("hub_url", err)
-	} else if u.Scheme != "http" && u.Scheme != "https" {
-		err := errors.Errorf("wrong scheme '%s', URL must start with http:// or https://", u.Scheme)
-		return newFieldError("hub_url", err)
-	}
-
-	var req *http.Request
-	var bodyLength int
-
-	if fm.Config.HubGzip {
-		var buffer bytes.Buffer
-		zw := gzip.NewWriter(&buffer)
-		zw.Write(b)
-		zw.Close()
-		req, err = http.NewRequest("POST", fm.Config.HubURL, &buffer)
-		bodyLength = buffer.Len()
-		req.Header.Set("Content-Encoding", "gzip")
-	} else {
-		req, err = http.NewRequest("POST", fm.Config.HubURL, bytes.NewBuffer(b))
-		bodyLength = len(b)
-	}
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("User-Agent", fm.userAgent())
-
-	if fm.Config.HubUser != "" {
-		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
-	}
-
-	resp, err := fm.hubClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	logrus.Debugf("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return errors.New(resp.Status)
-	}
-
-	// in case of successful POST reset the offline buffer
-	fm.offlineResultsBuffer = []Result{}
-
-	// Update frontman statistics
-	fm.Stats.BytesSentToHubTotal += uint64(bodyLength)
-
-	return nil
-}
-
-func (fm *Frontman) sendResultsChanToFileContinuously(resultsChan chan Result, outputFile *os.File) error {
-	var errs []string
-	var jsonEncoder = json.NewEncoder(outputFile)
-
-	// encode and add results to the file as we get it from the chan
-	for res := range resultsChan {
-		err := jsonEncoder.Encode(res)
-		if err != nil {
-			errs = append(errs, err.Error())
-		}
-	}
-
-	if errs != nil {
-		return fmt.Errorf("JSON encoding errors: %s", strings.Join(errs, "; "))
-	}
-
-	return nil
-}
-
-func (fm *Frontman) sendResultsChanToFile(resultsChan chan Result, outputFile *os.File) error {
-	var results []Result
-	var jsonEncoder = json.NewEncoder(outputFile)
-	for res := range resultsChan {
-		results = append(results, res)
-	}
-
-	return jsonEncoder.Encode(results)
-}
-
-func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
-	var results []Result
-	for res := range resultsChan {
-		results = append(results, res)
-	}
-	err := fm.PostResultsToHub(results)
-	if err != nil {
-		return fmt.Errorf("PostResultsToHub: %s", err.Error())
-	}
-
-	fm.Stats.CheckResultsSentToHub += uint64(len(results))
-
-	fm.offlineResultsBuffer = []Result{}
-	return nil
-}
-
-func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) error {
-	sendResultsTicker := time.NewTicker(secToDuration(fm.Config.SenderModeInterval))
-	defer sendResultsTicker.Stop()
-
-	var results []Result
-	shouldReturn := false
+func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
+	fm.Stats.StartedAt = time.Now()
+	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
+	fm.StartWritingStats()
 
 	for {
-		select {
-		case res, ok := <-resultsChan:
-			if !ok {
-				// chan was closed
-				// no more results left
-				shouldReturn = true
-				break
+		if err := fm.HealthCheck(); err != nil {
+			fm.HealthCheckPassedPreviously = false
+			logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
+			select {
+			case <-interrupt:
+				return
+			case <-time.After(secToDuration(fm.Config.Sleep)):
+				continue
 			}
-
-			results = append(results, res)
-			// skip PostResultsToHub
-			continue
-		case <-sendResultsTicker.C:
-			break
+		} else if !fm.HealthCheckPassedPreviously {
+			fm.HealthCheckPassedPreviously = true
+			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
-		logrus.Debugf("SenderModeInterval: send %d results", len(results))
-		err := fm.PostResultsToHub(results)
-		if err != nil {
-			err = fmt.Errorf("PostResultsToHub error: %s", err.Error())
-		}
-
-		if shouldReturn {
-			return err
-		}
-
-		if err != nil {
+		input, err := fm.FetchInput(inputFilePath)
+		switch {
+		case err != nil && err == ErrorMissingHubOrInput:
+			logrus.Warnln(err)
+			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
+			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
+			time.Sleep(10 * time.Second)
+			os.Exit(0)
+		case err != nil:
 			logrus.Error(err)
+		default:
+			if err := fm.RunOnce(input, outputFile, interrupt, false); err != nil {
+				logrus.Error(err)
+			}
 		}
-	}
-}
 
-// HealthCheck runs before any other check to ensure that the host itself and its network are healthly.
-// This is useful to confirm a stable internet connection to avoid false alerts due to network outages.
-func (fm *Frontman) HealthCheck() error {
-	hcfg := fm.Config.HealthChecks
-	if len(hcfg.ReferencePingHosts) == 0 {
-		return nil
-	}
-	if hcfg.ReferencePingCount == 0 {
-		return nil
-	}
-	timeout := secToDuration(hcfg.ReferencePingTimeout)
-	if timeout == 0 {
-		// use the default timeout
-		timeout = 500 * time.Millisecond
-	}
-	failC := make(chan string, len(hcfg.ReferencePingHosts))
-
-	wg := new(sync.WaitGroup)
-	for _, addr := range hcfg.ReferencePingHosts {
-		p, err := NewPinger(addr)
-		if err != nil {
-			logrus.WithError(err).Warningln("failed to parse host for ICMP ping")
+		select {
+		case <-interrupt:
+			return
+		default:
 			continue
 		}
-		p.Timeout = timeout
-		p.Count = hcfg.ReferencePingCount
-		wg.Add(1)
-		go func(addr string) {
-			defer wg.Done()
-			p.Run()
-			if p.Statistics().PacketLoss > 0 {
-				failC <- addr
-			}
-		}(addr)
 	}
-	go func() {
-		wg.Wait()
-		close(failC)
-	}()
-
-	failedHosts := []string{}
-	for host := range failC {
-		failedHosts = append(failedHosts, host)
-	}
-	if len(failedHosts) > 0 {
-		return fmt.Errorf("host(s) failed to respond to ICMP ping: %s", strings.Join(failedHosts, ", "))
-	}
-	return nil
 }
 
 func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
@@ -457,13 +269,23 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 
 	switch {
 	case outputFile != nil && writeResultsChanToFileContinously:
+		logrus.Debugf("sender_mode sendResultsChanToFileContinuously")
 		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
 	case outputFile != nil:
+		logrus.Debugf("sender_mode sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
 	case fm.Config.SenderMode == SenderModeInterval:
+		logrus.Debugf("sender_mode INTERVAL")
 		err = fm.sendResultsChanToHubWithInterval(resultsChan)
 	case fm.Config.SenderMode == SenderModeWait:
+		logrus.Debugf("sender_mode WAIT")
+		sleepTime := secToDuration(fm.Config.Sleep)
+		start := time.Now()
 		err = fm.sendResultsChanToHub(resultsChan)
+		sleepTime -= time.Since(start)
+		if sleepTime > 0 {
+			time.Sleep(sleepTime)
+		}
 	}
 
 	if err != nil {
@@ -490,118 +312,17 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	}
 
 	// in case input file not specified this means we should request HUB instead
-	input, err = fm.InputFromHub()
+	input, err = fm.inputFromHub()
 	if err != nil {
 		if fm.Config.HubUser != "" {
 			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
 			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
-			return nil, fmt.Errorf("InputFromHub(%s:***): %s", fm.Config.HubUser, err.Error())
+			return nil, fmt.Errorf("inputFromHub(%s:***): %s", fm.Config.HubUser, err.Error())
 		}
-
-		return nil, fmt.Errorf("InputFromHub: %s", err.Error())
+		return nil, fmt.Errorf("inputFromHub: %s", err.Error())
 	}
 
 	return input, nil
-}
-
-func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
-	fm.Stats.StartedAt = time.Now()
-	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
-	fm.StartWritingStats()
-
-	for {
-		if err := fm.HealthCheck(); err != nil {
-			fm.HealthCheckPassedPreviously = false
-			logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
-			select {
-			case <-interrupt:
-				return
-			case <-time.After(secToDuration(fm.Config.Sleep)):
-				continue
-			}
-		} else if !fm.HealthCheckPassedPreviously {
-			fm.HealthCheckPassedPreviously = true
-			logrus.Infoln("All health checks are positive. Resuming normal operation.")
-		}
-
-		input, err := fm.FetchInput(inputFilePath)
-		switch {
-		case err != nil && err == ErrorMissingHubOrInput:
-			logrus.Warnln(err)
-			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
-			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
-			time.Sleep(10 * time.Second)
-			os.Exit(0)
-		case err != nil:
-			logrus.Error(err)
-		default:
-			err := fm.RunOnce(input, outputFile, interrupt, false)
-			if err != nil {
-				logrus.Error(err)
-			}
-		}
-
-		select {
-		case <-interrupt:
-			return
-		case <-time.After(secToDuration(fm.Config.Sleep)):
-			continue
-		}
-	}
-}
-
-func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{}, error) {
-	var done = make(chan struct{})
-	var err error
-	var results map[string]interface{}
-	go func() {
-		ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
-		if resolveErr != nil {
-			err = fmt.Errorf("resolve ip error: %s", resolveErr.Error())
-			logrus.Debugf("serviceCheck: ResolveIPAddr error: %s", resolveErr.Error())
-			done <- struct{}{}
-			return
-		}
-
-		switch check.Check.Protocol {
-		case ProtocolICMP:
-			results, err = fm.runPing(ipaddr)
-			if err != nil {
-				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-			}
-		case ProtocolTCP:
-			port, _ := check.Check.Port.Int64()
-
-			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-			if err != nil {
-				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-			}
-		case ProtocolSSL:
-			port, _ := check.Check.Port.Int64()
-
-			results, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
-			if err != nil {
-				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-			}
-		case "":
-			logrus.Info("serviceCheck: missing check.protocol")
-			err = errors.New("Missing check.protocol")
-		default:
-			logrus.Errorf("serviceCheck: unknown check.protocol: '%s'", check.Check.Protocol)
-			err = errors.New("Unknown check.protocol")
-		}
-		done <- struct{}{}
-	}()
-
-	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
-	// instead use individual timeouts inside all checks
-	select {
-	case <-done:
-		return results, err
-	case <-time.After(serviceCheckEmergencyTimeout):
-		logrus.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
-		return nil, fmt.Errorf("got unexpected timeout")
-	}
 }
 
 func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
@@ -767,101 +488,4 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
-}
-
-// HostInfoResults fetches information about the host itself which can be
-// send to the hub alongside measurements.
-func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
-	res := MeasurementsMap{}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	info, err := host.InfoWithContext(ctx)
-	errs := []string{}
-
-	if err != nil {
-		logrus.Errorf("[SYSTEM] Failed to read host info: %s", err.Error())
-		errs = append(errs, err.Error())
-	}
-
-	for _, field := range fm.Config.HostInfo {
-		switch strings.ToLower(field) {
-		case "os_kernel":
-			if info != nil {
-				res[field] = info.OS
-			} else {
-				res[field] = nil
-			}
-		case "os_family":
-			if info != nil {
-				res[field] = info.PlatformFamily
-			} else {
-				res[field] = nil
-			}
-		case "uname":
-			uname, err := Uname()
-			if err != nil {
-				logrus.Errorf("[SYSTEM] Failed to read host uname: %s", err.Error())
-				errs = append(errs, err.Error())
-				res[field] = nil
-			} else {
-				res[field] = uname
-			}
-		case "fqdn":
-			res[field] = getFQDN()
-		case "cpu_model":
-			cpuInfo, err := cpu.Info()
-			if err != nil {
-				logrus.Errorf("[SYSTEM] Failed to read cpu info: %s", err.Error())
-				errs = append(errs, err.Error())
-				res[field] = nil
-				continue
-			}
-			res[field] = cpuInfo[0].ModelName
-		case "os_arch":
-			res[field] = runtime.GOARCH
-		case "memory_total_b":
-			memStat, err := mem.VirtualMemory()
-			if err != nil {
-				logrus.Errorf("[SYSTEM] Failed to read mem info: %s", err.Error())
-				errs = append(errs, err.Error())
-				res[field] = nil
-				continue
-			}
-			res[field] = memStat.Total
-		case "hostname":
-			name, err := os.Hostname()
-			if err != nil {
-				logrus.Errorf("[SYSTEM] Failed to read hostname: %s", err.Error())
-				errs = append(errs, err.Error())
-				res[field] = nil
-				continue
-			}
-			res[field] = name
-		}
-	}
-
-	if len(errs) == 0 {
-		return res, nil
-	}
-
-	return res, errors.New("SYSTEM: " + strings.Join(errs, "; "))
-}
-
-func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	ipAddrs, err := net.DefaultResolver.LookupIPAddr(ctx, addr)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(ipAddrs) == 0 {
-		return nil, errors.New("can't resolve host")
-	}
-
-	ipAddr := ipAddrs[0]
-	return &ipAddr, nil
 }

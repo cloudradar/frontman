@@ -33,34 +33,34 @@ func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err err
 	prefix := "net.icmp.ping."
 	m = make(map[string]interface{})
 
-	p, err := NewPinger(addr.String())
+	pinger, err := NewPinger(addr.String())
 
 	if CheckIfRawICMPAvailable() || runtime.GOOS == "windows" {
-		p.SetPrivileged(true)
+		pinger.SetPrivileged(true)
 	}
 
 	if err != nil {
 		return
 	}
 
-	p.Timeout = secToDuration(fm.Config.ICMPTimeout)
-	p.Count = 5
+	pinger.Timeout = secToDuration(fm.Config.ICMPTimeout)
+	pinger.Count = 5
 
-	p.run()
+	pinger.run()
 
 	var total time.Duration
-	for _, rtt := range p.rtts {
+	for _, rtt := range pinger.rtts {
 		total += rtt
 	}
 
-	if p.PacketsSent > 0 {
-		m[prefix+"packetLoss_percent"] = float64(p.PacketsSent-p.PacketsRecv) / float64(p.PacketsSent) * 100
+	if pinger.PacketsSent > 0 {
+		m[prefix+"packetLoss_percent"] = float64(pinger.PacketsSent-pinger.PacketsRecv) / float64(pinger.PacketsSent) * 100
 	}
-	if (len(p.rtts)) > 0 {
-		m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(p.rtts))
+	if (len(pinger.rtts)) > 0 {
+		m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(pinger.rtts))
 	}
 	success := 0
-	if p.PacketsRecv > 0 {
+	if pinger.PacketsRecv > 0 {
 		success = 1
 	} else {
 		err = errors.New("no packets received")
