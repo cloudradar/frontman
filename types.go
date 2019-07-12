@@ -22,7 +22,7 @@ type Input struct {
 }
 
 type Checker interface {
-	Check(*sync.WaitGroup)
+	Check(*Frontman, *sync.WaitGroup, chan<- Result, int)
 }
 
 // ServiceCheckList implements the Checker interface
