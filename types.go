@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"encoding/json"
+	"sync"
 )
 
 type ServiceName string
@@ -15,9 +16,40 @@ const (
 )
 
 type Input struct {
-	ServiceChecks []ServiceCheck `json:"serviceChecks"`
-	WebChecks     []WebCheck     `json:"webChecks"`
-	SNMPChecks    []SNMPCheck    `json:"snmpChecks"`
+	ServiceChecks ServiceCheckList `json:"serviceChecks"`
+	WebChecks     WebCheckList     `json:"webChecks"`
+	SNMPChecks    SNMPCheckList    `json:"snmpChecks"`
+}
+
+type Checker interface {
+	Check(*sync.WaitGroup)
+}
+
+// ServiceCheckList implements the Checker interface
+type ServiceCheckList struct {
+	Checks []ServiceCheck
+}
+
+// WebCheckList implements the Checker interface
+type WebCheckList struct {
+	Checks []WebCheck
+}
+
+// SNMPCheckList implements the Checker interface
+type SNMPCheckList struct {
+	Checks []SNMPCheck
+}
+
+func (this *ServiceCheckList) UnmarshalJSON(b []byte) error {
+	return json.Unmarshal(b, &this.Checks)
+}
+
+func (this *WebCheckList) UnmarshalJSON(b []byte) error {
+	return json.Unmarshal(b, &this.Checks)
+}
+
+func (this *SNMPCheckList) UnmarshalJSON(b []byte) error {
+	return json.Unmarshal(b, &this.Checks)
 }
 
 type ServiceCheck struct {
