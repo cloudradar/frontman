@@ -33,17 +33,18 @@ func TestSNMPv1(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v1",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v1",
-				Community: snmpdCommunity,
-				Preset:    "basedata",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v1",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v1",
+					Community: snmpdCommunity,
+					Preset:    "basedata",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -62,17 +63,18 @@ func TestSNMPv2(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v2",
-				Community: snmpdCommunity,
-				Preset:    "basedata",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v2",
+					Community: snmpdCommunity,
+					Preset:    "basedata",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -100,17 +102,18 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_bandwidth",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v2",
-				Community: snmpdCommunity,
-				Preset:    "bandwidth",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2_bandwidth",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v2",
+					Community: snmpdCommunity,
+					Preset:    "bandwidth",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -158,20 +161,21 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_oid_hex",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v2",
-				Community: snmpdCommunity,
-				Preset:    "oid",
-				Oid:       ".1.3.6.1.2.1.2.2.1.6.2", // IF-MIB::ifPhysAddress.2
-				Name:      "interface mac",
-				ValueType: "hex",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2_oid_hex",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v2",
+					Community: snmpdCommunity,
+					Preset:    "oid",
+					Oid:       ".1.3.6.1.2.1.2.2.1.6.2", // IF-MIB::ifPhysAddress.2
+					Name:      "interface mac",
+					ValueType: "hex",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -198,21 +202,22 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_oid_delta_per_sec",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v2",
-				Community: snmpdCommunity,
-				Preset:    "oid",
-				Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
-				ValueType: "delta_per_sec",
-				Name:      "delta-per-sec-value",
-				Unit:      "unit-value",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2_oid_delta_per_sec",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v2",
+					Community: snmpdCommunity,
+					Preset:    "oid",
+					Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
+					ValueType: "delta_per_sec",
+					Name:      "delta-per-sec-value",
+					Unit:      "unit-value",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -248,21 +253,22 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_oid_delta",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v2",
-				Community: snmpdCommunity,
-				Preset:    "oid",
-				Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
-				ValueType: "delta",
-				Name:      "delta-value",
-				Unit:      "unit-value",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2_oid_delta",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v2",
+					Community: snmpdCommunity,
+					Preset:    "oid",
+					Oid:       ".1.3.6.1.2.1.2.2.1.16.2", //  IF-MIB::ifOutOctets.2
+					ValueType: "delta",
+					Name:      "delta-value",
+					Unit:      "unit-value",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -298,17 +304,18 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_porterrors",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   5.0,
-				Protocol:  "v2",
-				Community: snmpdCommunity,
-				Preset:    "porterrors",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2_porterrors",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   5.0,
+					Protocol:  "v2",
+					Community: snmpdCommunity,
+					Preset:    "porterrors",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -353,17 +360,18 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v2_invalid_community",
-			Check: SNMPCheckData{
-				Connect:   snmpdIP,
-				Port:      161,
-				Timeout:   2.0,
-				Protocol:  "v2",
-				Community: "invalidCommunityName",
-				Preset:    "basedata",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v2_invalid_community",
+				Check: SNMPCheckData{
+					Connect:   snmpdIP,
+					Port:      161,
+					Timeout:   2.0,
+					Protocol:  "v2",
+					Community: "invalidCommunityName",
+					Preset:    "basedata",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -384,18 +392,19 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_noAuthNoPriv",
-			Check: SNMPCheckData{
-				Connect:       snmpdIP,
-				Port:          161,
-				Timeout:       5.0,
-				Protocol:      "v3",
-				Preset:        "basedata",
-				SecurityLevel: "noAuthNoPriv",
-				Username:      "noAuthNoPrivUser",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v3_noAuthNoPriv",
+				Check: SNMPCheckData{
+					Connect:       snmpdIP,
+					Port:          161,
+					Timeout:       5.0,
+					Protocol:      "v3",
+					Preset:        "basedata",
+					SecurityLevel: "noAuthNoPriv",
+					Username:      "noAuthNoPrivUser",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -415,18 +424,19 @@ func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_noAuthNoPriv_unknown_user",
-			Check: SNMPCheckData{
-				Connect:       snmpdIP,
-				Port:          161,
-				Timeout:       5.0,
-				Protocol:      "v3",
-				Preset:        "basedata",
-				SecurityLevel: "noAuthNoPriv",
-				Username:      "noSuchUsername",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v3_noAuthNoPriv_unknown_user",
+				Check: SNMPCheckData{
+					Connect:       snmpdIP,
+					Port:          161,
+					Timeout:       5.0,
+					Protocol:      "v3",
+					Preset:        "basedata",
+					SecurityLevel: "noAuthNoPriv",
+					Username:      "noSuchUsername",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -446,20 +456,21 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_auth",
-			Check: SNMPCheckData{
-				Connect:                snmpdIP,
-				Port:                   161,
-				Timeout:                5.0,
-				Protocol:               "v3",
-				Preset:                 "basedata",
-				SecurityLevel:          "authNoPriv",
-				Username:               "authOnlyUser",
-				AuthenticationProtocol: "sha",
-				AuthenticationPassword: "password",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v3_auth",
+				Check: SNMPCheckData{
+					Connect:                snmpdIP,
+					Port:                   161,
+					Timeout:                5.0,
+					Protocol:               "v3",
+					Preset:                 "basedata",
+					SecurityLevel:          "authNoPriv",
+					Username:               "authOnlyUser",
+					AuthenticationProtocol: "sha",
+					AuthenticationPassword: "password",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -477,20 +488,21 @@ func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_authNoPriv",
-			Check: SNMPCheckData{
-				Connect:                snmpdIP,
-				Port:                   161,
-				Timeout:                5.0,
-				Protocol:               "v3",
-				Preset:                 "basedata",
-				SecurityLevel:          "authNoPriv",
-				Username:               "authOnlyUser",
-				AuthenticationProtocol: "sha",
-				AuthenticationPassword: "wrongpassword",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v3_authNoPriv",
+				Check: SNMPCheckData{
+					Connect:                snmpdIP,
+					Port:                   161,
+					Timeout:                5.0,
+					Protocol:               "v3",
+					Preset:                 "basedata",
+					SecurityLevel:          "authNoPriv",
+					Username:               "authOnlyUser",
+					AuthenticationProtocol: "sha",
+					AuthenticationPassword: "wrongpassword",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -511,22 +523,23 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_priv",
-			Check: SNMPCheckData{
-				Connect:                snmpdIP,
-				Port:                   161,
-				Timeout:                5.0,
-				Protocol:               "v3",
-				Preset:                 "basedata",
-				SecurityLevel:          "authPriv",
-				Username:               "authPrivUser",
-				AuthenticationProtocol: "sha",
-				AuthenticationPassword: "password",
-				PrivacyProtocol:        "des",
-				PrivacyPassword:        "password",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v3_priv",
+				Check: SNMPCheckData{
+					Connect:                snmpdIP,
+					Port:                   161,
+					Timeout:                5.0,
+					Protocol:               "v3",
+					Preset:                 "basedata",
+					SecurityLevel:          "authPriv",
+					Username:               "authPrivUser",
+					AuthenticationProtocol: "sha",
+					AuthenticationPassword: "password",
+					PrivacyProtocol:        "des",
+					PrivacyPassword:        "password",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -548,20 +561,21 @@ func TestSNMPv3PresetBandwidthWrongCredentials(t *testing.T) {
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 
 	inputConfig := &Input{
-		SNMPChecks: []SNMPCheck{{
-			UUID: "snmp_basedata_v3_bandwidth_wrong_credentials",
-			Check: SNMPCheckData{
-				Connect:                snmpdIP,
-				Port:                   161,
-				Timeout:                5.0,
-				Protocol:               "v3",
-				Preset:                 "bandwidth",
-				SecurityLevel:          "authNoPriv",
-				Username:               "authOnlyUser",
-				AuthenticationProtocol: "sha",
-				AuthenticationPassword: "wrongpassword",
-			},
-		}},
+		SNMPChecks: SNMPCheckList{
+			[]SNMPCheck{{
+				UUID: "snmp_basedata_v3_bandwidth_wrong_credentials",
+				Check: SNMPCheckData{
+					Connect:                snmpdIP,
+					Port:                   161,
+					Timeout:                5.0,
+					Protocol:               "v3",
+					Preset:                 "bandwidth",
+					SecurityLevel:          "authNoPriv",
+					Username:               "authOnlyUser",
+					AuthenticationProtocol: "sha",
+					AuthenticationPassword: "wrongpassword",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
