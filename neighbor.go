@@ -27,6 +27,7 @@ func (fm *Frontman) askNeighbors(data []byte) {
 
 		client := &http.Client{}
 		req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(data))
+		req.SetBasicAuth(neighbor.Username, neighbor.Password)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
