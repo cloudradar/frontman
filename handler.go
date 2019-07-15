@@ -328,13 +328,10 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
-	succeed := 0
 
-	input.ServiceChecks.Check(fm, &wg, resultsChan, &succeed)
-
-	input.WebChecks.Check(fm, &wg, resultsChan, &succeed)
-
-	input.SNMPChecks.Check(fm, &wg, resultsChan, &succeed)
+	succeed := input.ServiceChecks.Check(fm, &wg, resultsChan)
+	succeed += input.WebChecks.Check(fm, &wg, resultsChan)
+	succeed += input.SNMPChecks.Check(fm, &wg, resultsChan)
 
 	wg.Wait()
 	close(resultsChan)
