@@ -86,7 +86,8 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 	return &ipAddr, nil
 }
 
-func (checkList *ServiceCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, succeed *int) {
+func (checkList *ServiceCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result) int {
+	succeed := 0
 	for _, check := range checkList.Checks {
 		wg.Add(1)
 		go func(check ServiceCheck) {
@@ -168,11 +169,12 @@ func (checkList *ServiceCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resul
 				}
 
 				if res.Message == nil {
-					*succeed++
+					succeed++
 				}
 			}
 
 			resultsChan <- res
 		}(check)
 	}
+	return succeed
 }
