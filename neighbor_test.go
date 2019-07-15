@@ -18,14 +18,15 @@ func TestNeighbor(t *testing.T) {
 	cfg.Sleep = 10
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 	inputConfig := &Input{
-		ServiceChecks: []ServiceCheck{{
-			UUID: "neighbor1",
-			Check: ServiceCheckData{
-				Connect:  "greeoogle.com",
-				Protocol: "icmp",
-				Service:  "ping",
-			},
-		}},
+		ServiceChecks: ServiceCheckList{
+			[]ServiceCheck{{
+				UUID: "neighbor1",
+				Check: ServiceCheckData{
+					Connect:  "greeoogle.com",
+					Protocol: "icmp",
+					Service:  "ping",
+				},
+			}}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
