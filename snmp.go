@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -697,4 +698,45 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 		err = fmt.Errorf("unrecognized preset %s", check.Preset)
 	}
 	return
+}
+
+func (checkList *SNMPCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, succeed *int) {
+	for _, check := range checkList.Checks {
+		wg.Add(1)
+		go func(check SNMPCheck) {
+			defer wg.Done()
+
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				logrus.Errorf("snmpCheck: missing checkUuid key")
+				return
+			}
+
+			res := Result{
+				CheckType: "snmpCheck",
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+
+			res.Check = check.Check
+
+			if check.Check.Connect == "" {
+				logrus.Errorf("snmpCheck: missing check.connect key")
+				res.Message = "Missing check.connect key"
+			} else {
+				var err error
+				res.Measurements, err = fm.runSNMPCheck(&check)
+				if err != nil {
+					logrus.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
+					res.Message = err.Error()
+				}
+			}
+
+			if res.Message == nil {
+				*succeed++
+			}
+
+			resultsChan <- res
+		}(check)
+	}
 }

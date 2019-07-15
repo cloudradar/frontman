@@ -334,44 +334,7 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 
 	input.WebChecks.Check(fm, &wg, resultsChan, &succeed)
 
-	for _, check := range input.SNMPChecks.Checks {
-		wg.Add(1)
-		go func(check SNMPCheck) {
-			defer wg.Done()
-
-			if check.UUID == "" {
-				// in case checkUuid is missing we can ignore this item
-				logrus.Errorf("snmpCheck: missing checkUuid key")
-				return
-			}
-
-			res := Result{
-				CheckType: "snmpCheck",
-				CheckUUID: check.UUID,
-				Timestamp: time.Now().Unix(),
-			}
-
-			res.Check = check.Check
-
-			if check.Check.Connect == "" {
-				logrus.Errorf("snmpCheck: missing check.connect key")
-				res.Message = "Missing check.connect key"
-			} else {
-				var err error
-				res.Measurements, err = fm.runSNMPCheck(&check)
-				if err != nil {
-					logrus.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
-					res.Message = err.Error()
-				}
-			}
-
-			if res.Message == nil {
-				succeed++
-			}
-
-			resultsChan <- res
-		}(check)
-	}
+	input.SNMPChecks.Check(fm, &wg, resultsChan, &succeed)
 
 	wg.Wait()
 	close(resultsChan)
