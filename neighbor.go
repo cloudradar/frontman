@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -26,6 +27,11 @@ func (fm *Frontman) askNeighbors(data []byte) {
 		logrus.Debug("connecting to neighbor", url.String())
 
 		client := &http.Client{}
+		if !neighbor.VerifySSL {
+			client.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+		}
 		req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(data))
 		req.SetBasicAuth(neighbor.Username, neighbor.Password)
 		req.Header.Set("Content-Type", "application/json")
