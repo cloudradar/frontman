@@ -155,7 +155,6 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 
 	var results []Result
 	shouldReturn := false
-	var timeLeft time.Duration
 
 	for {
 		select {
@@ -173,8 +172,6 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 			break
 		}
 
-		timeLeft = time.Since(started)
-
 		logrus.Debugf("SenderModeInterval: send %d results", len(results))
 		err := fm.postResultsToHub(results)
 		if err != nil {
@@ -182,6 +179,7 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 		}
 
 		// sleep until interval has passed in full
+		timeLeft := delay - time.Since(started)
 		if timeLeft > 0 {
 			time.Sleep(timeLeft)
 		}
