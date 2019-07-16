@@ -33,7 +33,7 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	var inputConfig Input
 	err := decoder.Decode(&inputConfig)
 	if err != nil {
-		logrus.Error("json decode error")
+		logrus.Errorf("json decode error: '%s'", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
