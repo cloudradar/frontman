@@ -14,16 +14,15 @@ func TestWebCheck(t *testing.T) {
 	cfg.Sleep = 10
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 	inputConfig := &Input{
-		WebChecks: WebCheckList{
-			[]WebCheck{{
-				UUID: "webcheck1",
-				Check: WebCheckData{
-					Timeout:            1.0,
-					URL:                "https://www.google.com",
-					Method:             "get",
-					ExpectedHTTPStatus: 200,
-				},
-			}}},
+		WebChecks: []WebCheck{{
+			UUID: "webcheck1",
+			Check: WebCheckData{
+				Timeout:            1.0,
+				URL:                "https://www.google.com",
+				Method:             "get",
+				ExpectedHTTPStatus: 200,
+			},
+		}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)
@@ -45,20 +44,19 @@ func TestWebCheckHeaders(t *testing.T) {
 	cfg.Sleep = 10
 	fm := New(cfg, DefaultCfgPath, "1.2.3")
 	inputConfig := &Input{
-		WebChecks: WebCheckList{
-			[]WebCheck{{
-				UUID: "webcheck1",
-				Check: WebCheckData{
-					Timeout:            1.0,
-					URL:                ts.URL,
-					Method:             "get",
-					ExpectedHTTPStatus: 200,
-					Headers: map[string]string{
-						"Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ=",
-						"cache-control": "no-cache",
-					},
+		WebChecks: []WebCheck{{
+			UUID: "webcheck1",
+			Check: WebCheckData{
+				Timeout:            1.0,
+				URL:                ts.URL,
+				Method:             "get",
+				ExpectedHTTPStatus: 200,
+				Headers: map[string]string{
+					"Authorization": "Basic dXNlcm5hbWU6cGFzc3dvcmQ=",
+					"cache-control": "no-cache",
 				},
-			}}},
+			},
+		}},
 	}
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig, resultsChan)

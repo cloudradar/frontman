@@ -83,9 +83,9 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 	return &ipAddr, nil
 }
 
-func (checkList *ServiceCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result) int {
+func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, checkList []ServiceCheck) int {
 	succeed := 0
-	for _, check := range checkList.Checks {
+	for _, check := range checkList {
 		wg.Add(1)
 		go func(check ServiceCheck) {
 			defer wg.Done()
@@ -126,7 +126,11 @@ func (checkList *ServiceCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resul
 						}
 					}
 					if !recovered && fm.Config.AskNeigbors {
-						data, _ := json.Marshal(check)
+						checkRequest := &Input{
+							ServiceChecks: []ServiceCheck{check},
+						}
+						data, _ := json.Marshal(checkRequest)
+						logrus.Debug("json data: ", string(data))
 						fm.askNeighbors(data)
 					}
 

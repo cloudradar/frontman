@@ -709,9 +709,9 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 	return
 }
 
-func (checkList *SNMPCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result) int {
+func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, checkList []SNMPCheck) int {
 	succeed := 0
-	for _, check := range checkList.Checks {
+	for _, check := range checkList {
 		wg.Add(1)
 		go func(check SNMPCheck) {
 			defer wg.Done()
