@@ -184,7 +184,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 
 	// Update frontman statistics
 	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
-	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks.Checks)) + uint64(len(i.WebChecks.Checks)) + uint64(len(i.SNMPChecks.Checks))
+	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
 
 	return &i, nil
 }
@@ -329,13 +329,13 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
 
-	succeed := input.ServiceChecks.Check(fm, &wg, resultsChan)
-	succeed += input.WebChecks.Check(fm, &wg, resultsChan)
-	succeed += input.SNMPChecks.Check(fm, &wg, resultsChan)
+	succeed := runServiceChecks(fm, &wg, resultsChan, input.ServiceChecks)
+	succeed += runWebChecks(fm, &wg, resultsChan, input.WebChecks)
+	succeed += runSNMPChecks(fm, &wg, resultsChan, input.SNMPChecks)
 
 	wg.Wait()
 	close(resultsChan)
 
-	totChecks := len(input.ServiceChecks.Checks) + len(input.WebChecks.Checks) + len(input.SNMPChecks.Checks)
+	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }

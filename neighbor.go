@@ -24,7 +24,7 @@ func (fm *Frontman) askNeighbors(data []byte) {
 			continue
 		}
 		url.Path = path.Join(url.Path, "check")
-		logrus.Debug("connecting to neighbor", url.String())
+		logrus.Debug("connecting to neighbor ", url.String())
 
 		client := &http.Client{}
 		if !neighbor.VerifySSL {
@@ -42,7 +42,7 @@ func (fm *Frontman) askNeighbors(data []byte) {
 			defer resp.Body.Close()
 
 			fmt.Println("response Status:", resp.Status)
-			fmt.Println("response Headers:", resp.Header)
+			// fmt.Println("response Headers:", resp.Header)
 			body, _ := ioutil.ReadAll(resp.Body)
 			fmt.Println("response Body:", string(body))
 
