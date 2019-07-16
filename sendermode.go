@@ -181,11 +181,12 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 			err = fmt.Errorf("postResultsToHub error: %s", err.Error())
 		}
 
+		// sleep until interval has passed in full
+		if timeLeft > 0 {
+			time.Sleep(timeLeft)
+		}
+
 		if shouldReturn {
-			// sleep until interval has passed in full
-			if timeLeft > 0 {
-				time.Sleep(timeLeft)
-			}
 			return err
 		}
 
