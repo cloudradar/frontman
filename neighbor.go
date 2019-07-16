@@ -3,7 +3,6 @@ package frontman
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,17 +13,16 @@ import (
 )
 
 func (fm *Frontman) askNeighbors(data []byte) {
-	var responses []http.Response
+	var responses []string
 
 	for _, neighbor := range fm.Config.Neighbors {
-		logrus.Debug("asking neighbor", neighbor.Name)
 		url, err := url.Parse(neighbor.URL)
 		if err != nil {
 			logrus.Warnf("Invalid neighbor url in config: '%s': %s", neighbor.URL, err.Error())
 			continue
 		}
 		url.Path = path.Join(url.Path, "check")
-		logrus.Debug("connecting to neighbor ", url.String())
+		logrus.Debug("asking neighbor ", neighbor.Name)
 
 		client := &http.Client{}
 		if !neighbor.VerifySSL {
@@ -41,17 +39,14 @@ func (fm *Frontman) askNeighbors(data []byte) {
 		} else {
 			defer resp.Body.Close()
 
-			fmt.Println("response Status:", resp.Status)
-			// fmt.Println("response Headers:", resp.Header)
-			body, _ := ioutil.ReadAll(resp.Body)
-			fmt.Println("response Body:", string(body))
-
-			// responses = append(responses, *res)
+			if resp.StatusCode == http.StatusOK {
+				body, _ := ioutil.ReadAll(resp.Body)
+				responses = append(responses, string(body))
+			}
 		}
 	}
 
 	if len(responses) > 0 {
-		// XXX pick "fastest result" and send it back
 		spew.Dump(responses)
 
 		// XXX create a new result message with fastest result + group_measurements with all responses
