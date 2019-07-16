@@ -130,7 +130,6 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Resul
 							ServiceChecks: []ServiceCheck{check},
 						}
 						data, _ := json.Marshal(checkRequest)
-						logrus.Debug("json data: ", string(data))
 						fm.askNeighbors(data)
 					}
 
