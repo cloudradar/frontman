@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
@@ -15,6 +17,7 @@ import (
 
 func (fm *Frontman) askNeighbors(data []byte) {
 	var responses []string
+	var succeededNeighbors []string
 
 	for _, neighbor := range fm.Config.Neighbors {
 		url, err := url.Parse(neighbor.URL)
@@ -43,17 +46,38 @@ func (fm *Frontman) askNeighbors(data []byte) {
 			if resp.StatusCode == http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
 				responses = append(responses, string(body))
+				succeededNeighbors = append(succeededNeighbors, neighbor.Name)
 			}
 		}
 	}
 
 	if len(responses) > 0 {
-		spew.Dump(responses)
+		bestDuration := 999.
 
-		// XXX create a new result message with fastest result + group_measurements with all responses
-		// XXX attach new message to result: "message": "Check failed locally and on 2 neigbors but succeded on Frontman EU"
+		// select the fastest response, fall back to first result if we fail
+		responseID := 0
+		for currID, resp := range responses {
 
-		responseID := 0 // XXX select the fastest response
+			var selected interface{}
+
+			if err := json.Unmarshal([]byte(resp), &selected); err != nil {
+				logrus.Error(err)
+				continue
+			}
+
+			// recognize response type and check relevant values
+			if l1, ok := selected.(map[string]interface{}); ok {
+				if l2, ok := l1["messages"].(map[string]interface{}); ok {
+					if duration, ok := l2["net.icmp.ping.roundTripTime_s"].(float64); ok {
+						if duration < bestDuration {
+							logrus.Debug("neighbor: selected response ", currID)
+							responseID = currID
+							bestDuration = duration
+						}
+					}
+				}
+			}
+		}
 
 		var selected interface{}
 
@@ -72,10 +96,19 @@ func (fm *Frontman) askNeighbors(data []byte) {
 			result.CheckType = chk.CheckType
 			result.Check = chk.Check
 			result.Measurements = chk.Measurements
-			result.Message = "Check failed locally and on X neigbors but succeded on XXXXX"
+
+			// attach new message to result
+			if len(responses) != len(fm.Config.Neighbors) {
+				failedNeighbors := len(fm.Config.Neighbors) - len(responses)
+				result.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
+			} else {
+				result.Message = "Check failed locally but succeded on all neighbors"
+			}
 		}
 
 		result.GroupMeasurements = responses
+
+		spew.Dump(result)
 
 		err := fm.postResultsToHub([]Result{result})
 		if err != nil {
