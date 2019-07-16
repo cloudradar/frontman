@@ -11,7 +11,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 )
 
@@ -79,36 +78,25 @@ func (fm *Frontman) askNeighbors(data []byte) {
 			}
 		}
 
-		var selected interface{}
+		var result Result
 
-		if err := json.Unmarshal([]byte(responses[responseID]), &selected); err != nil {
+		if err := json.Unmarshal([]byte(responses[responseID]), &result); err != nil {
 			logrus.Error(err)
 			return
 		}
-		spew.Dump(selected)
+		// spew.Dump(result)
 
-		// create results
-		var result Result
-
-		if chk, ok := selected.(Result); ok {
-			result.CheckUUID = chk.CheckUUID
-			result.Timestamp = chk.Timestamp
-			result.CheckType = chk.CheckType
-			result.Check = chk.Check
-			result.Measurements = chk.Measurements
-
-			// attach new message to result
-			if len(responses) != len(fm.Config.Neighbors) {
-				failedNeighbors := len(fm.Config.Neighbors) - len(responses)
-				result.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
-			} else {
-				result.Message = "Check failed locally but succeded on all neighbors"
-			}
+		// attach new message to result
+		if len(responses) != len(fm.Config.Neighbors) {
+			failedNeighbors := len(fm.Config.Neighbors) - len(responses)
+			result.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
+		} else {
+			result.Message = "Check failed locally but succeded on all neighbors"
 		}
 
 		result.GroupMeasurements = responses
 
-		spew.Dump(result)
+		// spew.Dump(result)
 
 		err := fm.postResultsToHub([]Result{result})
 		if err != nil {
