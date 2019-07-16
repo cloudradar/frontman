@@ -236,9 +236,9 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 	return client
 }
 
-func (checkList *WebCheckList) Check(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result) int {
+func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, checkList []WebCheck) int {
 	succeed := 0
-	for _, check := range checkList.Checks {
+	for _, check := range checkList {
 		wg.Add(1)
 		go func(check WebCheck) {
 			defer wg.Done()
