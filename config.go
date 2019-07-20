@@ -84,9 +84,6 @@ type Config struct {
 	AskNeigbors bool                `toml:"ask_neigbors"`
 	Neighbors   map[string]Neighbor `toml:"neighbors" comment:"# Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
 }
-type NeighborConfig struct {
-	Neighbors map[string]Neighbor `toml:"neighbors"`
-}
 
 type Neighbor struct {
 	URL       string `toml:"url"`
