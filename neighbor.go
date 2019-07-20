@@ -84,7 +84,6 @@ func (fm *Frontman) askNeighbors(data []byte) {
 			logrus.Error(err)
 			return
 		}
-		// spew.Dump(result)
 
 		// attach new message to result
 		if len(responses) != len(fm.Config.Neighbors) {
@@ -95,8 +94,6 @@ func (fm *Frontman) askNeighbors(data []byte) {
 		}
 
 		result.GroupMeasurements = responses
-
-		// spew.Dump(result)
 
 		err := fm.postResultsToHub([]Result{result})
 		if err != nil {
