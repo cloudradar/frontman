@@ -212,6 +212,15 @@ func (kv snmpResult) shouldExcludeInterface() bool {
 	return false
 }
 
+type jsonFloat64 float64
+
+func (value jsonFloat64) MarshalJSON() ([]byte, error) {
+	if math.IsNaN(float64(value)) {
+		return []byte("null"), nil
+	}
+	return []byte(fmt.Sprintf("%f", value)), nil
+}
+
 // filters the snmp results according to preset
 func (fm *Frontman) filterSNMPResult(check *SNMPCheckData, res map[int][]snmpResult) (map[string]interface{}, error) {
 	m := make(map[string]interface{})
@@ -310,7 +319,7 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 		// calculate delta from previous measure
 		for _, measure := range prevMeasures {
 			if measure.name == check.Oid {
-				m["value"] = deltaFloat(float64(measure.val), float64(val))
+				m["value"] = jsonFloat64(deltaFloat(float64(measure.val), float64(val)))
 				break
 			}
 		}
@@ -320,7 +329,7 @@ func (fm *Frontman) filterSNMPOidDeltaResult(check *SNMPCheckData, r snmpResult)
 			if measure.name == check.Oid {
 				delaySeconds := float64(time.Since(measure.timestamp) / time.Second)
 				delta := deltaFloat(float64(measure.val), float64(val))
-				m["value"] = delta / delaySeconds
+				m["value"] = jsonFloat64(delta / delaySeconds)
 				break
 			}
 		}
@@ -372,13 +381,13 @@ func (fm *Frontman) filterSNMPBandwidthResult(idx int, iface []snmpResult, prevM
 			delaySeconds := float64(time.Since(measure.timestamp)) / float64(time.Second)
 			inDelta := float64(delta(measure.ifInOctets, ifIn))
 			outDelta := float64(delta(measure.ifOutOctets, ifOut))
-			m["ifIn_Bps"] = math.Round(inDelta / delaySeconds)
-			m["ifOut_Bps"] = math.Round(outDelta / delaySeconds)
+			m["ifIn_Bps"] = jsonFloat64(math.Round(inDelta / delaySeconds))
+			m["ifOut_Bps"] = jsonFloat64(math.Round(outDelta / delaySeconds))
 			if ifSpeedInBytes > 0 {
 				inPct := (inDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
 				outPct := (outDelta / (float64(ifSpeedInBytes) * delaySeconds)) * 100
-				m["ifInUtilization_percent"] = math.Round(inPct*100) / 100
-				m["ifOutUtilization_percent"] = math.Round(outPct*100) / 100
+				m["ifInUtilization_percent"] = jsonFloat64(math.Round(inPct*100) / 100)
+				m["ifOutUtilization_percent"] = jsonFloat64(math.Round(outPct*100) / 100)
 			}
 			break
 		}
