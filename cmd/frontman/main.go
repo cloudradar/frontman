@@ -32,8 +32,8 @@ var (
 
 var svcConfig = &service.Config{
 	Name:        "frontman",
-	DisplayName: "Frontman",
-	Description: "Monitoring proxy for agentless monitoring of subnets",
+	DisplayName: "CloudRadar Frontman",
+	Description: "A versatile open source monitoring agent developed by cloudradar.io. It monitors your local intranet.",
 }
 
 func main() {
