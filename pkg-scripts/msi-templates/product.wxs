@@ -49,7 +49,17 @@
                 <RemoveFolder Id="CleanApplicationFolders" Directory="ApplicationProgramsFolder" On="uninstall" />
                   {{range $i, $e := .Files.Items}}
                      {{if eq $i 0}}
-                         <ServiceInstall Id="ServiceInstaller" Name="Frontman" Type="ownProcess" Vital="yes" DisplayName="Frontman" Description="Frontman" Start="auto" Account="LocalSystem" ErrorControl="normal" Arguments=" /start frontman" Interactive="no" />
+                         <ServiceInstall Id="ServiceInstaller"
+                            Name="Frontman"
+                            Type="ownProcess"
+                            Vital="yes"
+                            DisplayName="CloudRadar Frontman"
+                            Description="A versatile open source monitoring agent developed by cloudradar.io. It monitors your local intranet."
+                            Start="auto"
+                            Account="LocalSystem"
+                            ErrorControl="normal"
+                            Arguments=" /start frontman"
+                            Interactive="no" />
                          <ServiceControl Id="StartService" Name="Frontman" Stop="both" Start="install" Remove="uninstall" Wait="yes" >
                             <ServiceArgument />
                         </ServiceControl>
