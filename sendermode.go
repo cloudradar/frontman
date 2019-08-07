@@ -56,8 +56,11 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	if fm.Config.HubGzip {
 		var buffer bytes.Buffer
 		zw := gzip.NewWriter(&buffer)
-		defer zw.Close()
 		if _, err := zw.Write(b); err != nil {
+			_ = zw.Close()
+			return err
+		}
+		if err := zw.Close(); err != nil {
 			return err
 		}
 
