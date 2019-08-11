@@ -40,9 +40,12 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 
 	// perform the checks, collect result and pass it back as json
 	resultsChan := make(chan Result, 100)
-	logrus.Println("checkHandler calling processInput")
 	fm.processInput(&inputConfig, resultsChan)
-	res := <-resultsChan
+
+	res := []Result{}
+	for elem := range resultsChan {
+		res = append(res, elem)
+	}
 
 	enc, _ := json.Marshal(res)
 	_, _ = w.Write(enc)
