@@ -736,6 +736,8 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, 
 			} else {
 				var err error
 				res.Measurements, err = fm.runSNMPCheck(&check)
+
+				// NOTE: failed snmp checks are excluded from "ask neighbour" feature
 				if err != nil {
 					logrus.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
 					res.Message = err.Error()

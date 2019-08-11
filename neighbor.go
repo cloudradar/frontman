@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (fm *Frontman) askNeighbors(data []byte) {
+func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	var responses []string
 	var succeededNeighbors []string
 
@@ -50,57 +50,53 @@ func (fm *Frontman) askNeighbors(data []byte) {
 		}
 	}
 
-	if len(responses) > 0 {
-		bestDuration := 999.
+	if len(responses) == 0 {
+		logrus.Errorf("askNeighbors recieved no successful results")
+		return
+	}
 
-		// select the fastest response, fall back to first result if we fail
-		responseID := 0
-		for currID, resp := range responses {
+	bestDuration := 999.
 
-			var selected interface{}
+	// select the fastest response, fall back to first result if we fail
+	responseID := 0
+	for currID, resp := range responses {
 
-			if err := json.Unmarshal([]byte(resp), &selected); err != nil {
-				logrus.Error(err)
-				continue
-			}
+		var selected interface{}
 
-			// recognize response type and check relevant values
-			if l1, ok := selected.(map[string]interface{}); ok {
-				if l2, ok := l1["messages"].(map[string]interface{}); ok {
-					if duration, ok := l2["net.icmp.ping.roundTripTime_s"].(float64); ok {
-						if duration < bestDuration {
-							logrus.Debug("neighbor: selected response ", currID)
-							responseID = currID
-							bestDuration = duration
-						}
+		if err := json.Unmarshal([]byte(resp), &selected); err != nil {
+			logrus.Error(err)
+			continue
+		}
+
+		// recognize response type and check relevant values
+		if l1, ok := selected.(map[string]interface{}); ok {
+			if l2, ok := l1["messages"].(map[string]interface{}); ok {
+				/*
+					XXX - reason about end of key name ....
+					net.icmp.ping.roundTripTime_s
+					http.get.totalTimeSpent_s
+					net.tcp.*.*.connectTime_s
+				*/
+				if duration, ok := l2["net.icmp.ping.roundTripTime_s"].(float64); ok {
+					if duration < bestDuration {
+						logrus.Debug("neighbor: selected response ", currID)
+						responseID = currID
+						bestDuration = duration
 					}
 				}
 			}
 		}
-
-		var result Result
-
-		if err := json.Unmarshal([]byte(responses[responseID]), &result); err != nil {
-			logrus.Error(err)
-			return
-		}
-
-		// attach new message to result
-		if len(responses) != len(fm.Config.Neighbors) {
-			failedNeighbors := len(fm.Config.Neighbors) - len(responses)
-			result.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
-		} else {
-			result.Message = "Check failed locally but succeded on all neighbors"
-		}
-
-		result.GroupMeasurements = responses
-
-		err := fm.postResultsToHub([]Result{result})
-		if err != nil {
-			logrus.Errorf("askNeighbors postResultsToHub error: %s", err.Error())
-		}
-
-	} else {
-		logrus.Errorf("askNeighbors recieved no successful results")
 	}
+
+	// attach new message to result
+	if len(responses) != len(fm.Config.Neighbors) {
+		failedNeighbors := len(fm.Config.Neighbors) - len(responses)
+		res.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
+	} else {
+		res.Message = "Check failed locally but succeded on all neighbors"
+	}
+
+	logrus.Debug("attached messages", responseID, responses[responseID])
+
+	res.GroupMeasurements = responses[responseID]
 }
