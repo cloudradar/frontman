@@ -126,7 +126,7 @@ func main() {
 
 	if !*oneRunOnlyModePtr && cfg.HTTPListener.HTTPListen != "" {
 		go func() {
-			if err := cfg.HTTPListener.ServeWeb(); err != nil {
+			if err := fm.ServeWeb(); err != nil {
 				log.Fatal(err)
 			}
 		}()
