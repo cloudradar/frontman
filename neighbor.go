@@ -61,23 +61,31 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	responseID := 0
 	for currID, resp := range responses {
 
-		var selected interface{}
-
+		var selected []interface{}
 		if err := json.Unmarshal([]byte(resp), &selected); err != nil {
 			logrus.Error(err)
 			continue
 		}
 
 		// recognize response type and check relevant values
-		if l1, ok := selected.(map[string]interface{}); ok {
-			if l2, ok := l1["messages"].(map[string]interface{}); ok {
-				/*
-					XXX - reason about end of key name ....
-					net.icmp.ping.roundTripTime_s
-					http.get.totalTimeSpent_s
-					net.tcp.*.*.connectTime_s
-				*/
-				if duration, ok := l2["net.icmp.ping.roundTripTime_s"].(float64); ok {
+		if l1, ok := selected[0].(map[string]interface{}); ok {
+			if l2, ok := l1["measurements"].(map[string]interface{}); ok {
+
+				useKey := ""
+				for key := range l2 {
+					lastPeriod := strings.LastIndex(key, ".")
+					if lastPeriod == -1 {
+						continue
+					}
+					switch key[lastPeriod+1:] {
+					case "roundTripTime_s", "totalTimeSpent_s", "connectTime_s":
+						useKey = key
+					}
+				}
+				if useKey == "" {
+					continue
+				}
+				if duration, ok := l2[useKey].(float64); ok {
 					if duration < bestDuration {
 						logrus.Debug("neighbor: selected response ", currID)
 						responseID = currID
@@ -95,8 +103,6 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	} else {
 		res.Message = "Check failed locally but succeded on all neighbors"
 	}
-
-	logrus.Debug("attached messages", responseID, responses[responseID])
 
 	res.GroupMeasurements = responses[responseID]
 }
