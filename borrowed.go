@@ -60,7 +60,7 @@ func Uname() (string, error) {
 		return "", err
 	}
 	b, err := invoke.Command(uname, "-a")
-	return string(b), err
+	return strings.TrimSpace(string(b)), err
 }
 
 func getFQDN() string {
