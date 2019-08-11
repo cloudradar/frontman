@@ -52,3 +52,29 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
   reference_ping_timeout = 0.5
   # Number of request packets to send to each host.
   reference_ping_count = 1
+
+
+[http_listener]
+
+  # HTTP Listener for immediate check execution 
+  # Examples:
+  # http_listen = "http://0.0.0.0:9955"
+  # http_listen = "https://0.0.0.0:8443"
+  # Send json encoded checks by HTTP POST to /checks
+  # Execute "sudo setcap cap_net_bind_service=+ep /usr/bin/frontman" to use ports < 1024
+  http_listen = ""
+
+  # Private key for https connections
+  http_tls_key = ""
+
+  # Certificate for https connections
+  http_tls_cert = ""
+
+  # Username for the http basic authentication. If omitted authentication is disabled
+  http_auth_user = ""
+
+  # Password for the http basic authentication.
+  http_auth_password = ""
+
+  # Log http requests. On windows slash must be escaped like "C:\\access.log"
+  http_access_log = ""
