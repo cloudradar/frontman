@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,20 +32,27 @@ func TestHttpCheckHandler(t *testing.T) {
 		  }]
 	  }`
 
+	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
+	assert.Nil(t, err)
+	fm := New(cfg, DefaultCfgPath, "1.2.3")
+
 	reader := strings.NewReader(checks)
 	req, err := http.NewRequest("POST", "/check", reader)
 	assert.Equal(t, nil, err)
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(checkHandler)
+	handler := http.HandlerFunc(fm.checkHandler)
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code)
 
+	data := rr.Body.Bytes()
 	var f interface{}
-	err = json.Unmarshal(rr.Body.Bytes(), &f)
+	err = json.Unmarshal(data, &f)
 	assert.Equal(t, nil, err)
-	dec := f.(map[string]interface{})
+	log.Println("data ", string(data))
+	dec1 := f.([]interface{})
+	dec := dec1[0].(map[string]interface{})
 	measurements := dec["measurements"].(map[string]interface{})
 
 	assert.Equal(t, nil, dec["message"])
