@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -281,6 +282,13 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 								break
 							}
 						}
+					}
+					if !recovered && fm.Config.AskNeigbors {
+						checkRequest := &Input{
+							WebChecks: []WebCheck{check},
+						}
+						data, _ := json.Marshal(checkRequest)
+						fm.askNeighbors(data, &res)
 					}
 					if !recovered {
 						logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())

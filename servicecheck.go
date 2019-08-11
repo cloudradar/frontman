@@ -125,12 +125,13 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Resul
 							}
 						}
 					}
-					if !recovered && fm.Config.AskNeigbors {
+					if !recovered && fm.Config.AskNeigbors && check.Check.Protocol != "ssl" {
+						// NOTE: ssl checks are excluded from "ask neighbor" feature
 						checkRequest := &Input{
 							ServiceChecks: []ServiceCheck{check},
 						}
 						data, _ := json.Marshal(checkRequest)
-						fm.askNeighbors(data)
+						fm.askNeighbors(data, &res)
 					}
 
 					if !recovered {
