@@ -86,10 +86,10 @@ type Config struct {
 }
 
 type Neighbor struct {
-	URL       string `toml:"url"`
-	Name      string `toml:"name"`
-	Username  string `toml:"username"`
-	Password  string `toml:"password"`
+	URL       string `toml:"url" comment:"URL of neighbor frontman"`
+	Name      string `toml:"name" comment:"Name of the neighbor frontman"`
+	Username  string `toml:"username" comment:"Username"`
+	Password  string `toml:"password" comment:"Password"`
 	VerifySSL bool   `toml:"verify_ssl"`
 }
 
