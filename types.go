@@ -89,6 +89,7 @@ type Result struct {
 	Check             interface{}            `json:"check"`
 	Measurements      map[string]interface{} `json:"measurements"`
 	Message           interface{}            `json:"message"`
+	NeighborName      string                 `json:"neighborName"` // filled in when result is coming from a neighbor
 	GroupMeasurements []Result               `json:"group_measurements,omitempty"`
 }
 
