@@ -78,3 +78,12 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
 
   # Log http requests. On windows slash must be escaped like "C:\\access.log"
   http_access_log = ""
+
+ask_neigbors = true
+[neighbors]
+  [neighbors.1]
+  url = "https://frontman-neighbor.com:1234"
+  name = "Frontman Neighbor 1"
+  username = "neighbor"
+  password = "abc123"
+  verify_ssl = true
