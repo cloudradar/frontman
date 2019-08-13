@@ -124,7 +124,7 @@ func main() {
 
 	log.Info("frontman " + version + " started")
 
-	if !*oneRunOnlyModePtr && cfg.HTTPListener.HTTPListen != "" {
+	if !*oneRunOnlyModePtr && !*testConfigPtr && *inputFilePtr == "" && *outputFilePtr == "" && cfg.HTTPListener.HTTPListen != "" {
 		go func() {
 			if err := fm.ServeWeb(); err != nil {
 				log.Fatal(err)
