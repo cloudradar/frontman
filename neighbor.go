@@ -15,7 +15,7 @@ import (
 )
 
 func (fm *Frontman) askNeighbors(data []byte, res *Result) {
-	var responses []string
+	var results []string
 	var succeededNeighbors []string
 
 	for _, neighbor := range fm.Config.Neighbors {
@@ -44,22 +44,22 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 
 			if resp.StatusCode == http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
-				responses = append(responses, string(body))
+				results = append(results, string(body))
 				succeededNeighbors = append(succeededNeighbors, neighbor.Name)
 			}
 		}
 	}
 
-	if len(responses) == 0 {
+	if len(results) == 0 {
 		logrus.Errorf("askNeighbors recieved no successful results")
 		return
 	}
 
 	bestDuration := 999.
 
-	// select the fastest response, fall back to first result if we fail
-	responseID := 0
-	for currID, resp := range responses {
+	// select the fastest result, fall back to first result if we fail
+	resultID := 0
+	for currID, resp := range results {
 
 		var selected []interface{}
 		if err := json.Unmarshal([]byte(resp), &selected); err != nil {
@@ -88,7 +88,7 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 				if duration, ok := l2[useKey].(float64); ok {
 					if duration < bestDuration {
 						logrus.Debug("neighbor: selected response ", currID)
-						responseID = currID
+						resultID = currID
 						bestDuration = duration
 					}
 				}
@@ -97,12 +97,16 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	}
 
 	// attach new message to result
-	if len(responses) != len(fm.Config.Neighbors) {
-		failedNeighbors := len(fm.Config.Neighbors) - len(responses)
+	if len(results) != len(fm.Config.Neighbors) {
+		failedNeighbors := len(fm.Config.Neighbors) - len(results)
 		res.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
 	} else {
 		res.Message = "Check failed locally but succeded on all neighbors"
 	}
 
-	res.GroupMeasurements = responses[responseID]
+	var result []Result
+	if err := json.Unmarshal([]byte(results[resultID]), &result); err != nil {
+		logrus.Error(err)
+	}
+	res.GroupMeasurements = result
 }
