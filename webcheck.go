@@ -286,7 +286,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 							}
 						}
 					}
-					if !recovered && fm.Config.AskNeigbors {
+					if !recovered && fm.Config.AskNeighbors {
 						checkRequest := &Input{
 							WebChecks: []WebCheck{check},
 						}
