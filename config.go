@@ -91,8 +91,8 @@ than sleep frontman throws an error and denies starting because it would cause c
 	FailureConfirmation      int     `toml:"failure_confirmation" comment:"In case a web or service check fails, frontman will check again after a short delay (seconds). The failure must be confirmed N times.\nfailure_confirmation = 0 switches off the confirmation of failures\nDoes not affect snmp checks"`
 	FailureConfirmationDelay float64 `toml:"failure_confirmation_delay" comment:"Delay in seconds"`
 
-	AskNeigbors bool                `toml:"ask_neigbors"`
-	Neighbors   map[string]Neighbor `toml:"neighbors" comment:"# Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
+	AskNeighbors bool                `toml:"ask_neighbors"`
+	Neighbors    map[string]Neighbor `toml:"neighbors" comment:"# Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
 }
 
 type Neighbor struct {
