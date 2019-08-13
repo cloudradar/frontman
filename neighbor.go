@@ -16,6 +16,7 @@ import (
 
 func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	var results []string
+	var neighborNames []string
 	var succeededNeighbors []string
 
 	for _, neighbor := range fm.Config.Neighbors {
@@ -45,6 +46,7 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 			if resp.StatusCode == http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
 				results = append(results, string(body))
+				neighborNames = append(neighborNames, neighbor.Name)
 				succeededNeighbors = append(succeededNeighbors, neighbor.Name)
 			}
 		}
@@ -107,6 +109,9 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	var result []Result
 	if err := json.Unmarshal([]byte(results[resultID]), &result); err != nil {
 		logrus.Error(err)
+	}
+	for idx := range result {
+		result[idx].NeighborName = neighborNames[idx]
 	}
 	res.GroupMeasurements = result
 }
