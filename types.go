@@ -89,7 +89,7 @@ type Result struct {
 	Check             interface{}            `json:"check"`
 	Measurements      map[string]interface{} `json:"measurements"`
 	Message           interface{}            `json:"message"`
-	GroupMeasurements interface{}            `json:"group_measurements,omitempty"`
+	GroupMeasurements []Result               `json:"group_measurements,omitempty"`
 }
 
 type MeasurementsMap map[string]interface{}

@@ -22,7 +22,7 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if req.Header.Get("Content-type") != "application/json" {
+	if req.Header.Get("Content-Type") != "application/json" {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
