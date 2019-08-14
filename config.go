@@ -47,7 +47,7 @@ type MinValuableConfig struct {
 	HubProxyPassword string `toml:"hub_proxy_password" commented:"true"`
 
 	// new configs should use host_info, keep system_fields to support older configs
-	SystemFields []string `toml:"system_fields" commented:"true"`
+	SystemFields []string `toml:"system_fields" commented:"true" comment:"DEPRECATED: use host_info instead"`
 	HostInfo     []string `toml:"host_info" commented:"true"`
 }
 
