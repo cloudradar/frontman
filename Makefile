@@ -50,7 +50,7 @@ createrepo:
 	# Upload rpm files
 	rsync -e 'ssh -oStrictHostKeyChecking=no -p 24480' --recursive ${PROJECT_DIR}/dist/*.rpm  cr@repo.cloudradar.io:/home/cr/work/rpm/frontman_${CIRCLE_BUILD_NUM}/
 	# Trigger repository update
-	ssh -p 24480 -oStrictHostKeyChecking=no cr@repo.cloudradar.io /home/cr/work/rpm/update_repo.sh /home/cr/work/rpm/frontman_${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
+	ssh -p 24480 -oStrictHostKeyChecking=no cr@repo.cloudradar.io /home/cr/work/rpm/update_repo_frontman.sh /home/cr/work/rpm/frontman_${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
 
 
 goreleaser-rm-dist:
@@ -63,8 +63,8 @@ windows-sign:
 	# Create remote build dir
 	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 mkdir -p /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist
 	# Copy exe files to Windows VM for bundingling and signing
-	scp -P 24481 -oStrictHostKeyChecking=no ${PROJECT_DIR}/dist/windows_386/frontman.exe  hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_386.exe
-	scp -P 24481 -oStrictHostKeyChecking=no ${PROJECT_DIR}/dist/windows_amd64/frontman.exe hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_64.exe
+	scp -P 24481 -oStrictHostKeyChecking=no ${PROJECT_DIR}/dist/frontman_windows_386/frontman.exe  hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_386.exe
+	scp -P 24481 -oStrictHostKeyChecking=no ${PROJECT_DIR}/dist/frontman_windows_amd64/frontman.exe hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/dist/frontman_64.exe
 	# Copy other build dependencies
 	scp -P 24481 -oStrictHostKeyChecking=no ${PROJECT_DIR}/build-win.bat hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/build-win.bat
 	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 chmod +x /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/build-win.bat
