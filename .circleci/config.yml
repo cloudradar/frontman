@@ -2,7 +2,7 @@
 version: 2
 docker_job_setup: &docker_job
   docker:
-    - image: cloudradario/go-build:0.0.15
+    - image: cloudradario/go-build:0.0.16
   working_directory: /go/src/github.com/cloudradar-monitoring/frontman
 
 attach_workspace: &workspace
@@ -35,7 +35,9 @@ jobs:
     <<: *docker_job
     steps:
       - <<: *workspace
-      - run: make goreleaser-rm-dist
+      - run:
+          name: Build binaries
+          command: make goreleaser-rm-dist
       - persist_to_workspace:
           root: /go/src/github.com/cloudradar-monitoring
           paths:
@@ -57,7 +59,31 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "b3:b7:b0:59:57:1a:bc:82:6c:3c:91:d6:23:19:f2:08"
-      - run: make windows-sign
+      - run:
+          name: Sign msi files
+          command: make windows-sign
+
+  build-aptly:
+    <<: *docker_job
+    steps:
+      - <<: *workspace
+      - add_ssh_keys:
+          fingerprints:
+            - "53:d2:08:dc:1a:4e:9e:29:00:d4:ba:1e:b7:5d:16:25"
+      - run:
+          name: Update aptly repository
+          command: make aptly
+
+  build-createrepo:
+    <<: *docker_job
+    steps:
+      - <<: *workspace
+      - add_ssh_keys:
+          fingerprints:
+            - "53:d2:08:dc:1a:4e:9e:29:00:d4:ba:1e:b7:5d:16:25"
+      - run:
+          name: Update createrepo repository
+          command: make createrepo
 
   release-github:
     <<: *docker_job
@@ -143,6 +169,24 @@ workflows:
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
+            branches:
+              ignore: /.*/
+      - build-aptly:
+          context: cloudradar
+          requires:
+            - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+            branches:
+              ignore: /.*/
+      - build-createrepo:
+          context: cloudradar
+          requires:
+            - build-goreleaser
+          filters:
+            tags:
+              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
             branches:
               ignore: /.*/
       - release-github:
