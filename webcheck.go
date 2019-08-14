@@ -134,6 +134,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	}
 
 	data.Method = strings.ToUpper(data.Method)
+
+	logrus.Debug("web request w timeout ", timeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), secToDuration(timeout))
+	defer cancel()
+
 	req, err := http.NewRequest(data.Method, data.URL, nil)
 	if err != nil {
 		return m, err
@@ -143,9 +149,6 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	defer func() {
 		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
 	}()
-
-	ctx, cancel := context.WithTimeout(req.Context(), secToDuration(timeout))
-	defer cancel()
 
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())
@@ -162,15 +165,11 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	}
 
 	wroteRequestAt := time.Now()
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
-		return m, fmt.Errorf("got error while performing request: %s", err.Error())
+		return m, err
 	}
 	defer resp.Body.Close()
-
-	if ctx.Err() == context.DeadlineExceeded {
-		return m, fmt.Errorf("got timeout while performing request")
-	}
 
 	// Set the httpStatusCode in case we got a response
 	m[prefix+"httpStatusCode"] = resp.StatusCode
