@@ -52,7 +52,7 @@ type MinValuableConfig struct {
 }
 
 type Config struct {
-	Sleep float64 `toml:"sleep" comment:"delay before starting a new round of checks in seconds"`
+	Sleep float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
 
 	PidFile   string `toml:"pid" comment:"path to pid file"`
 	LogFile   string `toml:"log,omitempty" comment:"path to log file"`
@@ -71,8 +71,18 @@ type Config struct {
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
 	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold" comment:"Min days remain on the SSL cert to pass the check"`
 
-	SenderMode         string  `toml:"sender_mode" comment:"\"wait\" – to post results to HUB after each round; \"interval\" – to post results to HUB by fixed interval"`
-	SenderModeInterval float64 `toml:"sender_mode_interval" comment:"interval in seconds to post results to HUB server"`
+	SenderMode string `toml:"sender_mode" comment:"sender_mode = \"wait\" waits for all checks to finish.\n
+Results are sent back and # frontman sleeps the sleep interval.\n
+If the round has taken more than the sleep interval the next round starts immediately.\n\n
+sender_mode = \"interval\"\n
+Frontman fetches the list of checks and performs the checks.\n
+After the given period of sender_mode_interval frontman detaches from all checks\n
+not finished yet and sends back what it has collected. The unfinished checks keep running.\n
+During the next round, all checks which are still running from the previous round\n
+are skipped to avoid double runs of checks.\n
+If during the start of frontman \"sender_mode\" is "interval" and \"sender_mode_interval\" is larger\n
+than sleep frontman throws an error and denies starting because it would cause congestion."`
+	SenderModeInterval float64 `toml:"sender_mode_interval" comment:"interval in seconds to post results to HUB server\nrequires sender_mode = \"interval\", ignored on sender_mode = \"wait\""`
 
 	HealthChecks HealthCheckConfig `toml:"health_checks" comment:"Frontman can verify a reliable internet uplink by pinging some reference hosts before each check round starts.\nPing all hosts of the list.\nOnly if frontman gets a positive answer form all of them, frontman continues.\nOtherwise, the entire check round is skipped. No data is sent back.\nFailed health checks are recorded to the log.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel.\nDisabled by default. Enable by declaring reference_ping_hosts targets\n"`
 
