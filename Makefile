@@ -50,7 +50,7 @@ createrepo:
 	# Upload rpm files
 	rsync -e 'ssh -oStrictHostKeyChecking=no -p 24480' --recursive ${PROJECT_DIR}/dist/*.rpm  cr@repo.cloudradar.io:/home/cr/work/rpm/frontman_${CIRCLE_BUILD_NUM}/
 	# Trigger repository update
-	ssh -p 24480 -oStrictHostKeyChecking=no cr@repo.cloudradar.io /home/cr/work/rpm/update_repo.sh /home/cr/work/rpm/frontman_${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
+	ssh -p 24480 -oStrictHostKeyChecking=no cr@repo.cloudradar.io /home/cr/work/rpm/update_repo_frontman.sh /home/cr/work/rpm/frontman_${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
 
 
 goreleaser-rm-dist:
