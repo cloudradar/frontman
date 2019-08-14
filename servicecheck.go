@@ -97,6 +97,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Resul
 			}
 
 			res := Result{
+				Node:      fm.Config.NodeName,
 				CheckType: "serviceCheck",
 				CheckUUID: check.UUID,
 				Timestamp: time.Now().Unix(),

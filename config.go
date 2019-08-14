@@ -52,12 +52,12 @@ type MinValuableConfig struct {
 }
 
 type Config struct {
-	Sleep float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
-
-	PidFile   string `toml:"pid" comment:"path to pid file"`
-	LogFile   string `toml:"log,omitempty" comment:"path to log file"`
-	LogSyslog string `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
-	StatsFile string `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
+	NodeName  string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_neighbor)"`
+	Sleep     float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
+	PidFile   string  `toml:"pid" comment:"path to pid file"`
+	LogFile   string  `toml:"log,omitempty" comment:"path to log file"`
+	LogSyslog string  `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
+	StatsFile string  `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
 
 	MinValuableConfig
 
@@ -92,12 +92,11 @@ than sleep frontman throws an error and denies starting because it would cause c
 	FailureConfirmationDelay float64 `toml:"failure_confirmation_delay" comment:"Delay in seconds"`
 
 	AskNeighbors bool                `toml:"ask_neighbors"`
-	Neighbors    map[string]Neighbor `toml:"neighbors" comment:"# Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
+	Neighbors    map[string]Neighbor `toml:"neighbors" comment:"Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
 }
 
 type Neighbor struct {
 	URL       string `toml:"url" comment:"URL of neighbor frontman"`
-	Name      string `toml:"name" comment:"Name of the neighbor frontman"`
 	Username  string `toml:"username" comment:"Username"`
 	Password  string `toml:"password" comment:"Password"`
 	VerifySSL bool   `toml:"verify_ssl"`
@@ -110,7 +109,7 @@ type HealthCheckConfig struct {
 }
 
 type HTTPListenerConfig struct {
-	HTTPListen       string `toml:"http_listen" comment:"Execute \"sudo setcap cap_net_bind_service=+ep /usr/bin/frontman\" to use ports < 1024"`
+	HTTPListen       string `toml:"http_listen" comment:"HTTP Listener\nPerform checks requested via HTTP POST requests on '/check'\nExamples:\nhttp_listen = "http://0.0.0.0:9090"  # for unencrypted http connections\n# http_listen = "https://0.0.0.0:8443"  # for encrypted https connections\nexecute "sudo setcap cap_net_bind_service=+ep /usr/bin/frontman" to use ports < 1024\nExecuting SNMP check through the HTTP Listener is not supported."`
 	HTTPTLSKey       string `toml:"http_tls_key" comment:"Private key for https connections"`
 	HTTPTLSCert      string `toml:"http_tls_cert" comment:"Certificate for https connections"`
 	HTTPAuthUser     string `toml:"http_auth_user" comment:"Username for the http basic authentication. If omitted authentication is disabled"`
