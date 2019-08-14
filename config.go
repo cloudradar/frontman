@@ -52,6 +52,8 @@ type MinValuableConfig struct {
 }
 
 type Config struct {
+	NodeName string `toml:"node_name" comment:"# Name of the Frontman\n# Used to identify group measurements if multiple frontmen run in grouped-mode (ask_neighbor)"`
+
 	Sleep float64 `toml:"sleep" comment:"delay before starting a new round of checks in seconds"`
 
 	PidFile   string `toml:"pid" comment:"path to pid file"`
@@ -87,7 +89,6 @@ type Config struct {
 
 type Neighbor struct {
 	URL       string `toml:"url" comment:"URL of neighbor frontman"`
-	Name      string `toml:"name" comment:"Name of the neighbor frontman"`
 	Username  string `toml:"username" comment:"Username"`
 	Password  string `toml:"password" comment:"Password"`
 	VerifySSL bool   `toml:"verify_ssl"`
@@ -100,7 +101,7 @@ type HealthCheckConfig struct {
 }
 
 type HTTPListenerConfig struct {
-	HTTPListen       string `toml:"http_listen" comment:"Execute \"sudo setcap cap_net_bind_service=+ep /usr/bin/frontman\" to use ports < 1024"`
+	HTTPListen       string `toml:"http_listen" comment:"# HTTP Listener\n# Perform checks requested via HTTP POST requests on '/check'\n# Examples:\n# http_listen = "http://0.0.0.0:9090"  # for unencrypted http connections\n# http_listen = "https://0.0.0.0:8443"  # for encrypted https connections\n# execute "sudo setcap cap_net_bind_service=+ep /usr/bin/frontman" to use ports < 1024\n# Executing SNMP check through the HTTP Listener is not supported."`
 	HTTPTLSKey       string `toml:"http_tls_key" comment:"Private key for https connections"`
 	HTTPTLSCert      string `toml:"http_tls_cert" comment:"Certificate for https connections"`
 	HTTPAuthUser     string `toml:"http_auth_user" comment:"Username for the http basic authentication. If omitted authentication is disabled"`

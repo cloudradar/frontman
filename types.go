@@ -83,14 +83,14 @@ type Results struct {
 }
 
 type Result struct {
-	CheckUUID         string                 `json:"checkUuid"`
-	Timestamp         int64                  `json:"timestamp"`
-	CheckType         string                 `json:"checkType"`
-	Check             interface{}            `json:"check"`
-	Measurements      map[string]interface{} `json:"measurements"`
-	Message           interface{}            `json:"message"`
-	NeighborName      string                 `json:"neighborName"` // filled in when result is coming from a neighbor
-	GroupMeasurements []Result               `json:"group_measurements,omitempty"`
+	CheckUUID            string                 `json:"checkUuid"`
+	Timestamp            int64                  `json:"timestamp"`
+	CheckType            string                 `json:"checkType"`
+	Check                interface{}            `json:"check"`
+	Measurements         map[string]interface{} `json:"measurements"`
+	Message              interface{}            `json:"message"`
+	Node                 string                 `json:"node,omitempty"` // filled in when result is coming from a neighbor
+	NeighborMeasurements []Result               `json:"neighborMeasurements,omitempty"`
 }
 
 type MeasurementsMap map[string]interface{}

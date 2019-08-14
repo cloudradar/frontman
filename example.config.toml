@@ -1,5 +1,9 @@
 # This is example config
 
+# Name of the Frontman
+# Used to identify group measurements if multiple frontmen run in grouped-mode (ask_neighbor)
+node_name = "Frontman"
+
 sleep = 5.0 # delay before starting a new round of checks in seconds; number must contains decimal point
 pid = "/tmp/frontman.pid" # pid file location
 stats_file = "/tmp/frontman.stats"
@@ -53,15 +57,30 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
   # Number of request packets to send to each host.
   reference_ping_count = 1
 
+# Frontman can execute a failed check on other frontmen - ideally on different locations - 
+# to confirm the check fails everywhere. 
+# Only if the check fails on all of them it's considered as failed and sent back to the hub.
+# If the check succeeds on one frontman this check result is sent back
+# Requires the HTTP listener enabled on the foreign frontman
+# Example:
+# ask_neighbors = true
+# [neighbors]
+#   [neighbors.1]
+#   url = "https://frontman-1.example.com:9955"
+#   username = "frontman"
+#   password = "secret" 
+#   verify_ssl = true
+
+ask_neighbors = false
 
 [http_listener]
-
-  # HTTP Listener for immediate check execution 
+  # HTTP Listener
+  # Perform checks requested via HTTP POST requests on '/check'
   # Examples:
-  # http_listen = "http://0.0.0.0:9955"
-  # http_listen = "https://0.0.0.0:8443"
-  # Send json encoded checks by HTTP POST to /checks
-  # Execute "sudo setcap cap_net_bind_service=+ep /usr/bin/frontman" to use ports < 1024
+  # http_listen = "http://0.0.0.0:9090"  # for unencrypted http connections
+  # http_listen = "https://0.0.0.0:8443"  # for encrypted https connections
+  # execute "sudo setcap cap_net_bind_service=+ep /usr/bin/frontman" to use ports < 1024
+  # Executing SNMP check through the HTTP Listener is not supported.
   http_listen = ""
 
   # Private key for https connections
@@ -79,11 +98,3 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
   # Log http requests. On windows slash must be escaped like "C:\\access.log"
   http_access_log = ""
 
-ask_neigbors = true
-[neighbors]
-  [neighbors.1]
-  url = "https://frontman-neighbor.com:1234"
-  name = "Frontman Neighbor 1"
-  username = "neighbor"
-  password = "abc123"
-  verify_ssl = true

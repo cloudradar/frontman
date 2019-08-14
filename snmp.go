@@ -723,6 +723,7 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, 
 			}
 
 			res := Result{
+				Node:      fm.Config.NodeName,
 				CheckType: "snmpCheck",
 				CheckUUID: check.UUID,
 				Timestamp: time.Now().Unix(),

@@ -16,7 +16,6 @@ import (
 
 func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	var results []string
-	var neighborNames []string
 	var succeededNeighbors []string
 
 	for _, neighbor := range fm.Config.Neighbors {
@@ -26,7 +25,7 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 			continue
 		}
 		url.Path = path.Join(url.Path, "check")
-		logrus.Debug("asking neighbor ", neighbor.Name)
+		logrus.Debug("asking neighbor ", neighbor.URL)
 
 		client := &http.Client{}
 		if !neighbor.VerifySSL {
@@ -46,8 +45,7 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 			if resp.StatusCode == http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
 				results = append(results, string(body))
-				neighborNames = append(neighborNames, neighbor.Name)
-				succeededNeighbors = append(succeededNeighbors, neighbor.Name)
+				succeededNeighbors = append(succeededNeighbors, neighbor.URL)
 			}
 		}
 	}
@@ -110,8 +108,5 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	if err := json.Unmarshal([]byte(results[resultID]), &result); err != nil {
 		logrus.Error(err)
 	}
-	for idx := range result {
-		result[idx].NeighborName = neighborNames[idx]
-	}
-	res.GroupMeasurements = result
+	res.NeighborMeasurements = result
 }

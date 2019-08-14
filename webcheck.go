@@ -254,6 +254,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 			}
 
 			res := Result{
+				Node:      fm.Config.NodeName,
 				CheckType: "webCheck",
 				CheckUUID: check.UUID,
 				Timestamp: time.Now().Unix(),
