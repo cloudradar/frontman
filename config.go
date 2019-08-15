@@ -109,7 +109,7 @@ type HealthCheckConfig struct {
 }
 
 type HTTPListenerConfig struct {
-	HTTPListen       string `toml:"http_listen" comment:"HTTP Listener\nPerform checks requested via HTTP POST requests on '/check'\nExamples:\nhttp_listen = "http://0.0.0.0:9090"  # for unencrypted http connections\n# http_listen = "https://0.0.0.0:8443"  # for encrypted https connections\nexecute "sudo setcap cap_net_bind_service=+ep /usr/bin/frontman" to use ports < 1024\nExecuting SNMP check through the HTTP Listener is not supported."`
+	HTTPListen       string `toml:"http_listen" comment:"HTTP Listener\nPerform checks requested via HTTP POST requests on '/check'\nExamples:\nhttp_listen = \"http://0.0.0.0:9090\"   # for unencrypted http connections\nhttp_listen = \"https://0.0.0.0:8443\"  # for encrypted https connections\nexecute \"sudo setcap cap_net_bind_service=+ep /usr/bin/frontman\" to use ports < 1024\nExecuting SNMP check through the HTTP Listener is not supported."`
 	HTTPTLSKey       string `toml:"http_tls_key" comment:"Private key for https connections"`
 	HTTPTLSCert      string `toml:"http_tls_cert" comment:"Certificate for https connections"`
 	HTTPAuthUser     string `toml:"http_auth_user" comment:"Username for the http basic authentication. If omitted authentication is disabled"`
