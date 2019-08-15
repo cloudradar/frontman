@@ -15,8 +15,12 @@ import (
 )
 
 func (fm *Frontman) askNeighbors(data []byte, res *Result) {
-	var results []string
+	var neighborResults []string
 	var succeededNeighbors []string
+
+	if len(fm.Config.Neighbors) < 1 {
+		return
+	}
 
 	for _, neighbor := range fm.Config.Neighbors {
 		url, err := url.Parse(neighbor.URL)
@@ -44,13 +48,13 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 
 			if resp.StatusCode == http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
-				results = append(results, string(body))
+				neighborResults = append(neighborResults, string(body))
 				succeededNeighbors = append(succeededNeighbors, neighbor.URL)
 			}
 		}
 	}
 
-	if len(results) == 0 {
+	if len(neighborResults) == 0 {
 		logrus.Errorf("askNeighbors recieved no successful results")
 		return
 	}
@@ -59,7 +63,7 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 
 	// select the fastest result, fall back to first result if we fail
 	resultID := 0
-	for currID, resp := range results {
+	for currID, resp := range neighborResults {
 
 		var selected []interface{}
 		if err := json.Unmarshal([]byte(resp), &selected); err != nil {
@@ -96,17 +100,49 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 		}
 	}
 
-	// attach new message to result
-	if len(results) != len(fm.Config.Neighbors) {
-		failedNeighbors := len(fm.Config.Neighbors) - len(results)
-		res.Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
-	} else {
-		res.Message = "Check failed locally but succeded on all neighbors"
-	}
-
-	var result []Result
-	if err := json.Unmarshal([]byte(results[resultID]), &result); err != nil {
+	var fastestResult []Result
+	if err := json.Unmarshal([]byte(neighborResults[resultID]), &fastestResult); err != nil {
 		logrus.Error(err)
 	}
-	res.NodeMeasurements = result
+	if len(fastestResult) < 1 {
+		logrus.Warning("no results gathered from neighbors")
+		return
+	}
+
+	locallMeasurement := *res
+
+	// make the fastest neighbor measurment the main result
+	*res = fastestResult[0]
+
+	// attach new message to result
+	if len(neighborResults) != len(fm.Config.Neighbors) {
+		failedNeighbors := len(fm.Config.Neighbors) - len(neighborResults)
+		(*res).Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
+	} else {
+		(*res).Message = "Check failed locally but succeded on all neighbors"
+	}
+
+	// combine the other measurments with the failing measurement
+	for idx := range neighborResults {
+		if idx == resultID {
+			continue
+		}
+
+		var result []Result
+		if err := json.Unmarshal([]byte(neighborResults[idx]), &result); err != nil {
+			logrus.Error(err)
+		}
+
+		var out []map[string]interface{}
+		inrec, _ := json.Marshal(result)
+		json.Unmarshal(inrec, &out)
+
+		(*res).NodeMeasurements = append((*res).NodeMeasurements, out...)
+	}
+
+	var locallMeasurementInterface map[string]interface{}
+	tmp, _ := json.Marshal(locallMeasurement)
+	json.Unmarshal(tmp, &locallMeasurementInterface)
+
+	(*res).NodeMeasurements = append((*res).NodeMeasurements, locallMeasurementInterface)
 }

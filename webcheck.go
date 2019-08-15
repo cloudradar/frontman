@@ -284,6 +284,9 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 							}
 						}
 					}
+					if !recovered {
+						res.Message = err.Error()
+					}
 					if !recovered && fm.Config.AskNeighbors {
 						checkRequest := &Input{
 							WebChecks: []WebCheck{check},
@@ -293,12 +296,11 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 					}
 					if !recovered {
 						logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())
-						res.Message = err.Error()
 					}
 				}
 			}
 
-			if res.Message == nil {
+			if res.Message == "" {
 				succeed++
 			}
 

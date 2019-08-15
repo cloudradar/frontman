@@ -745,7 +745,7 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, 
 				}
 			}
 
-			if res.Message == nil {
+			if res.Message == "" {
 				succeed++
 			}
 
