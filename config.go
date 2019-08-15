@@ -144,6 +144,7 @@ func init() {
 func NewConfig() *Config {
 	cfg := &Config{
 		MinValuableConfig:      *NewMinimumConfig(),
+		NodeName:               "Frontman",
 		LogFile:                defaultLogPath,
 		StatsFile:              defaultStatsFilePath,
 		ICMPTimeout:            0.1,
