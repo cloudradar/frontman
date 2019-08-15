@@ -135,8 +135,6 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 
 	data.Method = strings.ToUpper(data.Method)
 
-	logrus.Debug("web request w timeout ", timeout)
-
 	ctx, cancel := context.WithTimeout(context.Background(), secToDuration(timeout))
 	defer cancel()
 
