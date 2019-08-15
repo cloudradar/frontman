@@ -108,5 +108,5 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	if err := json.Unmarshal([]byte(results[resultID]), &result); err != nil {
 		logrus.Error(err)
 	}
-	res.NeighborMeasurements = result
+	res.NodeMeasurements = result
 }
