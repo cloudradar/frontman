@@ -287,12 +287,12 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 					if !recovered {
 						res.Message = err.Error()
 					}
-					if !recovered && fm.Config.AskNeighbors {
+					if !recovered && fm.Config.AskNodes {
 						checkRequest := &Input{
 							WebChecks: []WebCheck{check},
 						}
 						data, _ := json.Marshal(checkRequest)
-						fm.askNeighbors(data, &res)
+						fm.askNodes(data, &res)
 					}
 					if !recovered {
 						logrus.Debugf("webCheck: %s: %s", check.UUID, err.Error())

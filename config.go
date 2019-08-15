@@ -52,7 +52,7 @@ type MinValuableConfig struct {
 }
 
 type Config struct {
-	NodeName  string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_neighbor)"`
+	NodeName  string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_nodes)"`
 	Sleep     float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
 	PidFile   string  `toml:"pid" comment:"path to pid file"`
 	LogFile   string  `toml:"log,omitempty" comment:"path to log file"`
@@ -91,12 +91,12 @@ than sleep frontman throws an error and denies starting because it would cause c
 	FailureConfirmation      int     `toml:"failure_confirmation" comment:"In case a web or service check fails, frontman will check again after a short delay (seconds). The failure must be confirmed N times.\nfailure_confirmation = 0 switches off the confirmation of failures\nDoes not affect snmp checks"`
 	FailureConfirmationDelay float64 `toml:"failure_confirmation_delay" comment:"Delay in seconds"`
 
-	AskNeighbors bool                `toml:"ask_neighbors"`
-	Neighbors    map[string]Neighbor `toml:"neighbors" comment:"Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
+	AskNodes bool            `toml:"ask_nodes"`
+	Nodes    map[string]Node `toml:"nodes" comment:"Frontman can execute a failed check on other frontmen - ideally on different locations -\nto confirm the check fails everywhere.\nOnly if the check fails on all of them it's considered as failed and sent back to the hub.\nIf the check succeeds on one frontman this check result is sent back"`
 }
 
-type Neighbor struct {
-	URL       string `toml:"url" comment:"URL of neighbor frontman"`
+type Node struct {
+	URL       string `toml:"url" comment:"URL of frontman node"`
 	Username  string `toml:"username" comment:"Username"`
 	Password  string `toml:"password" comment:"Password"`
 	VerifySSL bool   `toml:"verify_ssl"`

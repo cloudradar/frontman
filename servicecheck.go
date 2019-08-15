@@ -129,13 +129,13 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Resul
 					if !recovered {
 						res.Message = err.Error()
 					}
-					if !recovered && fm.Config.AskNeighbors && check.Check.Protocol != "ssl" {
-						// NOTE: ssl checks are excluded from "ask neighbor" feature
+					if !recovered && fm.Config.AskNodes && check.Check.Protocol != "ssl" {
+						// NOTE: ssl checks are excluded from "ask node" feature
 						checkRequest := &Input{
 							ServiceChecks: []ServiceCheck{check},
 						}
 						data, _ := json.Marshal(checkRequest)
-						fm.askNeighbors(data, &res)
+						fm.askNodes(data, &res)
 					}
 
 					if !recovered {
