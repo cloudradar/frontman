@@ -117,9 +117,9 @@ func (fm *Frontman) askNeighbors(data []byte, res *Result) {
 	// attach new message to result
 	if len(neighborResults) != len(fm.Config.Neighbors) {
 		failedNeighbors := len(fm.Config.Neighbors) - len(neighborResults)
-		(*res).Message = fmt.Sprintf("Check failed locally and on %d neigbors but succeded on %s", failedNeighbors, strings.Join(succeededNeighbors, ", "))
+		(*res).Message = fmt.Sprintf("Check failed on %s and on %d neigbors but succeded on %s", fm.Config.NodeName, failedNeighbors, strings.Join(succeededNeighbors, ", "))
 	} else {
-		(*res).Message = "Check failed locally but succeded on all neighbors"
+		(*res).Message = fmt.Sprintf("Check failed on %s but succeded on all neighbors", fm.Config.NodeName)
 	}
 
 	// combine the other measurments with the failing measurement
