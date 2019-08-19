@@ -66,7 +66,7 @@ type Config struct {
 
 	ICMPTimeout            float64 `toml:"icmp_timeout" comment:"ICMP ping timeout in seconds"`
 	NetTCPTimeout          float64 `toml:"net_tcp_timeout" comment:"TCP timeout in seconds"`
-	HTTPCheckTimeout       float64 `toml:"http_check_time_out" comment:"HTTP time in seconds"`
+	HTTPCheckTimeout       float64 `toml:"http_check_timeout" comment:"HTTP time in seconds"`
 	HTTPCheckMaxRedirects  int     `toml:"max_redirects" comment:"Limit the number of HTTP redirects to follow"`
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
 	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold" comment:"Min days remain on the SSL cert to pass the check"`
