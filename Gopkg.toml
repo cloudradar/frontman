@@ -12,12 +12,8 @@
   version = "0.3.2"
 
 [[constraint]]
-  name = "gopkg.in/ldap.v2"
-  version = "2.5.1"
-
-[[constraint]]
   name = "github.com/kardianos/service"
-  revision = "5da1f538b7fe6543b82bab63b76b79b45acb2dca"
+  revision = "489f2db8fe1ea889736641b693458a6de9ff98e8"
   source = "github.com/cloudradar-monitoring/service"
 
 [[constraint]]
@@ -47,3 +43,7 @@
 [[constraint]]
   name = "github.com/soniah/gosnmp"
   revision = "1b12be15031c65438aa78efb424e8e335f16f539"
+
+[[constraint]]
+  name = "gopkg.in/ldap.v3"
+  version = "3.0.3"
