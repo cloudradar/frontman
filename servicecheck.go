@@ -2,8 +2,10 @@ package frontman
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -79,4 +81,75 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 
 	ipAddr := ipAddrs[0]
 	return &ipAddr, nil
+}
+
+func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, checkList []ServiceCheck) int {
+	succeed := 0
+	for _, check := range checkList {
+		wg.Add(1)
+		go func(check ServiceCheck) {
+			defer wg.Done()
+
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				logrus.Info("serviceCheck: missing checkUuid key")
+				return
+			}
+
+			res := Result{
+				Node:      fm.Config.NodeName,
+				CheckType: "serviceCheck",
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+
+			res.Check = check.Check
+
+			if check.Check.Connect == "" {
+				logrus.Info("serviceCheck: missing data.connect key")
+				res.Message = "Missing data.connect key"
+			} else {
+				var err error
+				res.Measurements, err = fm.runServiceCheck(check)
+				if err != nil {
+					recovered := false
+					if fm.Config.FailureConfirmation > 0 {
+						logrus.Debugf("serviceCheck failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.UUID, err.Error())
+
+						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
+							res.Measurements, err = fm.runServiceCheck(check)
+							if err == nil {
+								recovered = true
+								break
+							}
+						}
+					}
+					if !recovered {
+						res.Message = err.Error()
+					}
+					if !recovered && fm.Config.AskNodes && check.Check.Protocol != "ssl" {
+						// NOTE: ssl checks are excluded from "ask node" feature
+						checkRequest := &Input{
+							ServiceChecks: []ServiceCheck{check},
+						}
+						data, _ := json.Marshal(checkRequest)
+						fm.askNodes(data, &res)
+					}
+
+					if !recovered {
+						logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+					}
+				}
+
+				if res.Message == "" {
+					succeed++
+				}
+			}
+
+			resultsChan <- res
+		}(check)
+	}
+	return succeed
 }

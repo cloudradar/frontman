@@ -124,6 +124,14 @@ func main() {
 
 	log.Info("frontman " + version + " started")
 
+	if !*oneRunOnlyModePtr && !*testConfigPtr && *inputFilePtr == "" && *outputFilePtr == "" && cfg.HTTPListener.HTTPListen != "" {
+		go func() {
+			if err := fm.ServeWeb(); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
+
 	if !service.Interactive() {
 		runUnderOsServiceManager(fm)
 	}
@@ -138,14 +146,6 @@ func main() {
 	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
-
-	if cfg.HTTPListener.HTTPListen != "" {
-		go func() {
-			if err := cfg.HTTPListener.ServeWeb(); err != nil {
-				log.Fatal(err)
-			}
-		}()
-	}
 
 	// setup interrupt handler
 	interruptChan := make(chan struct{})

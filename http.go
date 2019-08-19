@@ -17,12 +17,12 @@ func pingHandler(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write([]byte(`{"alive": true}`))
 }
 
-func checkHandler(w http.ResponseWriter, req *http.Request) {
+func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if req.Header.Get("Content-type") != "application/json" {
+	if req.Header.Get("Content-Type") != "application/json" {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -33,20 +33,19 @@ func checkHandler(w http.ResponseWriter, req *http.Request) {
 	var inputConfig Input
 	err := decoder.Decode(&inputConfig)
 	if err != nil {
-		logrus.Error("json decode error")
+		logrus.Errorf("json decode error: '%s'", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// perform the checks, collect result and pass it back as json
-	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
 	resultsChan := make(chan Result, 100)
 	fm.processInput(&inputConfig, resultsChan)
-	res := <-resultsChan
+
+	res := []Result{}
+	for elem := range resultsChan {
+		res = append(res, elem)
+	}
 
 	enc, _ := json.Marshal(res)
 	_, _ = w.Write(enc)
@@ -88,22 +87,23 @@ func (listener HTTPListenerConfig) middlewareAuth(fn http.HandlerFunc) http.Hand
 	}
 }
 
-func (listener HTTPListenerConfig) ServeWeb() error {
-	pos := strings.Index(listener.HTTPListen, "://")
+// ServeWeb starts the webserver as configured under [http_listener] section of frontman.conf
+func (fm *Frontman) ServeWeb() error {
+	pos := strings.Index(fm.Config.HTTPListener.HTTPListen, "://")
 	if pos == -1 {
-		return fmt.Errorf("invalid address in http_listen: '%s'", listener.HTTPListen)
+		return fmt.Errorf("invalid address in http_listen: '%s'", fm.Config.HTTPListener.HTTPListen)
 	}
-	protocol := listener.HTTPListen[0:pos]
-	address := listener.HTTPListen[pos+3:]
+	protocol := fm.Config.HTTPListener.HTTPListen[0:pos]
+	address := fm.Config.HTTPListener.HTTPListen[pos+3:]
 	logrus.Info("http_listener listening on ", protocol+"://"+address)
-	http.Handle("/ping", listener.middlewareLogging(http.HandlerFunc(pingHandler)))
-	http.Handle("/check", listener.middlewareLogging(listener.middlewareAuth(checkHandler)))
+	http.Handle("/ping", fm.Config.HTTPListener.middlewareLogging(http.HandlerFunc(pingHandler)))
+	http.Handle("/check", fm.Config.HTTPListener.middlewareLogging(fm.Config.HTTPListener.middlewareAuth(fm.checkHandler)))
 	var err error
 	switch protocol {
 	case "http":
 		err = http.ListenAndServe(address, nil)
 	case "https":
-		err = http.ListenAndServeTLS(":443", listener.HTTPTLSCert, listener.HTTPTLSKey, nil)
+		err = http.ListenAndServeTLS(address, fm.Config.HTTPListener.HTTPTLSCert, fm.Config.HTTPListener.HTTPTLSKey, nil)
 	default:
 		return fmt.Errorf("invalid protocol: '%s'", protocol)
 	}
