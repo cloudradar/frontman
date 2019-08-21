@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/ldap.v2"
+	"gopkg.in/ldap.v3"
 )
 
 var defaultPortByService = map[string]int{

@@ -10,6 +10,7 @@ builds:
   - amd64
   - arm
   - arm64
+  - mipsle
   goarm:
   - 5
   - 6
@@ -26,6 +27,10 @@ builds:
     goarch: arm64
   - goos: darwin
     goarch: arm64
+  - goos: darwin
+    goarch: mipsle
+  - goos: windows
+    goarch: mipsle
   env:
   - CGO_ENABLED=0
 archive:

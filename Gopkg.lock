@@ -45,11 +45,11 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:8e883c0238c7a2842b877305a9bed685e3bc399eae2ece1e607f2290cb60b111"
+  digest = "1:779aae5827e3f91c6e1e7f2103d6259ca24d940f162a91943c7a0971a60e04ee"
   name = "github.com/kardianos/service"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "5da1f538b7fe6543b82bab63b76b79b45acb2dca"
+  revision = "489f2db8fe1ea889736641b693458a6de9ff98e8"
   source = "github.com/cloudradar-monitoring/service"
 
 [[projects]]
@@ -210,12 +210,12 @@
   version = "v1.3"
 
 [[projects]]
-  digest = "1:7e1c00b9959544fa1ccca7cf0407a5b29ac6d5201059c4fac6f599cb99bfd24d"
-  name = "gopkg.in/ldap.v2"
+  digest = "1:702ddda24a3de16923785938f7a618d75d526d970d617c63b73e09155f258617"
+  name = "gopkg.in/ldap.v3"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9"
-  version = "v2.5.1"
+  revision = "9f0d712775a0973b7824a1585a86a4ea1d5263d9"
+  version = "v3.0.3"
 
 [[projects]]
   branch = "v1"
@@ -251,7 +251,7 @@
     "golang.org/x/net/ipv6",
     "golang.org/x/sys/windows/svc",
     "golang.org/x/sys/windows/svc/mgr",
-    "gopkg.in/ldap.v2",
+    "gopkg.in/ldap.v3",
     "gopkg.in/toast.v1",
   ]
   solver-name = "gps-cdcl"

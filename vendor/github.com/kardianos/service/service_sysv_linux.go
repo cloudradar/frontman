@@ -5,9 +5,11 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -87,9 +89,11 @@ func (s *sysv) Install() error {
 	var to = &struct {
 		*Config
 		Path string
+		IsBusyBox bool
 	}{
 		s.Config,
 		path,
+		isRunningBusyBox(),
 	}
 
 	err = s.template().Execute(f, to)
@@ -159,7 +163,7 @@ func (s *sysv) Run() (err error) {
 }
 
 func (s *sysv) Status() (Status, error) {
-	_, out, err := runWithOutput("service", s.Name, "status")
+	_, out, err := runServiceCommand(s.Name, "status", true)
 	if err != nil {
 		return StatusUnknown, err
 	}
@@ -175,11 +179,13 @@ func (s *sysv) Status() (Status, error) {
 }
 
 func (s *sysv) Start() error {
-	return run("service", s.Name, "start")
+	_, _, err := runServiceCommand(s.Name, "start", false)
+	return err
 }
 
 func (s *sysv) Stop() error {
-	return run("service", s.Name, "stop")
+	_, _, err := runServiceCommand(s.Name, "stop", false)
+	return err
 }
 
 func (s *sysv) Restart() error {
@@ -189,6 +195,34 @@ func (s *sysv) Restart() error {
 	}
 	time.Sleep(50 * time.Millisecond)
 	return s.Start()
+}
+
+func runServiceCommand(serviceName, operation string, readStdOut bool) (int, string, error) {
+	retCode, out, err := runCommand("service", readStdOut, serviceName, operation)
+	if err != nil && strings.Contains(err.Error(), "\"service\": executable file not found in $PATH") {
+		// Some systems like OpenWRT do not have 'service' command,
+		// it's only a shell function (which can not be called from here).
+		// Let's try to call init.d script directly:
+		initRetCode, initOut, initErr := runCommand("/etc/init.d/" + serviceName, readStdOut, operation)
+		if initErr == nil {
+			return initRetCode, initOut, nil
+		}
+	}
+	return retCode, out, err
+}
+
+func isRunningBusyBox() bool {
+	// try to invoke 'ps' command with parameters that are not supported by busybox
+	var errb bytes.Buffer
+	cmd := exec.Command("ps", "xaw")
+	cmd.Stderr = &errb
+
+	_ = cmd.Run()
+	stderr := errb.String()
+	if strings.Contains(stderr, "unrecognized option") && strings.Contains(stderr, "BusyBox") {
+		return true
+	}
+	return false
 }
 
 const sysvScript = `#!/bin/sh
@@ -219,10 +253,15 @@ stderr_log="/var/log/$name.err"
 get_pid() {
     cat "$pid_file"
 }
-
-is_running() {
-    [ -f "$pid_file" ] && ps $(get_pid) > /dev/null 2>&1
-}
+{{if .IsBusyBox}}
+	is_running() {
+		[ -f "$pid_file" ] && ps | awk '{print "s" $1 "s"}' | grep "s$(get_pid)s" > /dev/null 2>&1
+	}
+{{else}}
+	is_running() {
+		[ -f "$pid_file" ] && ps $(get_pid) > /dev/null 2>&1
+	}
+{{end}}
 
 case "$1" in
     start)

@@ -7,8 +7,10 @@ import (
 
 // ReaderCounter is counter for io.Reader
 type ReadCloserCounter struct {
+	// count is loaded atomically, so we need to ensure 64-bit alignment on 32-bit platforms:
+	// https://golang.org/pkg/sync/atomic/#pkg-note-BUG
+	count uint64
 	io.ReadCloser
-	count      uint64
 	readCloser io.ReadCloser
 }
 
