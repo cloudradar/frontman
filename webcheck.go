@@ -290,7 +290,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 					if !recovered {
 						res.Message = err.Error()
 					}
-					if !recovered && fm.Config.AskNodes {
+					if !recovered && len(fm.Config.Nodes) > 0 {
 						checkRequest := &Input{
 							WebChecks: []WebCheck{check},
 						}

@@ -129,7 +129,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Resul
 					if !recovered {
 						res.Message = err.Error()
 					}
-					if !recovered && fm.Config.AskNodes && check.Check.Protocol != "ssl" {
+					if !recovered && len(fm.Config.Nodes) > 0 && check.Check.Protocol != "ssl" {
 						// NOTE: ssl checks are excluded from "ask node" feature
 						checkRequest := &Input{
 							ServiceChecks: []ServiceCheck{check},
