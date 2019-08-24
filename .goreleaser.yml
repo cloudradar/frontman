@@ -71,9 +71,9 @@ nfpm:
   - deb
   - rpm
 
-  # Recommend to install root SSL certificates
   recommends:
   - ca-certificates
+  - procps
 
   # Override default /usr/local/bin destination for binaries
   bindir: /usr/bin
@@ -97,11 +97,9 @@ nfpm:
     preremove: "pkg-scripts/preremove.sh"
 
   overrides:
-    deb:
-      dependencies:
-      - procps
     rpm:
-      dependencies:
+      recommends:
+      - ca-certificates
       - procps-ng
       scripts:
         postinstall: "pkg-scripts/postinstall-rpm.sh"
