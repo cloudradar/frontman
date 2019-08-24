@@ -144,10 +144,13 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 	*res = fastestResult[0]
 
 	// attach new message to result
-	if len(nodeResults) != len(fm.Config.Nodes) {
-		(*res).Message = fmt.Sprintf("Check failed on %s and %s but succeded on %s", fm.Config.NodeName, strings.Join(failedNodes, ", "), strings.Join(succeededNodes, ", "))
+	if len(nodeResults) == 0 {
+		// all nodes failed, use original measure
+		return
+	} else if len(nodeResults) != len(fm.Config.Nodes) {
+		(*res).Message = fmt.Sprintf("Check failed on %s and %s but succeeded on %s", fm.Config.NodeName, strings.Join(failedNodes, ", "), strings.Join(succeededNodes, ", "))
 	} else {
-		(*res).Message = fmt.Sprintf("Check failed on %s but succeded on %s", fm.Config.NodeName, strings.Join(succeededNodes, ", "))
+		(*res).Message = fmt.Sprintf("Check failed on %s but succeeded on %s", fm.Config.NodeName, strings.Join(succeededNodes, ", "))
 	}
 
 	// combine the other measurments with the failing measurement
