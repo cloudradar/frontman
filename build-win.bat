@@ -6,11 +6,11 @@ SET PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin;c:\Program Files (x
 CD %build_dir%
 
 
-COPY dist\frontman_386.exe frontman.exe
+COPY dist\frontman_windows_386\frontman.exe frontman.exe
 go-msi make --src pkg-scripts\msi-templates --msi dist/_frontman_32.msi --version %frontman_version% --arch 386
 DEL frontman.exe
 
-COPY dist\frontman_64.exe frontman.exe
+COPY dist\frontman_windows_amd64\frontman.exe frontman.exe
 go-msi make --src pkg-scripts\msi-templates --msi dist/_frontman_64.msi --version %frontman_version% --arch amd64
 DEL frontman.exe
 
