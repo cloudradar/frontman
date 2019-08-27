@@ -214,8 +214,8 @@ func (cfg *Config) TryUpdateConfigFromFile(configFilePath string) error {
 	return err
 }
 
-// save config file as toml
-func (cfg *MinValuableConfig) SaveConfigFile(configFilePath string) error {
+// SaveConfigFile saves config file as toml
+func SaveConfigFile(mvc *MinValuableConfig, configFilePath string) error {
 	f, err := os.Create(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open the config file '%s': %s", configFilePath, err.Error())
@@ -226,7 +226,7 @@ func (cfg *MinValuableConfig) SaveConfigFile(configFilePath string) error {
 		return fmt.Errorf("failed to write headline to config file")
 	}
 
-	err = toml.NewEncoder(f).Encode(cfg)
+	err = toml.NewEncoder(f).Encode(mvc)
 	if err != nil {
 		return fmt.Errorf("failed to encode config to file")
 	}
@@ -235,7 +235,7 @@ func (cfg *MinValuableConfig) SaveConfigFile(configFilePath string) error {
 }
 
 // GenerateDefaultConfigFile creates a default frontman.toml and writes to to disk
-func (mvc *MinValuableConfig) GenerateDefaultConfigFile(configFilePath string) error {
+func GenerateDefaultConfigFile(mvc *MinValuableConfig, configFilePath string) error {
 	var err error
 
 	if _, err = os.Stat(configFilePath); os.IsExist(err) {
@@ -253,7 +253,7 @@ func (mvc *MinValuableConfig) GenerateDefaultConfigFile(configFilePath string) e
 			return err
 		}
 	}
-	return mvc.SaveConfigFile(configFilePath)
+	return SaveConfigFile(mvc, configFilePath)
 }
 
 // auto-corrects some config values
@@ -286,7 +286,7 @@ func HandleAllConfigSetup(configFilePath string) (*Config, error) {
 	err := cfg.TryUpdateConfigFromFile(configFilePath)
 	if os.IsNotExist(err) {
 		mvc := NewMinimumConfig()
-		if err = mvc.GenerateDefaultConfigFile(configFilePath); err != nil {
+		if err = GenerateDefaultConfigFile(mvc, configFilePath); err != nil {
 			return nil, err
 		}
 
