@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudradar-monitoring/toml"
 	"github.com/sirupsen/logrus"
-	"github.com/troian/toml"
 )
 
 const (

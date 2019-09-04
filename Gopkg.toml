@@ -8,8 +8,8 @@
   name = "golang.org/x/net"
 
 [[constraint]]
-  name = "github.com/troian/toml"
-  version = "0.3.2"
+  name = "github.com/cloudradar-monitoring/toml"
+  revision = "b07890c4335d171cf1fab9050aae78c0b306d19e"
 
 [[constraint]]
   name = "github.com/kardianos/service"
