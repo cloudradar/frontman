@@ -208,7 +208,12 @@ func handleFlagVersion(versionFlag bool) {
 }
 
 func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
+	var configHeadline = "# Please refer to https://github.com/cloudradar-monitoring/frontman/blob/master/example.config.toml\n" +
+		"# for a fully documented configuration example\n" +
+		"#\n"
+
 	if printConfig {
+		fmt.Println(configHeadline)
 		fmt.Println(fm.Config.DumpToml())
 		os.Exit(0)
 	}
