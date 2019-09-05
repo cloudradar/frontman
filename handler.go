@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -67,7 +66,7 @@ func (fm *Frontman) initHubClient() {
 		}
 	}
 	fm.hubClient = &http.Client{
-		Timeout:   30 * time.Second,
+		Timeout:   time.Duration(fm.Config.HubRequestTimeout) * time.Second,
 		Transport: transport,
 	}
 }
@@ -116,19 +115,23 @@ func (fm *Frontman) checkClientError(resp *http.Response, err error, fieldHubUse
 		}
 		return err
 	}
-	_, _ = io.Copy(ioutil.Discard, resp.Body)
-	resp.Body.Close()
+
+	var responseBody string
+	responseBodyBytes, readBodyErr := ioutil.ReadAll(resp.Body)
+	if readBodyErr == nil {
+		responseBody = string(responseBodyBytes)
+	}
+
+	_ = resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
 		if fm.Config.HubUser == "" {
 			return newEmptyFieldError(fieldHubUser)
 		} else if fm.Config.HubPassword == "" {
 			return newEmptyFieldError(fieldHubPassword)
 		}
-		err := errors.Errorf("unable to authorize with provided Hub credentials (HTTP %d)", resp.StatusCode)
-		return err
+		return errors.Errorf("unable to authorize with provided Hub credentials (HTTP %d). %s", resp.StatusCode, responseBody)
 	} else if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
-		err := errors.Errorf("unable to authorize with provided Hub credentials (HTTP %d)", resp.StatusCode)
-		return err
+		return errors.Errorf("got unexpected response from server (HTTP %d). %s", resp.StatusCode, responseBody)
 	}
 	return nil
 }
