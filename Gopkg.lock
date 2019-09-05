@@ -10,6 +10,13 @@
   version = "1.0.0"
 
 [[projects]]
+  digest = "1:9cf40a4f61ba6526e42b2f516d95aded11edfb83e504688f940aa73e4794cb73"
+  name = "github.com/cloudradar-monitoring/toml"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "b07890c4335d171cf1fab9050aae78c0b306d19e"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -154,14 +161,6 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:8c608180226fbebb7c5952dacf9bd13d3ce2a2fbb4d5ec228905d58a9f9246db"
-  name = "github.com/troian/toml"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "53867168f7a11b973cb694a0cb53ec30a445959d"
-  version = "v0.3.2"
-
-[[projects]]
   branch = "master"
   digest = "1:81646cb3192b806fbaf4bcf8d2b81733eb898926e9468bceae581ef2ae2acb87"
   name = "golang.org/x/net"
@@ -229,6 +228,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/cloudradar-monitoring/toml",
     "github.com/gorilla/handlers",
     "github.com/kardianos/service",
     "github.com/lxn/walk",
@@ -244,7 +244,6 @@
     "github.com/soniah/gosnmp",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
-    "github.com/troian/toml",
     "golang.org/x/net/html",
     "golang.org/x/net/icmp",
     "golang.org/x/net/ipv4",

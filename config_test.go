@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cloudradar-monitoring/toml"
 	"github.com/stretchr/testify/assert"
-	"github.com/troian/toml"
 )
 
 func TestNewMinimumConfig(t *testing.T) {
