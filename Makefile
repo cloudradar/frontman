@@ -77,8 +77,8 @@ windows-sign:
 	# Trigger msi creating
 	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 /cygdrive/C/Users/hero/ci/frontman_ci/build_msi/${CIRCLE_BUILD_NUM}/build-win.bat ${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
 	# Trigger signing 
-	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl http://localhost:8080/?file=frontman_32.msi
-	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl http://localhost:8080/?file=frontman_64.msi
+	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl -s -S -f http://localhost:8080/?file=frontman_32.msi
+	ssh -p 24481 -oStrictHostKeyChecking=no hero@144.76.9.139 curl -s -S -f http://localhost:8080/?file=frontman_64.msi
 	# Copy msi files back to build machine
 	scp -P 24481 -oStrictHostKeyChecking=no hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_32.msi ${PROJECT_DIR}/dist/frontman_386.msi
 	scp -P 24481 -oStrictHostKeyChecking=no hero@144.76.9.139:/cygdrive/C/Users/hero/ci/frontman_64.msi ${PROJECT_DIR}/dist/frontman_64.msi
