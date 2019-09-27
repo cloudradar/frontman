@@ -11,14 +11,16 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
-	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
+
+	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
+	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
 )
 
 func getTextFromHTML(r io.Reader) (text string) {
@@ -164,8 +166,15 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	wroteRequestAt := time.Now()
-	resp, err := httpClient.Do(req.WithContext(ctx))
+	var wroteRequestAt time.Time
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			m[prefix+"timeToFirstByte_s"] = time.Since(wroteRequestAt).Seconds()
+		},
+	}
+
+	wroteRequestAt = time.Now()
+	resp, err := httpClient.Do(req.WithContext(httptrace.WithClientTrace(ctx, trace)))
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return m, fmt.Errorf("timeout exceeded")
