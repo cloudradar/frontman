@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -163,6 +164,11 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 
 	resp, err := fm.hubClient.Do(r)
 	if err != nil {
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			err = fmt.Errorf("hub request timeout of %d seconds exceeded", fm.Config.HubRequestTimeout)
+			err = errors.Wrap(err, netErr.Error())
+		}
+
 		fm.Stats.HubLastErrorMessage = err.Error()
 		fm.Stats.HubLastErrorTimestamp = uint64(time.Now().Second())
 		fm.Stats.HubErrorsTotal++
