@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,8 +53,8 @@ loopDom:
 	return
 }
 
-func defaultHTTPTransport() *http.Transport {
-	return &http.Transport{
+func (fm *Frontman) initHTTPTransport() {
+	fm.httpTransport = &http.Transport{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -66,26 +65,17 @@ func defaultHTTPTransport() *http.Transport {
 		MaxIdleConns:          1,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       fm.newTLSClientConfig(fm.Config.IgnoreSSLErrors),
 	}
 }
 
-func (fm *Frontman) initHTTPTransport() {
-	fm.httpTransport = defaultHTTPTransport()
-
-	if fm.Config.IgnoreSSLErrors {
-		fm.httpTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, RootCAs: fm.rootCAs}
+func (fm *Frontman) newTLSClientConfig(insecure bool) *tls.Config {
+	c := &tls.Config{}
+	if insecure {
+		c.InsecureSkipVerify = true
+		c.RootCAs = fm.rootCAs
 	}
-}
-
-// transportWithInsecureSSL creates a default http.Transport,
-// sets the option to skip verification of insecure TLS.
-func transportWithInsecureSSL(rootCAs *x509.CertPool) *http.Transport {
-	transport := defaultHTTPTransport()
-	transport.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: true,
-		RootCAs:            rootCAs,
-	}
-	return transport
+	return c
 }
 
 func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
@@ -116,12 +106,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
-	var httpTransport *http.Transport
-	if data.IgnoreSSLErrors {
-		httpTransport = transportWithInsecureSSL(fm.rootCAs)
-	} else {
-		httpTransport = fm.httpTransport
-	}
+	var httpTransport = fm.httpTransport
+	httpTransport.TLSClientConfig = fm.newTLSClientConfig(data.IgnoreSSLErrors)
 
 	// In case the webcheck disables redirect following we set maxRedirects to 0
 	maxRedirects := 0
@@ -147,16 +133,25 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		return m, err
 	}
 
-	startedConnectonAt := time.Now()
+	startedConnectionAt := time.Now()
 	defer func() {
-		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectonAt).Seconds()
+		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectionAt).Seconds()
 	}()
 
 	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", fm.userAgent())
 
+	var hostHeader string
 	for key, val := range data.Headers {
 		req.Header.Set(key, val)
+		if hostHeader == "" && strings.ToLower(key) == "host" {
+			hostHeader = val
+		}
+	}
+	if hostHeader != "" && hostHeader != req.URL.Host {
+		// most probably we should enable SNI handshake
+		httpTransport.TLSClientConfig.ServerName = hostHeader
+		req.Host = hostHeader
 	}
 
 	if data.Method == "POST" && data.PostData != "" {
