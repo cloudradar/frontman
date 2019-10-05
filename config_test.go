@@ -88,6 +88,9 @@ ignore_ssl_errors = true
 		tmpFile, err := ioutil.TempFile("", "")
 		assert.Nil(t, err)
 		configFilePath := tmpFile.Name()
+		err = tmpFile.Close()
+		assert.Nil(t, err)
+
 		err = os.Remove(tmpFile.Name())
 		assert.Nil(t, err)
 
