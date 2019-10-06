@@ -47,10 +47,20 @@ jobs:
     <<: *docker_job
     steps:
       - <<: *workspace
-      - setup_remote_docker
-      - run: docker login --username ${DOCKERHUB_USER} --password ${DOCKERHUB_PASS}
-      - run: docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/frontman:${CIRCLE_TAG} .
-      - run: docker push cloudradario/frontman:${CIRCLE_TAG}
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Install Docker client
+          command: |
+            set -x
+            VER="18.06.3-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            mv /tmp/docker/* /usr/bin
+      - run: |
+          docker login --username ${DOCKERHUB_USER} --password ${DOCKERHUB_PASS}
+          docker build --build-arg FRONTMAN_VERSION=${CIRCLE_TAG} -t cloudradario/frontman:${CIRCLE_TAG} .
+          docker push cloudradario/frontman:${CIRCLE_TAG}
 
   build-sign-msi:
     <<: *docker_job
