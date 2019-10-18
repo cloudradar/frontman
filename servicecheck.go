@@ -72,6 +72,9 @@ func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, 
 
 	ipAddrs, err := net.DefaultResolver.LookupIPAddr(ctx, addr)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("timeout exceeded")
+		}
 		return nil, err
 	}
 
