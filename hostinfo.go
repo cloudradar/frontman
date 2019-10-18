@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -26,6 +27,10 @@ func (fm *Frontman) HostInfoResults() (MeasurementsMap, error) {
 	errs := []string{}
 
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			err = fmt.Errorf("timeout exceeded")
+		}
+
 		logrus.Errorf("[SYSTEM] Failed to read host info: %s", err.Error())
 		errs = append(errs, err.Error())
 	}
