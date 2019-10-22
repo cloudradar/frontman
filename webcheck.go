@@ -212,6 +212,9 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	}
 
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return m, fmt.Errorf("timeout exceeded")
+		}
 		return m, err
 	}
 
