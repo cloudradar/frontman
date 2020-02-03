@@ -90,4 +90,4 @@ Username and password need to be configured via environment variables. You can p
 ## Credits
 Project co-financed by the European Regional Development Fund under the Innovative Economy Operational Programme. Innovation grants. We invest in your future.
 
-<img alt="European Regional Development Fund" src="https://efre.brandenburg.de/media_fast/4055/Emblem-Standard-1-4C_en_2017.jpg" align="left" height="100" width="379" />
+<img alt="European Regional Development Fund" src="https://efre.brandenburg.de/sixcms/media.php/9/EFRE%20Logo_unten_oweb_en_rgb.jpg" align="left" height="100" width="379" />
