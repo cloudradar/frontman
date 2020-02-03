@@ -2,6 +2,11 @@
 Frontman is a general purpose monitoring proxy which performs checks on foreign hosts. 
 The main goal is to check services and performs other checks, where no logon-rights are needed for.
 
+## Credits
+Project co-financed by the European Regional Development Fund under the Innovative Economy Operational Programme. Innovation grants. We invest in your future.
+
+<img alt="European Regional Development Fund" src="https://efre.brandenburg.de/media_fast/4055/Emblem-Standard-1-4C_en_2017.jpg" align="left" height="100" width="379" />
+
 ## What kind of checks frontman can perform
 * [ICMP ping](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L53)
 * [TCP – check connection on port](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L68)
@@ -86,8 +91,3 @@ Check [dockerhub](https://cloud.docker.com/u/cloudradario/repository/docker/clou
 ### Passing credentials
 Username and password need to be configured via environment variables. You can pass them using the `-e` flags.
 `docker run -d -e FRONTMAN_HUB_USER=YOUR_USERNAME -e FRONTMAN_HUB_PASSWORD=YOUR_PASS cloudradario/frontman:1.0.7`
-
-## Credits
-Project co-financed by the European Regional Development Fund under the Innovative Economy Operational Programme. Innovation grants. We invest in your future.
-
-<img alt="European Regional Development Fund" src="https://efre.brandenburg.de/media_fast/4055/Emblem-Standard-1-4C_en_2017.jpg" align="left" height="100" width="379" />
