@@ -3,9 +3,17 @@ Frontman is a general purpose monitoring proxy which performs checks on foreign 
 The main goal is to check services and performs other checks, where no logon-rights are needed for.
 
 ## Credits
-Project co-financed by the European Regional Development Fund under the Innovative Economy Operational Programme. Innovation grants. We invest in your future.
+<table border="0">
+  <tr>
+    <td>
+      <img alt="European Regional Development Fund" src="https://efre.brandenburg.de/sixcms/media.php/9/EFRE%20Logo_unten_oweb_en_rgb.jpg" height="200" width="210" />
+    </td>
+    <td>
+      Project co-financed by the European Regional Development Fund<br/>under the Innovative Economy Operational Programme. Innovation grants.<br/>We invest in your future.
+    </td>
+  </tr>
+</table>
 
-<img alt="European Regional Development Fund" src="https://efre.brandenburg.de/sixcms/media.php/9/EFRE%20Logo_unten_oweb_en_rgb.jpg" align="left" height="100" width="379" />
 
 ## What kind of checks frontman can perform
 * [ICMP ping](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L53)
