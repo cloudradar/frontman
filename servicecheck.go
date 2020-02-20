@@ -38,6 +38,13 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
+		case ProtocolUDP:
+			port, _ := check.Check.Port.Int64()
+
+			results, err = fm.runUDPCheck(&net.UDPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			if err != nil {
+				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
+			}
 		case ProtocolSSL:
 			port, _ := check.Check.Port.Int64()
 

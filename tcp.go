@@ -71,7 +71,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		return m, fmt.Errorf("can't set tcp conn timeout: %s", err.Error())
 	}
 	// Execute the check
-	err = executeServiceCheck(conn, fm.Config.NetTCPTimeout, service, hostname)
+	err = executeTCPServiceCheck(conn, fm.Config.NetTCPTimeout, service, hostname)
 	if err != nil {
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
@@ -82,8 +82,8 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	return m, nil
 }
 
-// executeServiceCheck executes a check based on the passed protocol name on the given connection
-func executeServiceCheck(conn net.Conn, tcpTimeout float64, service, hostname string) error {
+// executeTCPServiceCheck executes a check based on the passed protocol name on the given connection
+func executeTCPServiceCheck(conn net.Conn, tcpTimeout float64, service, hostname string) error {
 	var err error
 	switch service {
 	case "ftp":

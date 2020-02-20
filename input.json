@@ -1,0 +1,22 @@
+{
+  "serviceChecks": [
+    {
+      "checkUUID": "sip_ok",
+      "check": {
+        "connect": "sip.nsw.iinet.net.au",
+        "port": 5060,
+        "protocol": "udp",
+        "service": "sip"
+      }
+    },
+    {
+      "checkUUID": "iax2_ok",
+      "check": {
+        "connect": "127.0.0.1",
+        "port": 4569,
+        "protocol": "udp",
+        "service": "iax2"
+      }
+    }
+  ]
+}
