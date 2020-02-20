@@ -32,6 +32,10 @@ The main goal is to check services and performs other checks, where no logon-rig
      * [Check status](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L4)
      * [Match raw HTML pattern](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L31)
      * [Match extracted text patter](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L28)
+* UDP service checks
+     * [SIP](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L140)
+     * [IAX2](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L143)
+
      
 ## Run the example
 

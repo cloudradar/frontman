@@ -135,6 +135,12 @@
   },{
     "checkUUID": "ssl_cert_failed_to_determine_port",
     "check": { "connect": "google.com", "protocol": "ssl", "service": "unknown"}
+  },{
+    "checkUUID": "sip_ok",
+    "check": { "connect": "sipconnect.sipgate.de", "port": 5060, "protocol": "udp", "service": "sip"}
+  },{
+    "checkUUID": "iax2_ok",
+    "check": { "connect": "sipconnect.sipgate.de", "port": 4569, "protocol": "udp", "service": "iax2"}
   }],
   "snmpChecks": [{
     "checkUUID": "snmp_basedata_v1",

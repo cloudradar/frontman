@@ -19,6 +19,9 @@ icmp_timeout = 0.5 # ICMP ping timeout in seconds; number must contains decimal 
 # TCP checks
 net_tcp_timeout = 2.0 # TCP timeout in seconds; number must contains decimal point
 
+# UDP checks
+net_udp_timeout = 1.5 # UDP timeout in seconds; number must contains decimal point
+
 # Web checks
 http_tcp_timeout = 15.0 # HTTP timeout in seconds; number must contains decimal point
 max_redirects = 3 # Max number of HTTP redirects to follow
