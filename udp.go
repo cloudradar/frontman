@@ -137,8 +137,8 @@ func checkIAX2(conn net.Conn, timeout time.Duration) error {
 	}
 
 	// send ACK to close connection
-	// new version of Asterisk do no require this, but old
-	// will resend PONG packets
+	// new version of Asterisk do not require this,
+	// but old will resend PONG packets
 	ackPacket := iax.GetAckFramePacket()
 	_ = conn.SetWriteDeadline(time.Now().Add(timeout))
 	_, _ = conn.Write(ackPacket)
