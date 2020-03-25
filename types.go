@@ -9,6 +9,7 @@ type ServiceName string
 const (
 	ProtocolICMP = "icmp"
 	ProtocolTCP  = "tcp"
+	ProtocolUDP  = "udp"
 	ProtocolSSL  = "ssl"
 
 	ServiceICMPPing = "ping"
