@@ -1,6 +1,8 @@
 ## Frontman - at a glance
-Frontman is a general purpose monitoring proxy which performs checks on foreign hosts. 
+Frontman is a general-purpose monitoring proxy that performs checks on foreign hosts. 
 The main goal is to check services and performs other checks, where no logon-rights are needed for.
+It's expected to be used in any kind of monitoring solutions, where agent-less checks must be executed over the network.
+Frontman is a robust check executor that can work in the background of any monitoring solution. It enables developers to build custom solutions. Frontman can be controlled by local Json files or via Json-based HTTP APIs.
 
 ## Credits
 <table border="0">
@@ -17,8 +19,8 @@ The main goal is to check services and performs other checks, where no logon-rig
 
 ## What kind of checks frontman can perform
 * [ICMP ping](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L53)
-* [TCP – check connection on port](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L68)
-* [TCP – service check (check the connection and the common output pattern)](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L77)
+* [TCP/UDP – check connection on port](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L68)
+* [TCP/UDP – service check (check the connection and the common output pattern)](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L77)
      * HTTP(S)
      * FTP(S)
      * FTP(S)
@@ -27,6 +29,8 @@ The main goal is to check services and performs other checks, where no logon-rig
      * SSH
      * NNTP
      * LDAP
+     * SIP
+     * AIX2
 * [SSL – check the certificate validity and expiration date](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L119)
 * HTTP web checks
      * [Check status](https://github.com/cloudradar-monitoring/frontman/blob/master/example.json#L4)
