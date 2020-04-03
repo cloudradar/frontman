@@ -3,7 +3,11 @@ package frontman
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
+	"strconv"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/cloudradar-monitoring/frontman/pkg/iax"
@@ -45,7 +49,7 @@ func (fm *Frontman) runUDPCheck(addr *net.UDPAddr, hostname string, service stri
 	}
 
 	// Execute the check
-	err = executeUDPServiceCheck(conn, checkTimeout, service, hostname)
+	err = executeUDPServiceCheck(conn.(*net.UDPConn), checkTimeout, service, hostname)
 	if err != nil {
 		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
 	}
@@ -57,7 +61,7 @@ func (fm *Frontman) runUDPCheck(addr *net.UDPAddr, hostname string, service stri
 }
 
 // executeUDPServiceCheck executes a check based on the passed protocol name on the given connection
-func executeUDPServiceCheck(conn net.Conn, udpTimeout time.Duration, service, hostname string) error {
+func executeUDPServiceCheck(conn *net.UDPConn, udpTimeout time.Duration, service, hostname string) error {
 	var err error
 	switch service {
 	case "sip":
@@ -74,48 +78,65 @@ func executeUDPServiceCheck(conn net.Conn, udpTimeout time.Duration, service, ho
 	return err
 }
 
-func checkSIP(conn net.Conn, hostname string, timeout time.Duration) error {
+func checkSIP(conn *net.UDPConn, hostname string, timeout time.Duration) error {
 	const magicCookie = "z9hG4bK" // See: https://tools.ietf.org/html/rfc3261#section-8.1.1.7
 
-	requestStr := `OPTIONS sip:%s SIP/2.0
-Accept: application/sdp
-CSeq: 0 OPTIONS
-Via: SIP/2.0/UDP 127.0.0.1;branch=%s
-From: "frontman" <sip:frontman@127.0.0.1> ;tag=%s
-To: <sip:%s>
-Call-ID: frontman-%d
-Content-Length: 0`
+	requestTemplateText := `OPTIONS sip:{{.FromUser}}@{{.Domain}} SIP/2.0
+Via: SIP/2.0/UDP {{.ContactDomain}}:{{.LPort}};branch={{.Branch}}
+From: {{.FromName}} <sip:{{.FromUser}}@{{.Domain}}>;tag=0c26cd11
+To: {{.FromName}} <sip:{{.ToUser}}@{{.Domain}}>
+Contact: <sip:{{.FromUser}}@{{.ContactDomain}}:{{.LPort}};transport=udp>
+Call-ID: {{.CallId}}
+CSeq: 1 OPTIONS
+User-Agent: {{.UserAgent}}
+Max-Forwards: 70
+Allow: INVITE,ACK,CANCEL,BYE,NOTIFY,REFER,OPTIONS,INFO,SUBSCRIBE,UPDATE,PRACK,MESSAGE
+Content-Length: 0
 
-	branchIDPart := utils.RandomizedStr(11)
-	fromTag := magicCookie + utils.RandomizedStr(8)
-	timestamp := time.Now().Unix()
+`
+	requestTemplateText = strings.ReplaceAll(requestTemplateText, "\n", "\r\n")
+	requestTpl, _ := template.New("request").Parse(requestTemplateText)
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	requestStr = fmt.Sprintf(requestStr, hostname, branchIDPart, fromTag, hostname, timestamp)
-
-	_ = conn.SetWriteDeadline(time.Now().Add(timeout))
-	_, err := conn.Write([]byte(requestStr))
+	params := map[string]string{
+		"FromUser":      "100",
+		"Domain":        hostname,
+		"ContactDomain": "1.1.1.1",
+		"LPort":         strconv.Itoa(localAddr.Port),
+		"Branch":        magicCookie + utils.RandomizedStr(64),
+		"FromName":      "",
+		"ToUser":        "100",
+		"CallId":        utils.RandomizedStr(32),
+		"UserAgent":     "frontman",
+	}
+	requestBuf := bytes.NewBuffer([]byte{})
+	err := requestTpl.Execute(requestBuf, params)
 	if err != nil {
 		return err
 	}
 
-	_ = conn.SetReadDeadline(time.Now().Add(timeout))
+	_ = conn.SetWriteDeadline(time.Now().Add(timeout))
+	_, err = io.Copy(conn, requestBuf)
+	if err != nil {
+		return err
+	}
 
-	var b = make([]byte, 64)
-	n, err := conn.Read(b)
+	var response = make([]byte, 1024)
+	_ = conn.SetReadDeadline(time.Now().Add(timeout))
+	n, _, err := conn.ReadFrom(response)
 	if err != nil {
 		return err
 	}
 
 	expected := []byte("SIP/2")
-
-	if !bytes.HasPrefix(b, expected) {
-		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(b[0:n]))
+	if !bytes.HasPrefix(response, expected) {
+		return fmt.Errorf("invalid response: expected to start with '%s' but got '%s'", string(expected), string(response[0:n]))
 	}
 
 	return nil
 }
 
-func checkIAX2(conn net.Conn, timeout time.Duration) error {
+func checkIAX2(conn *net.UDPConn, timeout time.Duration) error {
 	pokePacket := iax.GetPokeFramePacket()
 
 	_ = conn.SetWriteDeadline(time.Now().Add(timeout))
