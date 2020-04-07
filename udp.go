@@ -95,7 +95,11 @@ Content-Length: 0
 
 `
 	requestTemplateText = strings.ReplaceAll(requestTemplateText, "\n", "\r\n")
-	requestTpl, _ := template.New("request").Parse(requestTemplateText)
+	requestTpl, err := template.New("request").Parse(requestTemplateText)
+	if err != nil {
+		return err
+	}
+
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	params := map[string]string{
@@ -110,7 +114,7 @@ Content-Length: 0
 		"UserAgent":     "frontman",
 	}
 	requestBuf := bytes.NewBuffer([]byte{})
-	err := requestTpl.Execute(requestBuf, params)
+	err = requestTpl.Execute(requestBuf, params)
 	if err != nil {
 		return err
 	}
