@@ -1,5 +1,9 @@
 ---
-version: 2
+version: 2.1
+
+orbs:
+  ms-teams: cloudradar-monitoring/ms-teams@0.0.1
+
 docker_job_setup: &docker_job
   docker:
     - image: cloudradario/go-build:0.0.16
@@ -8,6 +12,13 @@ docker_job_setup: &docker_job
 attach_workspace: &workspace
   attach_workspace:
     at: /go/src/github.com/cloudradar-monitoring
+
+common_workflow_setup: &common_workflow
+  context: cloudradar
+  post-steps:
+    - ms-teams/report:
+        only_on_fail: true
+        webhook_url: $MS_TEAMS_WEBHOOK_URL
 
 jobs:
   get-source:
@@ -129,16 +140,19 @@ workflows:
   test-on-commit:
     jobs:
       - get-source:
+          <<: *common_workflow
           filters:
             tags:
               ignore: /.*/
       - test:
+          <<: *common_workflow
           requires:
             - get-source
           filters:
             tags:
               ignore: /.*/
       - test-goreleaser:
+          <<: *common_workflow
           requires:
             - get-source
           filters:
@@ -148,14 +162,14 @@ workflows:
   release:
     jobs:
       - get-source:
-          context: cloudradar
+          <<: *common_workflow
           filters:
             tags:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$/
             branches:
               ignore: /.*/
       - test:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - get-source
           filters:
@@ -164,7 +178,7 @@ workflows:
             branches:
               ignore: /.*/
       - build-goreleaser:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - test
           filters:
@@ -173,7 +187,7 @@ workflows:
             branches:
               ignore: /.*/
       - build-sign-msi:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - build-goreleaser
           filters:
@@ -182,7 +196,7 @@ workflows:
             branches:
               ignore: /.*/
       - build-aptly:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - build-goreleaser
           filters:
@@ -191,7 +205,7 @@ workflows:
             branches:
               ignore: /.*/
       - build-createrepo:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - build-goreleaser
           filters:
@@ -200,7 +214,7 @@ workflows:
             branches:
               ignore: /.*/
       - release-github:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - build-sign-msi
             - build-synology-spk
@@ -210,7 +224,7 @@ workflows:
             branches:
               ignore: /.*/
       - build-docker:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - release-github
           filters:
@@ -219,7 +233,7 @@ workflows:
             branches:
               ignore: /.*/
       - build-synology-spk:
-          context: cloudradar
+          <<: *common_workflow
           requires:
             - build-goreleaser
           filters:
