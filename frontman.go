@@ -22,7 +22,6 @@ type Frontman struct {
 	Stats                       *stats.FrontmanStats
 	HealthCheckPassedPreviously bool
 
-	httpTransport *http.Transport
 	hubClient     *http.Client
 	hubClientOnce sync.Once
 	hostInfoSent  bool
@@ -68,9 +67,6 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 	}
 
 	fm.configureLogger()
-
-	fm.initHTTPTransport()
-
 	return fm
 }
 
