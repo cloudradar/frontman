@@ -53,7 +53,7 @@ loopDom:
 	return
 }
 
-func (fm *Frontman) newHTTPTransport(ignoreSSLErrors bool) *http.Transport {
+func (fm *Frontman) newHTTPTransport(ignoreSSLErrors *bool) *http.Transport {
 	t := &http.Transport{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
@@ -68,7 +68,9 @@ func (fm *Frontman) newHTTPTransport(ignoreSSLErrors bool) *http.Transport {
 		TLSClientConfig:       &tls.Config{},
 	}
 
-	if ignoreSSLErrors { // TODO: honor fm.Config.IgnoreSSLErrors value
+	valueProvided := ignoreSSLErrors != nil
+	if (valueProvided && *ignoreSSLErrors) ||
+		(!valueProvided && fm.Config.IgnoreSSLErrors) {
 		t.TLSClientConfig.InsecureSkipVerify = true
 		t.TLSClientConfig.RootCAs = fm.rootCAs
 	}
