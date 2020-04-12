@@ -58,8 +58,7 @@ jobs:
     <<: *docker_job
     steps:
       - <<: *workspace
-      - setup_remote_docker:
-          docker_layer_caching: true
+      - setup_remote_docker
       - run:
           name: Install Docker client
           command: |
