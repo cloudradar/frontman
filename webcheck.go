@@ -53,8 +53,8 @@ loopDom:
 	return
 }
 
-func (fm *Frontman) initHTTPTransport() {
-	fm.httpTransport = &http.Transport{
+func (fm *Frontman) newHTTPTransport(ignoreSSLErrors *bool) *http.Transport {
+	t := &http.Transport{
 		DisableKeepAlives: true,
 		Proxy:             http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -65,17 +65,17 @@ func (fm *Frontman) initHTTPTransport() {
 		MaxIdleConns:          1,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       fm.newTLSClientConfig(fm.Config.IgnoreSSLErrors),
+		TLSClientConfig:       &tls.Config{},
 	}
-}
 
-func (fm *Frontman) newTLSClientConfig(insecure bool) *tls.Config {
-	c := &tls.Config{}
-	if insecure {
-		c.InsecureSkipVerify = true
-		c.RootCAs = fm.rootCAs
+	valueProvided := ignoreSSLErrors != nil
+	if (valueProvided && *ignoreSSLErrors) ||
+		(!valueProvided && fm.Config.IgnoreSSLErrors) {
+		t.TLSClientConfig.InsecureSkipVerify = true
+		t.TLSClientConfig.RootCAs = fm.rootCAs
 	}
-	return c
+
+	return t
 }
 
 func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
@@ -106,14 +106,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
-	var httpTransport = fm.httpTransport
-	httpTransport.TLSClientConfig = fm.newTLSClientConfig(data.IgnoreSSLErrors)
-
 	// In case the webcheck disables redirect following we set maxRedirects to 0
 	maxRedirects := 0
 	if !data.DontFollowRedirects {
 		maxRedirects = fm.Config.HTTPCheckMaxRedirects
 	}
+	var httpTransport = fm.newHTTPTransport(data.IgnoreSSLErrors)
 	httpClient := fm.newClientWithOptions(httpTransport, maxRedirects)
 
 	timeout := fm.Config.HTTPCheckTimeout
