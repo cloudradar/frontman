@@ -10,6 +10,14 @@
   version = "1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:8ab3b8f523f66c25373c131e7d4b9124666146dca280088472f554745cb66b8a"
+  name = "github.com/cloudradar-monitoring/selfupdate"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "e4ef8d691a0cdd42e4a24c46dfe8f3a9ee3feb8a"
+
+[[projects]]
   digest = "1:9cf40a4f61ba6526e42b2f516d95aded11edfb83e504688f940aa73e4794cb73"
   name = "github.com/cloudradar-monitoring/toml"
   packages = ["."]
@@ -52,6 +60,14 @@
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:53a4ebb0e1eb24a4644a3eec9457ba6ead5476a9ea5af43bf2c8b8b1a8ce47f2"
+  name = "github.com/hashicorp/go-version"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ac23dc3fea5d1a983c43f6a0f6e2c13f0195d8bd"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:779aae5827e3f91c6e1e7f2103d6259ca24d940f162a91943c7a0971a60e04ee"
   name = "github.com/kardianos/service"
   packages = ["."]
@@ -83,6 +99,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "6f00d814e89c2442495334cdd91bb6ff3003eeb7"
+
+[[projects]]
+  digest = "1:7fdab37567936e6ffe935118d1644c75d32acfe4cefa3509cea7f275c39bf522"
+  name = "github.com/nightlyone/lockfile"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "d487ed8593d2cb7638cf901ff9fc48f62c9a902f"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -228,6 +252,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/cloudradar-monitoring/selfupdate",
     "github.com/cloudradar-monitoring/toml",
     "github.com/gorilla/handlers",
     "github.com/kardianos/service",

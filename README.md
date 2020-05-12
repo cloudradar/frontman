@@ -94,7 +94,7 @@ goreleaser --snapshot
 Should be done on Windows machine
 - [Download go-msi](https://github.com/cloudradar-monitoring/go-msi/releases) and put it in the `C:\Program Files\go-msi`
 - Open command prompt(cmd.exe or powershell)
-- Go to cagent directory `cd path_to_directory`
+- Go to frontman directory `cd path_to_directory`
 - Run `goreleaser --snapshot` to build binaries
 - Run `build-win.bat`
 

@@ -100,3 +100,7 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
   # Log http requests. On windows slash must be escaped like "C:\\access.log"
   http_access_log = ""
 
+# Control how frontman installs self-updates. Windows-only
+[self_update]
+  	enabled = true         # Set to false to disable self-updates
+  	check_interval = 21600 # Frontman will check for new versions every N seconds
