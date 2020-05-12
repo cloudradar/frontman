@@ -12,7 +12,7 @@ import (
 func TestWebCheck(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = 10
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 	inputConfig := &Input{
 		WebChecks: []WebCheck{{
 			UUID: "webcheck1",
@@ -42,7 +42,7 @@ func TestWebCheckHeaders(t *testing.T) {
 
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = 10
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 	inputConfig := &Input{
 		WebChecks: []WebCheck{{
 			UUID: "webcheck1",

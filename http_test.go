@@ -34,7 +34,7 @@ func TestHttpCheckHandler(t *testing.T) {
 
 	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
 	assert.Nil(t, err)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	reader := strings.NewReader(checks)
 	req, err := http.NewRequest("POST", "/check", reader)

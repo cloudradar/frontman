@@ -15,6 +15,12 @@ import (
 	"github.com/cloudradar-monitoring/frontman/pkg/stats"
 )
 
+// variables set on build. Example:
+// go build -o frontman -ldflags="-X main.Version=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
+var (
+	Version            string
+)
+
 type Frontman struct {
 	Config         *Config
 	ConfigLocation string
@@ -36,7 +42,7 @@ type Frontman struct {
 	previousSNMPPorterrorsMeasure []snmpPorterrorsMeasure
 }
 
-func New(cfg *Config, cfgPath, version string) *Frontman {
+func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 	fm := &Frontman{
 		Config:                      cfg,
 		ConfigLocation:              cfgPath,
@@ -67,7 +73,7 @@ func New(cfg *Config, cfgPath, version string) *Frontman {
 	}
 
 	fm.configureLogger()
-	return fm
+	return fm, nil
 }
 
 func (fm *Frontman) userAgent() string {

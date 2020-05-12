@@ -30,7 +30,7 @@ func TestSNMPv1(t *testing.T) {
 	// agentAddress udp:161,udp6:[::1]:161
 
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -59,7 +59,7 @@ func TestSNMPv1(t *testing.T) {
 func TestSNMPv2(t *testing.T) {
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -97,7 +97,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 	delaySeconds := 1.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -155,7 +155,7 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 	delaySeconds := 1.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -195,7 +195,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	delaySeconds := 5.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -245,7 +245,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	delaySeconds := 5.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -295,7 +295,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 	delaySeconds := 1.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -350,7 +350,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 func TestSNMPv2InvalidCommunity(t *testing.T) {
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -381,7 +381,7 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 	// rouser     noAuthNoPrivUser noauth
 
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -412,7 +412,7 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -443,7 +443,7 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 	// rouser     authOnlyUser
 
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -474,7 +474,7 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 	skipSNMP(t)
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -508,7 +508,7 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 	// rwuser   authPrivUser   priv
 
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
@@ -545,7 +545,7 @@ func TestSNMPv3PresetBandwidthWrongCredentials(t *testing.T) {
 	delaySeconds := 1.
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	cfg.Sleep = delaySeconds
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	inputConfig := &Input{
 		SNMPChecks: []SNMPCheck{{
