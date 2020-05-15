@@ -137,15 +137,6 @@ workflows:
               only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
             branches:
               ignore: /.*/
-      - lint:
-          <<: *common_workflow
-          requires:
-            - get-source
-          filters:
-            tags:
-              only: /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
-            branches:
-              ignore: /.*/
       - test:
           <<: *common_workflow
           requires:
