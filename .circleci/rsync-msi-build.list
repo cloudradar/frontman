@@ -1,0 +1,9 @@
+pkg-scripts/msi-templates/
+resources/
+dist/frontman_windows_amd64/frontman.exe
+example.config.toml
+example.json
+README.md
+LICENSE
+wix.json
+build-win.bat

@@ -87,7 +87,7 @@ go build -o frontman -ldflags="-X main.version=$(git --git-dir=src/github.com/cl
 ## Build binaries and deb/rpm packages
 – Install [goreleaser](https://goreleaser.com/introduction/)
 ```bash
-goreleaser --snapshot
+make goreleaser-snapshot
 ```
 
 ## Build MSI package
@@ -95,8 +95,13 @@ Should be done on Windows machine
 - [Download go-msi](https://github.com/cloudradar-monitoring/go-msi/releases) and put it in the `C:\Program Files\go-msi`
 - Open command prompt(cmd.exe or powershell)
 - Go to frontman directory `cd path_to_directory`
-- Run `goreleaser --snapshot` to build binaries
+- Run `make goreleaser-snapshot` to build binaries
 - Run `build-win.bat`
+
+## Versioning model
+Frontman uses `<major>.<minor>.<buildnumber>` model for compatibility with a maximum number of package managers.
+
+Starting from version 1.2.0 packages with even `<minor>` AND `<buildnumber>` numbers are considered stable.
 
 ## Running as a docker container
 Check [dockerhub](https://cloud.docker.com/u/cloudradario/repository/docker/cloudradario/frontman) for available images.
