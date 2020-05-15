@@ -53,7 +53,7 @@ github_upload --name "frontman_${CIRCLE_TAG}_synology_armv7.spk" --file "${PROJE
 github_upload --name "frontman_${CIRCLE_TAG}_synology_armv8.spk" --file "${PROJECT_DIR}/synology-spk/frontman-armv8.spk"
 
 # fetch release changelog so we can preserve it when releasing
-CHANGELOGRAW=$(curl -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/cloudradar-monitoring/frontman/releases | jq -r ".[0].body")
+CHANGELOGRAW=$(curl -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/cloudradar-monitoring/frontman/releases | jq ".[0].body")
 
 # update release status
 PRERELEASE="--pre-release"
