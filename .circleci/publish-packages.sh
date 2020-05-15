@@ -52,15 +52,12 @@ github_upload --name "frontman_${CIRCLE_TAG}_synology_amd64.spk" --file "${PROJE
 github_upload --name "frontman_${CIRCLE_TAG}_synology_armv7.spk" --file "${PROJECT_DIR}/synology-spk/frontman-armv7.spk"
 github_upload --name "frontman_${CIRCLE_TAG}_synology_armv8.spk" --file "${PROJECT_DIR}/synology-spk/frontman-armv8.spk"
 
-# fetch release changelog so we can preserve it when releasing
-CHANGELOGRAW=$(curl -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/cloudradar-monitoring/frontman/releases | jq ".[0].body")
-
-# mark release as published
+# update release status
 PRERELEASE="--pre-release"
 if [ ${RELEASE_MODE} = "stable" ]; then
   PRERELEASE=
 fi
-echo -e ${CHANGELOGRAW} | github-release edit --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} ${PRERELEASE} --description -
+github-release edit --user cloudradar-monitoring --repo frontman --tag ${CIRCLE_TAG} ${PRERELEASE}
 
 # update MSI repo
 ssh_cr /home/cr/work/msi/frontman_publish.sh ${WORK_DIR}/msi ${CIRCLE_TAG} ${RELEASE_MODE}
