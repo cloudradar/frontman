@@ -47,3 +47,7 @@
 [[constraint]]
   name = "gopkg.in/ldap.v3"
   version = "3.0.3"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/cloudradar-monitoring/selfupdate"

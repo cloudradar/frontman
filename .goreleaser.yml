@@ -1,3 +1,6 @@
+env:
+  - CGO_ENABLED=0
+  - PROJECT=github.com/cloudradar-monitoring/frontman
 builds:
 - main: ./cmd/frontman
   binary: frontman
@@ -20,6 +23,8 @@ builds:
   - goos: darwin
     goarch: 386
   - goos: windows
+    goarch: 386
+  - goos: windows
     goarch: arm
   - goos: darwin
     goarch: arm
@@ -31,8 +36,8 @@ builds:
     goarch: mipsle
   - goos: windows
     goarch: mipsle
-  env:
-  - CGO_ENABLED=0
+  ldflags:
+    - "-s -w  -X {{.Env.PROJECT}}.Version={{.Version}} -X \"{{.Env.PROJECT}}.SelfUpdatesFeedURL={{.Env.SELF_UPDATES_FEED_URL}}\""
 archive:
   files:
   - README.md

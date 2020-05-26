@@ -14,7 +14,7 @@ func TestHostInfoResults(t *testing.T) {
 	// system_fields is deprecated, but we test to make sure system_fields is treated as host_info
 	cfg.HostInfo = []string{"uname", "os_kernel", "os_family", "os_arch", "cpu_model", "fqdn"}
 	cfg.SystemFields = []string{"hostname", "memory_total_B"}
-	fm := New(cfg, DefaultCfgPath, "1.2.3")
+	fm := helperCreateFrontman(t, cfg)
 
 	v, err := fm.HostInfoResults()
 	assert.Nil(t, err)

@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudradar-monitoring/selfupdate"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -202,6 +203,15 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	fm.Stats.StartedAt = time.Now()
 	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
 	fm.StartWritingStats()
+
+	if fm.Config.Updates.Enabled {
+		fm.selfUpdater = selfupdate.StartChecking()
+	}
+	defer func() {
+		if fm.selfUpdater != nil {
+			fm.selfUpdater.Shutdown()
+		}
+	}()
 
 	for {
 		if err := fm.HealthCheck(); err != nil {

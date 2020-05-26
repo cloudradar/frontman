@@ -15,19 +15,12 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cloudradar-monitoring/selfupdate"
 	"github.com/kardianos/service"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cloudradar-monitoring/frontman"
-)
-
-// set it in case user provided only input(-i) file
-const defaultOutputFile = "./results.out"
-
-var (
-	// set on build:
-	// go build -o frontman -ldflags="-X main.version=$(git --git-dir=src/github.com/cloudradar-monitoring/frontman/.git describe --always --long --dirty --tag)" github.com/cloudradar-monitoring/frontman/cmd/frontman
-	version string
 )
 
 var svcConfig = &service.Config{
@@ -42,6 +35,8 @@ func main() {
 	var serviceInstallUserPtr *string
 	var serviceInstallPtr *bool
 	var settingsPtr *bool
+	var searchUpdatesPtr *bool
+	var updatePtr *bool
 
 	// Setup flag pointers
 	inputFilePtr := flag.String("i", "", "JSON file to read the list (required)")
@@ -66,6 +61,8 @@ func main() {
 	if runtime.GOOS == "windows" {
 		serviceInstallPtr = flag.Bool("s", false, fmt.Sprintf("install and start the system service(%s)", systemManager.String()))
 		settingsPtr = flag.Bool("x", false, "open the settings UI")
+		updatePtr = flag.Bool("update", false, "look for updates and apply them. Requires confirmation. Use -y to suppress the confirmation.")
+		searchUpdatesPtr = flag.Bool("search-updates", false, "look for updates and print available")
 	} else {
 		serviceInstallUserPtr = flag.String("s", "", fmt.Sprintf("username to install and start the system service(%s)", systemManager.String()))
 	}
@@ -103,10 +100,15 @@ func main() {
 		log.Fatalf("Failed to handle frontman configuration: %s", err)
 	}
 
-	fm := frontman.New(cfg, *cfgPathPtr, version)
+	fm, err := frontman.New(cfg, *cfgPathPtr, frontman.Version)
+	if err != nil {
+		log.Fatalf("Failed to initialize frontman: %s", err)
+	}
 
 	handleFlagPrintStats(*statsPtr, fm)
 	handleFlagPrintConfig(*printConfigPtr, fm)
+	handleFlagSearchUpdates(searchUpdatesPtr)
+	handleFlagUpdate(updatePtr, assumeYesPtr)
 	handleFlagTest(*testConfigPtr, fm)
 	handleFlagSettings(settingsPtr, fm)
 
@@ -122,7 +124,7 @@ func main() {
 
 	handleToastFeedback(fm, *cfgPathPtr)
 
-	log.Info("frontman " + version + " started")
+	log.Info("frontman " + frontman.Version + " started")
 
 	if !*oneRunOnlyModePtr && !*testConfigPtr && *inputFilePtr == "" && *outputFilePtr == "" && cfg.HTTPListener.HTTPListen != "" {
 		go func() {
@@ -202,7 +204,7 @@ func printOSSpecificWarnings() {
 
 func handleFlagVersion(versionFlag bool) {
 	if versionFlag {
-		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", version)
+		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", frontman.Version)
 		os.Exit(0)
 	}
 }
@@ -217,6 +219,66 @@ func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
 		fmt.Println(fm.Config.DumpToml())
 		os.Exit(0)
 	}
+}
+
+
+func handleFlagUpdate(update *bool, assumeYes *bool) {
+	if update != nil && *update {
+		updates, err := printAvailableUpdates()
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		if len(updates) == 0 {
+			os.Exit(0)
+		}
+
+		proceedInstallation := (assumeYes != nil && *assumeYes) || askForConfirmation("Proceed installation?")
+		if !proceedInstallation {
+			os.Exit(0)
+		}
+
+		fmt.Println("Downloading...")
+
+		err = selfupdate.DownloadAndInstallUpdate(updates[len(updates)-1])
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("Installer executed. Exiting.")
+		os.Exit(0)
+	}
+}
+
+func handleFlagSearchUpdates(searchUpdates *bool) {
+	if searchUpdates != nil && *searchUpdates {
+		_, err := printAvailableUpdates()
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+}
+
+func printAvailableUpdates() ([]*selfupdate.UpdateInfo, error) {
+	fmt.Println("Searching updates...")
+
+	updates, err := selfupdate.ListAvailableUpdates()
+	if err != nil {
+		return nil, errors.Wrapf(err, "while listing updates")
+	}
+
+	if len(updates) == 0 {
+		fmt.Println("No updates available")
+	} else {
+		fmt.Println("Available updates:")
+		for _, u := range updates {
+			fmt.Printf("\t%s\n", u.Version.Original())
+		}
+	}
+	return updates, nil
 }
 
 func handleFlagPrintStats(statsFlag bool, fm *frontman.Frontman) {
