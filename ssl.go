@@ -72,11 +72,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 		}
 
 		if i == 0 {
-			for j, cert := range certs {
-				if j != 0 {
-					opts.Intermediates.AddCert(cert)
-				}
-			}
+			addCertificatesToPool(opts.Intermediates, certs[1:])
 		}
 
 		var chains [][]*x509.Certificate
@@ -100,6 +96,12 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 
 	m[prefix+"success"] = 1
 	return
+}
+
+func addCertificatesToPool(pool *x509.CertPool, certs []*x509.Certificate) {
+	for _, cert := range certs {
+		pool.AddCert(cert)
+	}
 }
 
 func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509.Certificate) {
