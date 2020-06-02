@@ -29,6 +29,9 @@ build:
 test:
 	$(GOTEST) -v ./...
 
+test-short:
+	$(GOTEST) -short -v ./...
+
 clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)

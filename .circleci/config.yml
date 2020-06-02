@@ -34,7 +34,7 @@ jobs:
     <<: *docker_job
     steps:
       - <<: *workspace
-      - run: make test
+      - run: make test-short
 
   test-goreleaser:
     <<: *docker_job

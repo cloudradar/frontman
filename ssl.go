@@ -61,39 +61,75 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 	defer connection.Close()
 
 	m[prefix+"expiryDaysRemaining"] = math.MaxFloat64
-	for _, cert := range connection.ConnectionState().PeerCertificates {
-		remainingValidity := time.Until(cert.NotAfter).Hours() / 24
+	certs := connection.ConnectionState().PeerCertificates
 
-		if remainingValidity < m[prefix+"expiryDaysRemaining"].(float64) {
-			m[prefix+"expiryDaysRemaining"] = remainingValidity
+	for i, cert := range certs {
+		opts := x509.VerifyOptions{
+			Intermediates: x509.NewCertPool(),
 		}
-
-		if remainingValidity <= 0 {
-			err = fmt.Errorf("certificate is expired: %s", certName(cert))
-			return
-		} else if remainingValidity <= float64(fm.Config.SSLCertExpiryThreshold) {
-			err = fmt.Errorf("certificate will expire soon: %s", certName(cert))
-			return
-		}
-
-		if cert.NotBefore.After(time.Now()) {
-			err = fmt.Errorf("certificate is not valid yet: %s", certName(cert))
-			return
-		}
-
 		if !cert.IsCA && hostname != "" {
-			err = cert.VerifyHostname(hostname)
-			if err != nil {
-				logrus.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
-				err = errors.New(strings.TrimPrefix(err.Error(), "x509: certificate"))
+			opts.DNSName = hostname
+		}
+
+		if i == 0 {
+			addCertificatesToPool(opts.Intermediates, certs[1:])
+		}
+
+		var chains [][]*x509.Certificate
+		chains, err = cert.Verify(opts)
+		if err != nil {
+			logrus.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
+			err = errors.New(strings.TrimPrefix(err.Error(), "x509: "))
+			return
+		}
+
+		if i == 0 {
+			remainingValidity, firstCertToExpire := findCertRemainingValidity(chains)
+			m[prefix+"expiryDaysRemaining"] = remainingValidity
+
+			if remainingValidity <= float64(fm.Config.SSLCertExpiryThreshold) {
+				err = fmt.Errorf("certificate will expire soon: %s", certName(firstCertToExpire))
+				return
 			}
 		}
-
 	}
 
-	if err == nil {
-		m[prefix+"success"] = 1
-	}
-
+	m[prefix+"success"] = 1
 	return
+}
+
+func addCertificatesToPool(pool *x509.CertPool, certs []*x509.Certificate) {
+	for _, cert := range certs {
+		pool.AddCert(cert)
+	}
+}
+
+func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509.Certificate) {
+	var remainingValidity float64
+	var firstToExpire *x509.Certificate
+
+	// find chain with max remaining validity
+	for _, chain := range certChains {
+		chainRemainingValidity, c := findChainRemainingValidity(chain)
+		if chainRemainingValidity > remainingValidity {
+			remainingValidity = chainRemainingValidity
+			firstToExpire = c
+		}
+	}
+	return remainingValidity, firstToExpire
+}
+
+func findChainRemainingValidity(chain []*x509.Certificate) (float64, *x509.Certificate) {
+	var min = math.MaxFloat64
+	var firstToExpire *x509.Certificate
+
+	// find cert that will expire first
+	for _, cert := range chain {
+		remainingValidity := time.Until(cert.NotAfter).Hours() / 24
+		if remainingValidity < min {
+			min = remainingValidity
+			firstToExpire = cert
+		}
+	}
+	return min, firstToExpire
 }
