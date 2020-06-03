@@ -356,5 +356,6 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	close(resultsChan)
 
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
+	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }
