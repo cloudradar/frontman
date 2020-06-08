@@ -60,7 +60,7 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 
 	defer connection.Close()
 
-	m[prefix+"expiryDaysRemaining"] = math.MaxFloat64
+	m[prefix+"expiryDaysRemaining"] = nil
 	certs := connection.ConnectionState().PeerCertificates
 
 	for i, cert := range certs {
@@ -73,6 +73,10 @@ func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m 
 
 		if i == 0 {
 			addCertificatesToPool(opts.Intermediates, certs[1:])
+
+			// try to predict expiry date before we extract all the chains
+			// the field will be updated with more precise value after checking the validity
+			m[prefix+"expiryDaysRemaining"] = time.Until(cert.NotAfter).Hours() / 24
 		}
 
 		var chains [][]*x509.Certificate
@@ -110,6 +114,7 @@ func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509
 
 	// find chain with max remaining validity
 	for _, chain := range certChains {
+		fmt.Printf("checking chain of len %d", len(chain))
 		chainRemainingValidity, c := findChainRemainingValidity(chain)
 		if chainRemainingValidity > remainingValidity {
 			remainingValidity = chainRemainingValidity
