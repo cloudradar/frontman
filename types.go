@@ -11,6 +11,7 @@ const (
 	ProtocolTCP  = "tcp"
 	ProtocolUDP  = "udp"
 	ProtocolSSL  = "ssl"
+	ProtocolDNS  = "dns"
 
 	ServiceICMPPing = "ping"
 )
