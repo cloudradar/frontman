@@ -1,0 +1,20 @@
+# SELinux policy for frontman
+
+module frontman 1.0;
+
+require {
+	type rpm_script_t;
+	type node_t;
+	type unconfined_service_t;
+	type unconfined_t;
+	class icmp_socket node_bind;
+}
+
+#============= rpm_script_t ==============
+allow rpm_script_t node_t:icmp_socket node_bind;
+
+#============= unconfined_service_t ==============
+allow unconfined_service_t node_t:icmp_socket node_bind;
+
+#============= unconfined_t ==============
+allow unconfined_t node_t:icmp_socket node_bind;
