@@ -95,6 +95,7 @@ nfpm:
     "example.json": "/usr/share/doc/frontman/example.json"
     "example.config.toml": "/etc/frontman/example.config.toml"
     "cacert.pem": "/etc/frontman/cacert.pem"
+    "frontman.tt": "/etc/frontman/frontman.tt"
 
   scripts:
     preinstall: "pkg-scripts/preinstall.sh"
