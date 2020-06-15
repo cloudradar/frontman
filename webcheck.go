@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptrace"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -126,7 +127,12 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	ctx, cancel := context.WithTimeout(context.Background(), secToDuration(timeout))
 	defer cancel()
 
-	req, err := http.NewRequest(data.Method, data.URL, nil)
+	url, err := normalizeURLPort(data.URL)
+	if err != nil {
+		return m, err
+	}
+
+	req, err := http.NewRequest(data.Method, url, nil)
 	if err != nil {
 		return m, err
 	}
@@ -316,4 +322,22 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, c
 		}(check)
 	}
 	return succeed
+}
+
+// removes ports from URL if it is the default port for given scheme
+func normalizeURLPort(u string) (string, error) {
+	url, err := url.Parse(u)
+	if err != nil {
+		return u, err
+	}
+
+	portSeparator := strings.Index(url.Host, ":")
+	if portSeparator != -1 {
+		port := url.Host[portSeparator+1:]
+		if (url.Scheme == "http" && port == "80") || (url.Scheme == "https" && port == "443") {
+			url.Host = url.Host[0:portSeparator]
+		}
+	}
+
+	return url.String(), nil
 }

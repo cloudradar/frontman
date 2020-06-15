@@ -64,3 +64,20 @@ func TestWebCheckHeaders(t *testing.T) {
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["http.get.success"])
 }
+
+func TestNormalizeURLPort(t *testing.T) {
+	var urls = []struct {
+		input    string
+		expected string
+	}{
+		{"http://www.google.com:80/en/", "http://www.google.com/en/"},
+		{"https://www.google.com:443/en/", "https://www.google.com/en/"},
+		{"https://www.google.com:5555/en/", "https://www.google.com:5555/en/"},
+	}
+
+	for _, u := range urls {
+		url, err := normalizeURLPort(u.input)
+		assert.Equal(t, u.expected, url)
+		assert.Equal(t, nil, err)
+	}
+}
