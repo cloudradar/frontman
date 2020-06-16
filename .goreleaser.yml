@@ -38,20 +38,21 @@ builds:
     goarch: mipsle
   ldflags:
     - "-s -w  -X {{.Env.PROJECT}}.Version={{.Version}} -X \"{{.Env.PROJECT}}.SelfUpdatesFeedURL={{.Env.SELF_UPDATES_FEED_URL}}\""
-archive:
-  files:
-  - README.md
-  - example.json
-  - example.config.toml
-  replacements:
-    darwin: Darwin
-    linux: Linux
-    windows: Windows
-    386: i386
-    amd64: x86_64
-  format_overrides:
-    - goos: windows
-      format: zip
+archives:
+  -
+    files:
+    - README.md
+    - example.json
+    - example.config.toml
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -62,53 +63,54 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
-nfpm:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+nfpms:
+  -
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
 
-  vendor: cloudradar GmbH
-  maintainer: CloudRadar GmbH <frontman@cloudradar.io>
-  homepage: https://cloudradar.io
-  description: Monitoring proxy for agentless monitoring of subnets
-  license: MIT
+    vendor: cloudradar GmbH
+    maintainer: CloudRadar GmbH <frontman@cloudradar.io>
+    homepage: https://cloudradar.io
+    description: Monitoring proxy for agentless monitoring of subnets
+    license: MIT
 
-  # Formats to be generated.
-  formats:
-  - deb
-  - rpm
+    # Formats to be generated.
+    formats:
+    - deb
+    - rpm
 
-  recommends:
-  - ca-certificates
-  - procps
+    recommends:
+    - ca-certificates
+    - procps
 
-  # Override default /usr/local/bin destination for binaries
-  bindir: /usr/bin
+    # Override default /usr/local/bin destination for binaries
+    bindir: /usr/bin
 
-  # Empty folders that should be created and managed by the packager
-  # implementation.
-  empty_folders:
-  - /var/log/frontman
-  - /etc/frontman
-  - /usr/share/frontman
+    # Empty folders that should be created and managed by the packager
+    # implementation.
+    empty_folders:
+    - /var/log/frontman
+    - /etc/frontman
+    - /usr/share/frontman
 
-  # Put example.json
-  files:
-    "example.json": "/usr/share/doc/frontman/example.json"
-    "example.config.toml": "/etc/frontman/example.config.toml"
-    "cacert.pem": "/etc/frontman/cacert.pem"
+    # Put example.json
+    files:
+      "example.json": "/usr/share/doc/frontman/example.json"
+      "example.config.toml": "/etc/frontman/example.config.toml"
+      "cacert.pem": "/etc/frontman/cacert.pem"
 
-  scripts:
-    preinstall: "pkg-scripts/preinstall.sh"
-    postinstall: "pkg-scripts/postinstall.sh"
-    preremove: "pkg-scripts/preremove.sh"
+    scripts:
+      preinstall: "pkg-scripts/preinstall.sh"
+      postinstall: "pkg-scripts/postinstall.sh"
+      preremove: "pkg-scripts/preremove.sh"
 
-  overrides:
-    rpm:
-      recommends:
-      - ca-certificates
-      - procps-ng
-      scripts:
-        postinstall: "pkg-scripts/postinstall-rpm.sh"
-        preremove: "pkg-scripts/preremove-rpm.sh"
+    overrides:
+      rpm:
+        recommends:
+        - ca-certificates
+        - procps-ng
+        scripts:
+          postinstall: "pkg-scripts/postinstall-rpm.sh"
+          preremove: "pkg-scripts/preremove-rpm.sh"
 
 release:
   github:
