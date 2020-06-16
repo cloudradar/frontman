@@ -165,7 +165,7 @@ workflows:
             - test
           filters:
             tags:
-              only: /^(0|[1-9]\d*)\.([1-9]\d*[02468]|[02468])\.([1-9]\d*[02468]|[02468])$/
+              only: /^(0|[1-9]\d*)\.([1-9]\d*[02468]|[02468])\.(0|[1-9]\d*)$/
             branches:
               only:
                 - master
@@ -188,7 +188,7 @@ workflows:
             - build-packages-stable
           filters:
             tags:
-              only: /^(0|[1-9]\d*)\.([1-9]\d*[02468]|[02468])\.([1-9]\d*[02468]|[02468])$/
+              only: /^(0|[1-9]\d*)\.([1-9]\d*[02468]|[02468])\.(0|[1-9]\d*)$/
             branches:
               only:
                 - master
@@ -198,7 +198,7 @@ workflows:
             - publish-packages-stable
           filters:
             tags:
-              only: /^(0|[1-9]\d*)\.([1-9]\d*[02468]|[02468])\.([1-9]\d*[02468]|[02468])$/
+              only: /^(0|[1-9]\d*)\.([1-9]\d*[02468]|[02468])\.(0|[1-9]\d*)$/
             branches:
               only:
                 - master
