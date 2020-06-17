@@ -11,11 +11,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8ab3b8f523f66c25373c131e7d4b9124666146dca280088472f554745cb66b8a"
+  digest = "1:7182778e2c022c367d7e4a0be2244894a361f27f9e51f9bacace29ab1a061eef"
   name = "github.com/cloudradar-monitoring/selfupdate"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "e4ef8d691a0cdd42e4a24c46dfe8f3a9ee3feb8a"
+  revision = "3bc6d247a637bb71cafca0a5417167819af907f3"
 
 [[projects]]
   digest = "1:9cf40a4f61ba6526e42b2f516d95aded11edfb83e504688f940aa73e4794cb73"
