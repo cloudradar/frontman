@@ -60,6 +60,11 @@ jobs:
           shell: /bin/bash
           command: |
             cd synology-spk && ./create_spk.sh ${CIRCLE_TAG}
+      - run:
+          name: Scan build artifacts with VirusTotal
+          command: |
+            ./scan-virustotal.sh ${VIRUSTOTAL_TOKEN} dist/frontman_${CIRCLE_TAG}_Windows_x86_64.zip &&
+            ./scan-virustotal.sh ${VIRUSTOTAL_TOKEN} dist/frontman_windows_amd64/frontman.exe
       - persist_to_workspace:
           root: /go/src/github.com/cloudradar-monitoring
           paths:
