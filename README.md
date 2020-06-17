@@ -101,7 +101,7 @@ Should be done on Windows machine
 ## Versioning model
 Frontman uses `<major>.<minor>.<buildnumber>` model for compatibility with a maximum number of package managers.
 
-Starting from version 1.2.0 packages with even `<minor>` AND `<buildnumber>` numbers are considered stable.
+Starting from version 1.2.0 packages with even `<minor>` number are considered stable.
 
 ## Running as a docker container
 Check [dockerhub](https://cloud.docker.com/u/cloudradario/repository/docker/cloudradario/frontman) for available images.
