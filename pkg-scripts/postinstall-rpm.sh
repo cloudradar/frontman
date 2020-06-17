@@ -6,6 +6,15 @@ CONFIG_PATH=/etc/frontman/frontman.conf
 # Upgrade: 2 or higher (depending on the number of versions installed)
 versionsCount=$1
 
+# install selinux policy if SELinux is installed
+sestatus
+if [ $? -eq 0 ]; then
+    echo "Installing SELinux policy for frontman"
+    checkmodule -M -m -o frontman.mod /etc/frontman/frontman.tt
+    semodule_package -o frontman.pp -m frontman.mod
+    semodule -i frontman.pp
+fi
+
 if [ ${versionsCount} = 1 ]; then # fresh install
     /usr/bin/frontman -y -s frontman -c ${CONFIG_PATH}
 else # package update
