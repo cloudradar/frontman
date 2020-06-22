@@ -45,6 +45,9 @@ ssh_cr /home/cr/work/msi/frontman_build_and_sign_msi.sh ${WORK_DIR}/msi ${CIRCLE
 # copy signed MSI back
 scp -P 24480 -oStrictHostKeyChecking=no ci@repo.cloudradar.io:${WORK_DIR}/msi/frontman_64.msi ${PROJECT_DIR}/dist/frontman_64.msi
 
+# scan signed MSI
+virustotal-scan --verbose --ignore Cylance,Jiangmin,Ikarus,MaxSecure --apikey ${VIRUSTOTAL_TOKEN} --file ${PROJECT_DIR}/dist/frontman_64.msi
+
 # publish built files to Github
 github_upload --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "${PROJECT_DIR}/dist/frontman_64.msi"
 
