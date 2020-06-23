@@ -6,14 +6,15 @@ import (
 	"time"
 )
 
-func (fm *Frontman) runDNSCheck(addr *net.TCPAddr, hostname string) (MeasurementsMap, error) {
+// DNS using UDP
+func (fm *Frontman) runDNSUDPCheck(addr *net.TCPAddr, hostname string) (MeasurementsMap, error) {
 
 	// Check if we have to autodetect port by service name
 	if addr.Port <= 0 {
 		addr.Port = 53
 	}
 
-	prefix := fmt.Sprintf("net.dns.%d.", addr.Port)
+	prefix := fmt.Sprintf("net.dns.udp.%d.", addr.Port)
 
 	m := MeasurementsMap{
 		prefix + "success": 0,
@@ -39,7 +40,7 @@ func (fm *Frontman) runDNSCheck(addr *net.TCPAddr, hostname string) (Measurement
 		return m, fmt.Errorf("can't set UDP conn timeout: %s", err.Error())
 	}
 	// Execute the check
-	err = executeUDPServiceCheck(conn.(*net.UDPConn), checkTimeout, "dns", hostname)
+	err = executeUDPServiceCheck(conn.(*net.UDPConn), checkTimeout, "udp", hostname)
 	if err != nil {
 		return m, fmt.Errorf("failed to verify dns service on %d port: %s", addr.Port, err.Error())
 	}

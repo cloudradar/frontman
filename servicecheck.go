@@ -52,9 +52,9 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
-		case ProtocolDNS:
+		case ProtocolDNSUDP:
 			port, _ := check.Check.Port.Int64()
-			results, err = fm.runDNSCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect)
+			results, err = fm.runDNSUDPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}

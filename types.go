@@ -7,11 +7,12 @@ import (
 type ServiceName string
 
 const (
-	ProtocolICMP = "icmp"
-	ProtocolTCP  = "tcp"
-	ProtocolUDP  = "udp"
-	ProtocolSSL  = "ssl"
-	ProtocolDNS  = "dns"
+	ProtocolICMP   = "icmp"
+	ProtocolTCP    = "tcp"
+	ProtocolUDP    = "udp"
+	ProtocolSSL    = "ssl"
+	ProtocolDNSUDP = "dns.udp"
+	ProtocolDNSTCP = "dns.tcp"
 
 	ServiceICMPPing = "ping"
 )
