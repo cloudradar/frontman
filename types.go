@@ -1,9 +1,5 @@
 package frontman
 
-import (
-	"encoding/json"
-)
-
 type ServiceName string
 
 const (
@@ -29,10 +25,10 @@ type ServiceCheck struct {
 }
 
 type ServiceCheckData struct {
-	Connect  string      `json:"connect,omitempty"`
-	Service  string      `json:"service,omitempty"`
-	Protocol string      `json:"protocol,omitempty"`
-	Port     json.Number `json:"port,omitempty"`
+	Connect  string `json:"connect,omitempty"`
+	Service  string `json:"service,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
+	Port     int    `json:"port,omitempty"`
 }
 
 type WebCheck struct {
