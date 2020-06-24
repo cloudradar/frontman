@@ -32,35 +32,27 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolTCP:
-			port, _ := check.Check.Port.Int64()
-
-			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: check.Check.Port}, check.Check.Connect, check.Check.Service)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolUDP:
-			port, _ := check.Check.Port.Int64()
-
-			results, err = fm.runUDPCheck(&net.UDPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			results, err = fm.runUDPCheck(&net.UDPAddr{IP: ipaddr.IP, Port: check.Check.Port}, check.Check.Connect, check.Check.Service)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolSSL:
-			port, _ := check.Check.Port.Int64()
-
-			results, err = fm.runSSLCheck(check.Check.Connect, int(port), check.Check.Service)
+			results, err = fm.runSSLCheck(check.Check.Connect, check.Check.Port, check.Check.Service)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolDNSUDP:
-			port, _ := check.Check.Port.Int64()
-			results, err = fm.runDNSUDPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect)
+			results, err = fm.runDNSUDPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: check.Check.Port}, check.Check.Connect)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolDNSTCP:
-			port, _ := check.Check.Port.Int64()
-			results, err = fm.runDNSTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect)
+			results, err = fm.runDNSTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: check.Check.Port}, check.Check.Connect)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
