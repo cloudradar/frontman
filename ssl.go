@@ -20,38 +20,40 @@ func certName(cert *x509.Certificate) string {
 	return fmt.Sprintf("'%s' issued by %s", cert.Subject.CommonName, cert.Issuer.CommonName)
 }
 
-func (fm *Frontman) runSSLCheck(addr *net.TCPAddr, hostname, service string) (m MeasurementsMap, err error) {
+func (fm *Frontman) runSSLCheck(hostname string, port int, service string) (m MeasurementsMap, err error) {
 	service = strings.ToLower(service)
 
 	if net.ParseIP(hostname) != nil {
 		hostname = ""
 	}
 
-	if addr.Port == 0 {
+	if port == 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), timeoutPortLookup)
 		defer cancel()
 
-		if port, exists := defaultPortByService[service]; exists {
-			addr.Port = port
-		} else if port, lerr := net.DefaultResolver.LookupPort(ctx, "tcp", service); port > 0 {
-			addr.Port = port
+		if p, exists := defaultPortByService[service]; exists {
+			port = p
+		} else if p, lerr := net.DefaultResolver.LookupPort(ctx, "tcp", service); p > 0 {
+			port = p
 		} else if lerr != nil {
 			err = fmt.Errorf("failed to auto-determine port for '%s': %s", service, lerr.Error())
 			return
 		}
 	}
 
-	prefix := fmt.Sprintf("net.tcp.ssl.%d.", addr.Port)
+	prefix := fmt.Sprintf("net.tcp.ssl.%d.", port)
 
 	m = MeasurementsMap{
 		prefix + "success": 0,
 	}
 
+	addr := fmt.Sprintf("%s:%d", hostname, port)
+
 	dialer := net.Dialer{Timeout: secToDuration(fm.Config.NetTCPTimeout)}
-	connection, err := tls.DialWithDialer(&dialer, "tcp", addr.String(), &tls.Config{ServerName: hostname, InsecureSkipVerify: true})
+	connection, err := tls.DialWithDialer(&dialer, "tcp", addr, &tls.Config{ServerName: hostname, InsecureSkipVerify: true})
 
 	if err != nil {
-		logrus.Debugf("TLS dial err: %s", err.Error())
+		logrus.Debugf("TLS dial to %s err: %s", addr, err.Error())
 		if strings.HasPrefix(err.Error(), "tls:") {
 			err = fmt.Errorf("service doesn't support SSL")
 		}
@@ -114,7 +116,7 @@ func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509
 
 	// find chain with max remaining validity
 	for _, chain := range certChains {
-		fmt.Printf("checking chain of len %d", len(chain))
+		// fmt.Printf("checking chain of len %d", len(chain))
 		chainRemainingValidity, c := findChainRemainingValidity(chain)
 		if chainRemainingValidity > remainingValidity {
 			remainingValidity = chainRemainingValidity

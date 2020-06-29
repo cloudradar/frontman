@@ -48,7 +48,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 		case ProtocolSSL:
 			port, _ := check.Check.Port.Int64()
 
-			results, err = fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			results, err = fm.runSSLCheck(check.Check.Connect, int(port), check.Check.Service)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
