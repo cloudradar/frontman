@@ -3,7 +3,6 @@
 package frontman
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -85,18 +84,18 @@ func TestFrontman_runSSLCheck(t *testing.T) {
 	fm := helperCreateFrontman(t, cfg)
 
 	for _, badSSLHost := range badSSL {
-		ipaddr, resolveErr := resolveIPAddrWithTimeout(badSSLHost, timeoutDNSResolve * 10)
+		_, resolveErr := resolveIPAddrWithTimeout(badSSLHost, timeoutDNSResolve*10)
 		assert.NoError(t, resolveErr)
 
-		_, err := fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: 443}, badSSLHost, "https")
+		_, err := fm.runSSLCheck(badSSLHost, 443, "https")
 		assert.Error(t, err, badSSLHost)
 	}
 
 	for _, goodSSLHost := range goodSSL {
-		ipaddr, resolveErr := resolveIPAddrWithTimeout(goodSSLHost, timeoutDNSResolve * 10)
+		_, resolveErr := resolveIPAddrWithTimeout(goodSSLHost, timeoutDNSResolve*10)
 		assert.NoError(t, resolveErr)
 
-		_, err := fm.runSSLCheck(&net.TCPAddr{IP: ipaddr.IP, Port: 443}, goodSSLHost, "https")
+		_, err := fm.runSSLCheck(goodSSLHost, 443, "https")
 		assert.NoError(t, err, goodSSLHost)
 	}
 }
