@@ -116,7 +116,6 @@ func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509
 
 	// find chain with max remaining validity
 	for _, chain := range certChains {
-		// fmt.Printf("checking chain of len %d", len(chain))
 		chainRemainingValidity, c := findChainRemainingValidity(chain)
 		if chainRemainingValidity > remainingValidity {
 			remainingValidity = chainRemainingValidity
