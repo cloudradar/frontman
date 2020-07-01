@@ -46,16 +46,6 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
-		case ProtocolDNSUDP:
-			results, err = fm.runDNSUDPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: check.Check.Port}, check.Check.Connect)
-			if err != nil {
-				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-			}
-		case ProtocolDNSTCP:
-			results, err = fm.runDNSTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: check.Check.Port}, check.Check.Connect)
-			if err != nil {
-				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
-			}
 		case "":
 			logrus.Info("serviceCheck: missing check.protocol")
 			err = errors.New("Missing check.protocol")

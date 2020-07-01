@@ -3,12 +3,10 @@ package frontman
 type ServiceName string
 
 const (
-	ProtocolICMP   = "icmp"
-	ProtocolTCP    = "tcp"
-	ProtocolUDP    = "udp"
-	ProtocolSSL    = "ssl"
-	ProtocolDNSUDP = "dns.udp"
-	ProtocolDNSTCP = "dns.tcp"
+	ProtocolICMP = "icmp"
+	ProtocolTCP  = "tcp"
+	ProtocolUDP  = "udp"
+	ProtocolSSL  = "ssl"
 
 	ServiceICMPPing = "ping"
 )

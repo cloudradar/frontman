@@ -15,8 +15,14 @@ import (
 )
 
 func (fm *Frontman) runUDPCheck(addr *net.UDPAddr, hostname string, service string) (MeasurementsMap, error) {
+	// Check if we have to autodetect port by service name
 	if addr.Port <= 0 {
-		return nil, fmt.Errorf("invalid port value: %d", addr.Port)
+		// Lookup service by default port
+		port, exists := defaultPortByService[service]
+		if !exists {
+			return nil, fmt.Errorf("failed to auto-determine port for '%s'", service)
+		}
+		addr.Port = port
 	}
 
 	prefix := fmt.Sprintf("net.udp.%s.%d.", service, addr.Port)
@@ -68,6 +74,8 @@ func executeUDPServiceCheck(conn *net.UDPConn, udpTimeout time.Duration, service
 		err = checkSIP(conn, hostname, udpTimeout)
 	case "iax2":
 		err = checkIAX2(conn, udpTimeout)
+	case "dns":
+		// minimal DNS test just verifies connection is established
 	case "udp":
 		// In the previous call to net.Dial the test basically already happened while establishing the connection
 		// so we don't have to do anything additional here.

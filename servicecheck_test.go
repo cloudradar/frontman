@@ -15,7 +15,8 @@ func TestDNSUDPCheck(t *testing.T) {
 			UUID: "dns-udp-check",
 			Check: ServiceCheckData{
 				Connect:  "8.8.8.8",
-				Protocol: "dns.udp",
+				Protocol: "udp",
+				Service:  "dns",
 				Port:     53,
 			},
 		}},
@@ -24,7 +25,7 @@ func TestDNSUDPCheck(t *testing.T) {
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
-	require.Equal(t, 1, res.Measurements["net.dns.udp.53.success"])
+	require.Equal(t, 1, res.Measurements["net.udp.dns.53.success"])
 }
 
 func TestDNSTCPCheck(t *testing.T) {
@@ -36,7 +37,8 @@ func TestDNSTCPCheck(t *testing.T) {
 			UUID: "dns-tcp-check",
 			Check: ServiceCheckData{
 				Connect:  "8.8.8.8",
-				Protocol: "dns.tcp",
+				Protocol: "tcp",
+				Service:  "dns",
 				Port:     53,
 			},
 		}},
@@ -45,5 +47,5 @@ func TestDNSTCPCheck(t *testing.T) {
 	fm.processInput(inputConfig, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
-	require.Equal(t, 1, res.Measurements["net.dns.tcp.53.success"])
+	require.Equal(t, 1, res.Measurements["net.tcp.dns.53.success"])
 }

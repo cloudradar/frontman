@@ -14,10 +14,12 @@ import (
 )
 
 var defaultPortByService = map[string]int{
+	"dns":   53,
 	"ftp":   21,
 	"ftps":  990,
 	"http":  80,
 	"https": 443,
+	"iax2":  4569,
 	"imap":  143,
 	"imaps": 993,
 	"ldap":  389,
@@ -28,6 +30,7 @@ var defaultPortByService = map[string]int{
 	"smtp":  25,
 	"smtps": 465,
 	"ssh":   22,
+	"sip":   5060,
 }
 
 var errorFailedToVerifyService = errors.New("Failed to verify service")
@@ -115,6 +118,8 @@ func executeTCPServiceCheck(conn net.Conn, tcpTimeout float64, service, hostname
 		err = checkHTTP(conn, hostname, secToDuration(tcpTimeout))
 	case "https":
 		err = checkHTTPS(conn, hostname, secToDuration(tcpTimeout))
+	case "dns":
+		// minimal DNS test just verifies connection is established
 	case "tcp":
 		// In the previous call to net.Dial the test basically already happened while establishing the connection
 		// so we don't have to do anything additional here.
