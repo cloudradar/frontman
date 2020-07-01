@@ -17,7 +17,7 @@ func TestDNSUDPCheck(t *testing.T) {
 				Connect:  "8.8.8.8",
 				Protocol: "udp",
 				Service:  "dns",
-				Port:     53,
+				Port:     "53",
 			},
 		}},
 	}
@@ -39,7 +39,7 @@ func TestDNSTCPCheck(t *testing.T) {
 				Connect:  "8.8.8.8",
 				Protocol: "tcp",
 				Service:  "dns",
-				Port:     53,
+				Port:     "53",
 			},
 		}},
 	}
