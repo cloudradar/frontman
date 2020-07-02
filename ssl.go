@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -48,66 +47,35 @@ func (fm *Frontman) runSSLCheck(hostname string, port int, service string) (m Me
 	}
 
 	addr := fmt.Sprintf("%s:%d", hostname, port)
-
 	dialer := net.Dialer{Timeout: secToDuration(fm.Config.NetTCPTimeout)}
-	connection, err := tls.DialWithDialer(&dialer, "tcp", addr, &tls.Config{ServerName: hostname, InsecureSkipVerify: true})
-
+	connection, err := tls.DialWithDialer(
+		&dialer,
+		"tcp",
+		addr,
+		&tls.Config{ServerName: hostname},
+	)
 	if err != nil {
-		logrus.Debugf("TLS dial to %s err: %s", addr, err.Error())
+		logrus.Debugf("serviceCheck: SSL check %s for '%s' failed: %s", addr, hostname, err.Error())
 		if strings.HasPrefix(err.Error(), "tls:") {
 			err = fmt.Errorf("service doesn't support SSL")
+		} else {
+			err = fmt.Errorf(strings.TrimPrefix(err.Error(), "x509: "))
 		}
 		return
 	}
 
 	defer connection.Close()
 
-	m[prefix+"expiryDaysRemaining"] = nil
-	certs := connection.ConnectionState().PeerCertificates
+	remainingValidity, firstCertToExpire := findCertRemainingValidity(connection.ConnectionState().VerifiedChains)
+	m[prefix+"expiryDaysRemaining"] = remainingValidity
 
-	for i, cert := range certs {
-		opts := x509.VerifyOptions{
-			Intermediates: x509.NewCertPool(),
-		}
-		if !cert.IsCA && hostname != "" {
-			opts.DNSName = hostname
-		}
-
-		if i == 0 {
-			addCertificatesToPool(opts.Intermediates, certs[1:])
-
-			// try to predict expiry date before we extract all the chains
-			// the field will be updated with more precise value after checking the validity
-			m[prefix+"expiryDaysRemaining"] = time.Until(cert.NotAfter).Hours() / 24
-		}
-
-		var chains [][]*x509.Certificate
-		chains, err = cert.Verify(opts)
-		if err != nil {
-			logrus.Debugf("serviceCheck: SSL check for '%s' failed: %s", hostname, err.Error())
-			err = errors.New(strings.TrimPrefix(err.Error(), "x509: "))
-			return
-		}
-
-		if i == 0 {
-			remainingValidity, firstCertToExpire := findCertRemainingValidity(chains)
-			m[prefix+"expiryDaysRemaining"] = remainingValidity
-
-			if remainingValidity <= float64(fm.Config.SSLCertExpiryThreshold) {
-				err = fmt.Errorf("certificate will expire soon: %s", certName(firstCertToExpire))
-				return
-			}
-		}
+	if remainingValidity <= float64(fm.Config.SSLCertExpiryThreshold) {
+		err = fmt.Errorf("certificate will expire soon: %s", certName(firstCertToExpire))
+		return
 	}
 
 	m[prefix+"success"] = 1
 	return
-}
-
-func addCertificatesToPool(pool *x509.CertPool, certs []*x509.Certificate) {
-	for _, cert := range certs {
-		pool.AddCert(cert)
-	}
 }
 
 func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509.Certificate) {
