@@ -19,7 +19,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
+var (
+	ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
+	ErrorHubGeneral        = errors.New("Hub replied with a general error code")
+	ErrorHub429            = errors.New("Hub replied with a 429 error code")
+)
 
 const timeoutDNSResolve = time.Second * 5
 
