@@ -39,16 +39,17 @@ type WebCheck struct {
 }
 
 type WebCheckData struct {
-	Method              string            `json:"method"`
-	URL                 string            `json:"url"`
-	PostData            string            `json:"postData,omitempty"`
-	ExpectedHTTPStatus  int               `json:"expectedHttpStatus,omitempty"`
-	SearchHTMLSource    bool              `json:"searchHtmlSource"`
-	ExpectedPattern     string            `json:"expectedPattern,omitempty"`
-	DontFollowRedirects bool              `json:"dontFollowRedirects"`
-	IgnoreSSLErrors     *bool             `json:"ignoreSSLErrors,omitempty"`
-	Timeout             float64           `json:"timeout,omitempty"`
-	Headers             map[string]string `json:"headers,omitempty"`
+	Method                  string            `json:"method"`
+	URL                     string            `json:"url"`
+	PostData                string            `json:"postData,omitempty"`
+	ExpectedHTTPStatus      int               `json:"expectedHttpStatus,omitempty"`
+	SearchHTMLSource        bool              `json:"searchHtmlSource"`
+	ExpectedPattern         string            `json:"expectedPattern,omitempty"`
+	ExpectedPatternPresence string            `json:"expectedPatternPresence,omitempty"`
+	DontFollowRedirects     bool              `json:"dontFollowRedirects"`
+	IgnoreSSLErrors         *bool             `json:"ignoreSSLErrors,omitempty"`
+	Timeout                 float64           `json:"timeout,omitempty"`
+	Headers                 map[string]string `json:"headers,omitempty"`
 }
 
 type SNMPCheck struct {
