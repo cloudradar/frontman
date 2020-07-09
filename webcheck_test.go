@@ -81,3 +81,101 @@ func TestNormalizeURLPort(t *testing.T) {
 		assert.Equal(t, nil, err)
 	}
 }
+
+func TestWebCheckPresentTextSuccess(t *testing.T) {
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = 10
+	fm := helperCreateFrontman(t, cfg)
+	inputConfig := &Input{
+		WebChecks: []WebCheck{{
+			UUID: "webcheck1",
+			Check: WebCheckData{
+				Timeout:                 2.0,
+				URL:                     "https://www.google.com",
+				Method:                  "get",
+				ExpectedHTTPStatus:      200,
+				SearchHTMLSource:        true,
+				ExpectedPattern:         "<title>Google</title>",
+				ExpectedPatternPresence: "present",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["http.get.success"])
+}
+
+func TestWebCheckPresentTextFail(t *testing.T) {
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = 10
+	fm := helperCreateFrontman(t, cfg)
+	inputConfig := &Input{
+		WebChecks: []WebCheck{{
+			UUID: "webcheck1",
+			Check: WebCheckData{
+				Timeout:                 2.0,
+				URL:                     "https://www.google.com",
+				Method:                  "get",
+				ExpectedHTTPStatus:      200,
+				SearchHTMLSource:        false,
+				ExpectedPattern:         "yahoo rules",
+				ExpectedPatternPresence: "present",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, "pattern expected to be present 'yahoo rules' not found in the extracted text", res.Message)
+}
+
+func TestWebCheckAbsentTextSuccess(t *testing.T) {
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = 10
+	fm := helperCreateFrontman(t, cfg)
+	inputConfig := &Input{
+		WebChecks: []WebCheck{{
+			UUID: "webcheck1",
+			Check: WebCheckData{
+				Timeout:                 2.0,
+				URL:                     "https://www.google.com",
+				Method:                  "get",
+				ExpectedHTTPStatus:      200,
+				SearchHTMLSource:        true,
+				ExpectedPattern:         "<title>Yahoo</title>",
+				ExpectedPatternPresence: "absent",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, nil, res.Message)
+	require.Equal(t, 1, res.Measurements["http.get.success"])
+}
+
+func TestWebCheckAbsentTextFail(t *testing.T) {
+	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.Sleep = 10
+	fm := helperCreateFrontman(t, cfg)
+	inputConfig := &Input{
+		WebChecks: []WebCheck{{
+			UUID: "webcheck1",
+			Check: WebCheckData{
+				Timeout:                 2.0,
+				URL:                     "https://www.google.com",
+				Method:                  "get",
+				ExpectedHTTPStatus:      200,
+				SearchHTMLSource:        false,
+				ExpectedPattern:         "Google",
+				ExpectedPatternPresence: "absent",
+			},
+		}},
+	}
+	resultsChan := make(chan Result, 100)
+	fm.processInput(inputConfig, resultsChan)
+	res := <-resultsChan
+	require.Equal(t, "pattern expected to be absent 'Google' found in the extracted text", res.Message)
+}
