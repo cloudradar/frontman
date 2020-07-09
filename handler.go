@@ -183,6 +183,13 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		logrus.Debugf("inputFromHub failed: hub replied with error", resp.Status)
+		if resp.StatusCode == 429 {
+			return nil, ErrorHub429
+		}
+		if resp.StatusCode >= 400 {
+			return nil, ErrorHubGeneral
+		}
 		return nil, errors.New(resp.Status)
 	}
 
@@ -240,6 +247,13 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
 			time.Sleep(10 * time.Second)
 			os.Exit(0)
+		case err != nil && err == ErrorHubGeneral:
+			logrus.Warnln(err)
+			// XXX sleep until the next data submission is due
+		case err != nil && err == ErrorHub429:
+			logrus.Warnln(err)
+			// for 429, wait 10 seconds and try again
+			time.Sleep(10 * time.Second)
 		case err != nil:
 			logrus.Error(err)
 		default:
@@ -337,6 +351,9 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	// in case input file not specified this means we should request HUB instead
 	input, err = fm.inputFromHub()
 	if err != nil {
+		if err == ErrorHubGeneral || err == ErrorHub429 {
+			return nil, err
+		}
 		if fm.Config.HubUser != "" {
 			// it may be useful to log the Hub User that was used to do a HTTP Basic Auth
 			// e.g. in case of '401 Unauthorized' user can see the corresponding user in the logs
