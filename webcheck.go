@@ -79,8 +79,13 @@ func (fm *Frontman) newHTTPTransport(ignoreSSLErrors *bool) *http.Transport {
 	return t
 }
 
-func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractTextFromHTML bool) error {
+func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPresence string, extractTextFromHTML bool) error {
 	var text []byte
+
+	expectedPresence = strings.ToLower(expectedPresence)
+	if expectedPresence != "absent" {
+		expectedPresence = "present"
+	}
 
 	var whereSuffix string
 	if extractTextFromHTML {
@@ -95,8 +100,11 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, extractText
 		whereSuffix = "in the raw HTML"
 	}
 
-	if !bytes.Contains(text, []byte(pattern)) {
-		return fmt.Errorf("pattern '%s' not found %s", pattern, whereSuffix)
+	if expectedPresence == "present" && !bytes.Contains(text, []byte(pattern)) {
+		return fmt.Errorf("pattern expected to be present '%s' not found %s", pattern, whereSuffix)
+	}
+	if expectedPresence == "absent" && bytes.Contains(text, []byte(pattern)) {
+		return fmt.Errorf("pattern expected to be absent '%s' found %s", pattern, whereSuffix)
 	}
 
 	return nil
@@ -199,7 +207,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	}
 
 	if data.ExpectedPattern != "" {
-		err = checkBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, !data.SearchHTMLSource)
+		err = checkBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, data.ExpectedPatternPresence, !data.SearchHTMLSource)
 	} else {
 		// we don't need the content itself because we don't need to check any pattern
 		// just read the reader, so bodyReaderWithCounter will be able to count bytes
