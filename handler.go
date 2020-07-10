@@ -183,7 +183,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		logrus.Debugf("inputFromHub failed: hub replied with error", resp.Status)
+		logrus.Debugf("inputFromHub failed: hub replied with error %s", resp.Status)
 		if resp.StatusCode == 429 {
 			return nil, ErrorHub429
 		}
@@ -248,11 +248,13 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			time.Sleep(10 * time.Second)
 			os.Exit(0)
 		case err != nil && err == ErrorHubGeneral:
-			logrus.Warnln(err)
-			// XXX sleep until the next data submission is due
+			logrus.Warnln("ErrorHubGeneral", err)
+			// sleep until the next data submission is due
+			fm.sleepUntilNextInterval()
+
 		case err != nil && err == ErrorHub429:
 			logrus.Warnln(err)
-			// for 429, wait 10 seconds and try again
+			// for error code 429, wait 10 seconds and try again
 			time.Sleep(10 * time.Second)
 		case err != nil:
 			logrus.Error(err)
@@ -379,4 +381,18 @@ func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
 	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+}
+
+// Used in case of hub failure. Sleeps for the configured interval according to sender_mode INTERVAL/WAIT configuration
+func (fm *Frontman) sleepUntilNextInterval() {
+	if fm.Config.SenderMode == SenderModeInterval {
+		delay := secToDuration(fm.Config.SenderModeInterval)
+		logrus.Debugf("sleepUntilNextInterval INTERVAL sleeping for %v", delay)
+		time.Sleep(delay)
+	}
+	if fm.Config.SenderMode == SenderModeWait {
+		delay := secToDuration(fm.Config.Sleep)
+		logrus.Debugf("sleepUntilNextInterval WAIT sleeping for %v", delay)
+		time.Sleep(delay)
+	}
 }
