@@ -27,7 +27,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 
 		switch check.Check.Protocol {
 		case ProtocolICMP:
-			results, err = fm.runPing(ipaddr)
+			results, err = fm.runPing(check.Check.Connect)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}

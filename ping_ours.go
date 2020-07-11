@@ -1,7 +1,6 @@
 package frontman
 
 import (
-	"net"
 	"runtime"
 	"time"
 
@@ -29,11 +28,11 @@ func CheckIfRootlessICMPAvailable() bool {
 	return true
 }
 
-func (fm *Frontman) runPing(addr *net.IPAddr) (m map[string]interface{}, err error) {
+func (fm *Frontman) runPing(addr string) (m map[string]interface{}, err error) {
 	prefix := "net.icmp.ping."
 	m = make(map[string]interface{})
 
-	pinger, err := NewPinger(addr.String())
+	pinger, err := NewPinger(addr)
 
 	if CheckIfRawICMPAvailable() || runtime.GOOS == "windows" {
 		pinger.SetPrivileged(true)
