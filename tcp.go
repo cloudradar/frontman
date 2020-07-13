@@ -35,20 +35,20 @@ var defaultPortByService = map[string]int{
 
 var errorFailedToVerifyService = errors.New("Failed to verify service")
 
-func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service string) (MeasurementsMap, error) {
+func (fm *Frontman) runTCPCheck(hostname string, port int, service string) (MeasurementsMap, error) {
 	service = strings.ToLower(service)
 
 	// Check if we have to autodetect port by service name
-	if addr.Port <= 0 {
+	if port <= 0 {
 		// Lookup service by default port
 		port, exists := defaultPortByService[service]
 		if !exists {
 			return nil, fmt.Errorf("failed to auto-determine port for '%s'", service)
 		}
-		addr.Port = port
+		port = port
 	}
 
-	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, addr.Port)
+	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, port)
 
 	// Initialise MeasurementsMap
 	m := MeasurementsMap{
@@ -62,8 +62,10 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 		m[prefix+"totalTimeSpent_s"] = time.Since(started).Seconds()
 	}()
 
+	addr := fmt.Sprintf("%s:%d", hostname, port)
+
 	// Open connection to the specified addr
-	conn, err := net.DialTimeout("tcp", addr.String(), secToDuration(fm.Config.NetTCPTimeout))
+	conn, err := net.DialTimeout("tcp", addr, secToDuration(fm.Config.NetTCPTimeout))
 	m[prefix+"connectTime_s"] = time.Since(started).Seconds()
 	if err != nil {
 		return m, err
@@ -77,7 +79,7 @@ func (fm *Frontman) runTCPCheck(addr *net.TCPAddr, hostname string, service stri
 	// Execute the check
 	err = executeTCPServiceCheck(conn, fm.Config.NetTCPTimeout, service, hostname)
 	if err != nil {
-		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, addr.Port, err.Error())
+		return m, fmt.Errorf("failed to verify '%s' service on %d port: %s", service, port, err.Error())
 	}
 
 	// Mark check as successful
