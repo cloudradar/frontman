@@ -25,8 +25,6 @@ var (
 	ErrorHub429            = errors.New("Hub replied with a 429 error code")
 )
 
-const timeoutDNSResolve = time.Second * 5
-
 // serviceCheckEmergencyTimeout used to protect from unhandled timeouts
 const serviceCheckEmergencyTimeout = time.Second * 30
 

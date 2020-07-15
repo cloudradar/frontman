@@ -1,10 +1,8 @@
 package frontman
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"sync"
 	"time"
 
@@ -17,31 +15,24 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	var err error
 	var results map[string]interface{}
 	go func() {
-		ipaddr, resolveErr := resolveIPAddrWithTimeout(check.Check.Connect, timeoutDNSResolve)
-		if resolveErr != nil {
-			err = fmt.Errorf("resolve ip error: %s", resolveErr.Error())
-			logrus.Debugf("serviceCheck: ResolveIPAddr error: %s", resolveErr.Error())
-			done <- struct{}{}
-			return
-		}
 
 		switch check.Check.Protocol {
 		case ProtocolICMP:
-			results, err = fm.runPing(ipaddr)
+			results, err = fm.runPing(check.Check.Connect)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolTCP:
 			port, _ := check.Check.Port.Int64()
 
-			results, err = fm.runTCPCheck(&net.TCPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			results, err = fm.runTCPCheck(check.Check.Connect, int(port), check.Check.Service)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
 		case ProtocolUDP:
 			port, _ := check.Check.Port.Int64()
 
-			results, err = fm.runUDPCheck(&net.UDPAddr{IP: ipaddr.IP, Port: int(port)}, check.Check.Connect, check.Check.Service)
+			results, err = fm.runUDPCheck(check.Check.Connect, int(port), check.Check.Service)
 			if err != nil {
 				logrus.Debugf("serviceCheck: %s: %s", check.UUID, err.Error())
 			}
@@ -71,26 +62,6 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 		logrus.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
 	}
-}
-
-func resolveIPAddrWithTimeout(addr string, timeout time.Duration) (*net.IPAddr, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	ipAddrs, err := net.DefaultResolver.LookupIPAddr(ctx, addr)
-	if err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("timeout exceeded")
-		}
-		return nil, err
-	}
-
-	if len(ipAddrs) == 0 {
-		return nil, errors.New("can't resolve host")
-	}
-
-	ipAddr := ipAddrs[0]
-	return &ipAddr, nil
 }
 
 func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, checkList []ServiceCheck) int {
