@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	ErrorMissingHubOrInput = errors.New("Missing input file flag (-i) or hub_url param in config")
-	ErrorHubGeneral        = errors.New("Hub replied with a general error code")
-	ErrorHub429            = errors.New("Hub replied with a 429 error code")
+	ErrorMissingHubOrInput  = errors.New("Missing input file flag (-i) or hub_url param in config")
+	ErrorHubGeneral         = errors.New("Hub replied with a general error code")
+	ErrorHubTooManyRequests = errors.New("Hub replied with a 429 error code")
 )
 
 // serviceCheckEmergencyTimeout used to protect from unhandled timeouts
@@ -182,8 +182,8 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("inputFromHub failed: hub replied with error %s", resp.Status)
-		if resp.StatusCode == 429 {
-			return nil, ErrorHub429
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, ErrorHubTooManyRequests
 		}
 		if resp.StatusCode >= 400 {
 			return nil, ErrorHubGeneral
@@ -250,7 +250,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			// sleep until the next data submission is due
 			fm.sleepUntilNextInterval()
 
-		case err != nil && err == ErrorHub429:
+		case err != nil && err == ErrorHubTooManyRequests:
 			logrus.Warnln(err)
 			// for error code 429, wait 10 seconds and try again
 			time.Sleep(10 * time.Second)
@@ -351,7 +351,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	// in case input file not specified this means we should request HUB instead
 	input, err = fm.inputFromHub()
 	if err != nil {
-		if err == ErrorHubGeneral || err == ErrorHub429 {
+		if err == ErrorHubGeneral || err == ErrorHubTooManyRequests {
 			return nil, err
 		}
 		if fm.Config.HubUser != "" {
