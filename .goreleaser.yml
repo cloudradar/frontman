@@ -18,6 +18,9 @@ builds:
   - 5
   - 6
   - 7
+  gomips:
+  - hardfloat
+  - softfloat
   # List of combinations of GOOS + GOARCH + GOARM to ignore.
   ignore:
   - goos: darwin
@@ -65,7 +68,7 @@ changelog:
     - '^test:'
 nfpms:
   -
-    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
 
     vendor: cloudradar GmbH
     maintainer: CloudRadar GmbH <frontman@cloudradar.io>
