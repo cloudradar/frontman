@@ -107,6 +107,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 	var packets []gosnmp.SnmpPDU
 	switch form {
 	case "bulk":
+		logrus.Debugln("snmp: GetBulk", oids)
 		result, err := params.GetBulk(oids, uint8(len(oids)), maxRepetitions)
 		if err != nil {
 			return m, fmt.Errorf("get bulk err: %v", err)
@@ -114,6 +115,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 		packets = result.Variables
 	case "walk":
 		for _, oid := range oids {
+			logrus.Debugln("snmp: BulkWalkAll", oid)
 			pdus, err := params.BulkWalkAll(oid)
 			if err != nil {
 				return m, fmt.Errorf("bulk walk all err: %v", err)
@@ -121,6 +123,7 @@ func (fm *Frontman) runSNMPProbe(check *SNMPCheckData) (map[string]interface{}, 
 			packets = append(packets, pdus...)
 		}
 	case "single":
+		logrus.Debugln("snmp: Get", oids)
 		result, err := params.Get(oids)
 		if err != nil {
 			return m, fmt.Errorf("get err: %v", err)
@@ -677,14 +680,13 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 		form = "bulk"
 	case "bandwidth":
 		oids = []string{
-			".1.3.6.1.2.1.2.2.1.8",     // IF-MIB::ifOperStatus (1=up)
-			".1.3.6.1.2.1.2.2.1.3",     // IF-MIB::ifType (6=ethernetCsmacd)
-			".1.3.6.1.2.1.31.1.1.1.1",  // IF-MIB::ifName
-			".1.3.6.1.2.1.2.2.1.2",     // IF-MIB::ifDescr
-			".1.3.6.1.2.1.2.2.1.5",     // IF-MIB::ifSpeed
-			".1.3.6.1.2.1.31.1.1.1.18", // IF-MIB::ifAlias
-			".1.3.6.1.2.1.2.2.1.10",    // IF-MIB::ifInOctets
-			".1.3.6.1.2.1.2.2.1.16",    // IF-MIB::ifOutOctets
+			".1.3.6.1.2.1.2.2.1.8",    // IF-MIB::ifOperStatus (1=up)
+			".1.3.6.1.2.1.2.2.1.3",    // IF-MIB::ifType (6=ethernetCsmacd)
+			".1.3.6.1.2.1.31.1.1.1.1", // IF-MIB::ifName
+			".1.3.6.1.2.1.2.2.1.2",    // IF-MIB::ifDescr
+			".1.3.6.1.2.1.2.2.1.5",    // IF-MIB::ifSpeed
+			".1.3.6.1.2.1.2.2.1.10",   // IF-MIB::ifInOctets
+			".1.3.6.1.2.1.2.2.1.16",   // IF-MIB::ifOutOctets
 		}
 		form = "walk"
 	case "oid":
