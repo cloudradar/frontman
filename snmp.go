@@ -677,7 +677,7 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 			".1.3.6.1.2.1.1.5.0", // STRING: switch-cloudradar
 			".1.3.6.1.2.1.1.6.0", // STRING: Office Berlin
 		}
-		form = "bulk"
+		form = "single"
 	case "bandwidth":
 		oids = []string{
 			".1.3.6.1.2.1.2.2.1.8",    // IF-MIB::ifOperStatus (1=up)
