@@ -167,8 +167,8 @@ func (fm *Frontman) prepareSNMPResult(check *SNMPCheckData, packets []gosnmp.Snm
 		} else {
 			prefix, suffix, err = oidToHumanReadable(variable.Name)
 			if err != nil {
-				logrus.Debug(err)
-				prefix = variable.Name
+				// skip unrecognized oid:s
+				continue
 			}
 		}
 
