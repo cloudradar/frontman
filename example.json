@@ -28,7 +28,7 @@
     "check": { "url": "https://en.wikipedia.org/wiki/Mars", "method": "get", "expectedHttpStatus": 200, "expectedPattern":"preserved ancient life"}
   },{
     "checkUUID": "web_expected_html_found_2",
-    "check": { "url": "https://en.wikipedia.org/wiki/Saturn", "method": "get", "expectedHttpStatus": 200, "searchHtmlSource": true, "expectedPattern":"<a href=\"//wikimediafoundation.org/wiki/Terms_of_Use\">"}
+    "check": { "url": "https://en.wikipedia.org/wiki/Saturn", "method": "get", "expectedHttpStatus": 200, "searchHtmlSource": true, "expectedPattern":"<a href=\"/wiki/File:Saturn_symbol.svg\">"}
   },{
     "checkUUID": "web_expected_text_not_found",
     "check": { "url": "https://en.wikipedia.org/wiki/Neptune", "method": "get", "expectedHttpStatus": 200, "expectedPattern":"life"}
