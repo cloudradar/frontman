@@ -74,7 +74,7 @@
     "check": { "connect": "not_exists_domain3456.com", "port": 443, "protocol": "tcp", "service": "tcp"}
   },{
     "checkUUID": "tcp_ftp_ok",
-    "check": { "connect": "ftp.dlptest.com", "protocol": "tcp", "service": "ftp"}
+    "check": { "connect": "ftp.dlptest.com", "port": 21, "protocol": "tcp", "service": "ftp"}
   },{
     "checkUUID": "tcp_ftps_ok",
     "check": { "connect": "ftp.dlptest.com", "protocol": "tcp", "service": "ftps"}
@@ -86,31 +86,31 @@
     "check": { "connect": "httpbin.org", "protocol": "tcp", "service": "https"}
   },{
     "checkUUID": "tcp_imap_ok",
-    "check": { "connect": "mail.o2online.de", "protocol": "tcp", "service": "imap"}
+    "check": { "connect": "imap.o2online.de", "port": 143, "protocol": "tcp", "service": "imap"}
   },{
     "checkUUID": "tcp_imaps_ok",
     "check": { "connect": "imap.gmail.com", "protocol": "tcp", "service": "imaps"}
   },{
     "checkUUID": "tcp_pop3_ok",
-    "check": { "connect": "mail.o2online.de", "protocol": "tcp", "service": "pop3"}
+    "check": { "connect": "mail.btinternet.com", "port": 110, "protocol": "tcp", "service": "pop3"}
   },{
     "checkUUID": "tcp_pop3s_ok",
-    "check": { "connect": "pop3.live.com", "protocol": "tcp", "service": "pop3s"}
+    "check": { "connect": "pop.mail.yahoo.com", "port": 995, "protocol": "tcp", "service": "pop3s"}
   },{
     "checkUUID": "tcp_smtp_ok",
-    "check": { "connect": "mail.o2online.de", "protocol": "tcp", "service": "smtp"}
+    "check": { "connect": "mail.o2online.de", "port": 25, "protocol": "tcp", "service": "smtp"}
   },{
     "checkUUID": "tcp_smtps_ok",
-    "check": { "connect": "smtp.gmail.com", "protocol": "tcp", "service": "smtps"}
+    "check": { "connect": "smtp.gmail.com", "port": 465, "protocol": "tcp", "service": "smtps"}
   },{
     "checkUUID": "tcp_ssh_ok",
-    "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ssh"}
+    "check": { "connect": "sdf.org", "port": 22, "protocol": "tcp", "service": "ssh"}
   },{
     "checkUUID": "tcp_ssh_invalid",
     "check": { "connect": "sdf.org", "protocol": "tcp", "service": "ssh", "port": 21}
   },{
     "checkUUID": "tcp_nntp_ok",
-    "check": { "connect": "nntp.aioe.org", "protocol": "tcp", "service": "nntp"}
+    "check": { "connect": "nntp.aioe.org", "port": 119, "protocol": "tcp", "service": "nntp"}
   },{
     "checkUUID": "tcp_ldap_ok",
     "check": { "connect": "ldap.forumsys.com", "port":389, "protocol": "tcp", "service": "ldap"}
