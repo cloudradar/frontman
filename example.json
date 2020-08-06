@@ -89,7 +89,7 @@
     "check": { "connect": "imap.o2online.de", "port": 143, "protocol": "tcp", "service": "imap"}
   },{
     "checkUUID": "tcp_imaps_ok",
-    "check": { "connect": "imap.gmail.com", "protocol": "tcp", "service": "imaps"}
+    "check": { "connect": "imap.gmail.com", "port": 993, "protocol": "tcp", "service": "imaps"}
   },{
     "checkUUID": "tcp_pop3_ok",
     "check": { "connect": "mail.btinternet.com", "port": 110, "protocol": "tcp", "service": "pop3"}
@@ -98,7 +98,7 @@
     "check": { "connect": "pop.mail.yahoo.com", "port": 995, "protocol": "tcp", "service": "pop3s"}
   },{
     "checkUUID": "tcp_smtp_ok",
-    "check": { "connect": "mail.o2online.de", "port": 25, "protocol": "tcp", "service": "smtp"}
+    "check": { "connect": "smtp.comcast.net", "port": 587, "protocol": "tcp", "service": "smtp"}
   },{
     "checkUUID": "tcp_smtps_ok",
     "check": { "connect": "smtp.gmail.com", "port": 465, "protocol": "tcp", "service": "smtps"}
