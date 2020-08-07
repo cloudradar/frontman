@@ -83,7 +83,7 @@
     "check": { "connect": "google.com", "protocol": "tcp", "service": "http"}
   },{
     "checkUUID": "tcp_https_ok",
-    "check": { "connect": "httpbin.org", "protocol": "tcp", "service": "https"}
+    "check": { "connect": "h1.hostgum.eu", "port": 443, "protocol": "tcp", "service": "https"}
   },{
     "checkUUID": "tcp_imap_ok",
     "check": { "connect": "imap.o2online.de", "port": 143, "protocol": "tcp", "service": "imap"}
@@ -140,7 +140,7 @@
     "check": { "connect": "sipconnect.sipgate.de", "port": 5060, "protocol": "udp", "service": "sip"}
   },{
     "checkUUID": "iax2_ok",
-    "check": { "connect": "sipconnect.sipgate.de", "port": 4569, "protocol": "udp", "service": "iax2"}
+    "check": { "connect": "iax.hostgum.eu", "port": 4569, "protocol": "udp", "service": "iax2"}
   }],
   "snmpChecks": [{
     "checkUUID": "snmp_basedata_v1",
