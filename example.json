@@ -59,7 +59,7 @@
     "check": { "connect": "233.124.125.244", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "icmp_high_latency",
-    "check": { "connect": "www.aucklandcouncil.govt.nz", "protocol": "icmp", "service": "ping"}
+    "check": { "connect": "lameduck.hostgum.eu", "protocol": "icmp", "service": "ping"}
   },{
     "checkUUID": "icmp_domain_not_exists",
     "check": { "connect": "not_exists_domain1234.com", "protocol": "icmp", "service": "ping"}
@@ -119,7 +119,7 @@
     "check": { "connect": "google.com", "protocol": "ssl", "service": "https"}
   },{
     "checkUUID": "ssl_cert_by_ip",
-    "check": { "connect": "173.194.222.100", "protocol": "ssl", "service": "https"}
+    "check": { "connect": "51.15.81.44", "protocol": "ssl", "service": "https"}
   },{
     "checkUUID": "ssl_cert_expired",
     "check": { "connect": "expired.badssl.com", "protocol": "ssl", "service": "https"}
