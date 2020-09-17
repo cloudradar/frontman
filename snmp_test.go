@@ -46,7 +46,7 @@ func TestSNMPv1(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -75,7 +75,7 @@ func TestSNMPv2(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -113,7 +113,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
@@ -133,7 +133,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
@@ -174,7 +174,7 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -215,7 +215,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -225,7 +225,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
@@ -265,7 +265,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -275,7 +275,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
@@ -311,7 +311,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
@@ -329,7 +329,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res = <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -366,7 +366,7 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	// NOTE: the only error we get on invalid community name is a timeout
 	require.Equal(t, "get err: Request timeout (after 0 retries)", res.Message)
@@ -398,7 +398,7 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 
@@ -429,7 +429,7 @@ func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, "unknown user name", res.Message)
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
@@ -462,7 +462,7 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -493,7 +493,7 @@ func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	// NOTE: snmp protocol doesn't have a specific error message for wrong password
 	require.Equal(t, "wrong digests, possibly wrong password", res.Message)
@@ -529,7 +529,7 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -564,7 +564,7 @@ func TestSNMPv3PresetBandwidthWrongCredentials(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, resultsChan)
+	fm.processInput(inputConfig, true, resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, "wrong digests, possibly wrong password", res.Message)

@@ -299,7 +299,7 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	}
 
 	if input != nil {
-		go fm.processInput(input, resultsChan)
+		go fm.processInput(input, true, resultsChan)
 	} else {
 		close(resultsChan)
 	}
@@ -365,13 +365,14 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	return input, nil
 }
 
-func (fm *Frontman) processInput(input *Input, resultsChan chan<- Result) {
+// local is false if check originated from a remote node
+func (fm *Frontman) processInput(input *Input, local bool, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
 
-	succeed := runServiceChecks(fm, &wg, resultsChan, input.ServiceChecks)
-	succeed += runWebChecks(fm, &wg, resultsChan, input.WebChecks)
-	succeed += runSNMPChecks(fm, &wg, resultsChan, input.SNMPChecks)
+	succeed := runServiceChecks(fm, &wg, local, resultsChan, input.ServiceChecks)
+	succeed += runWebChecks(fm, &wg, local, resultsChan, input.WebChecks)
+	succeed += runSNMPChecks(fm, &wg, local, resultsChan, input.SNMPChecks)
 
 	wg.Wait()
 	close(resultsChan)
