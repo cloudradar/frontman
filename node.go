@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -32,7 +33,9 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 		url.Path = path.Join(url.Path, "check")
 		logrus.Debug("asking node ", node.URL)
 
-		client := &http.Client{}
+		client := &http.Client{
+			Timeout: time.Duration(fm.Config.Node.NodeTimeout) * time.Second,
+		}
 		if !node.VerifySSL {
 			client.Transport = &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
