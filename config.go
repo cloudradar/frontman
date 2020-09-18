@@ -196,6 +196,10 @@ func NewConfig() *Config {
 			Enabled:       false,
 			CheckInterval: 21600,
 		},
+		Node: NodeConfig{
+			NodeTimeout:     3,
+			NodeCacheErrors: 10,
+		},
 	}
 	if runtime.GOOS == "windows" {
 		cfg.Updates.Enabled = true
