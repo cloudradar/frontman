@@ -43,13 +43,15 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			logrus.Warnf("Failed to ask node: %s", err.Error())
+			logrus.Errorf("askNodes failed: %s", err.Error())
 		} else {
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusOK {
 				body, _ := ioutil.ReadAll(resp.Body)
 				nodeResults = append(nodeResults, string(body))
+			} else {
+				logrus.Errorf("askNodes recieved HTTP %v from %s", resp.StatusCode, node.URL)
 			}
 		}
 	}
