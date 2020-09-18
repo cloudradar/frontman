@@ -74,6 +74,14 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
 #   password = "secret" 
 #   verify_ssl = true
 
+# Node configuration
+[node]
+ # Set the maximum time in seconds frontman should spend trying to connect a node
+ node_timeout = 3.0
+ 
+ # Cache errors for N seconds. If the connection to a node fails for whatever reason, this node is not asked again, until the error cache has expired.
+ node_cache_errors = 10.0
+
 
 [http_listener]
   # HTTP Listener
