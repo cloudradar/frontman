@@ -15,6 +15,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// checks if given node recently failed
+func (fm *Frontman) nodeRecentlyFailed(node *Node) bool {
+	limit := time.Second * time.Duration(fm.Config.Node.NodeCacheErrors)
+
+	if when, ok := fm.failedNodes[node.URL]; ok {
+		if time.Since(when) < limit {
+			logrus.Debugf("skipping recently failed node %s", node.URL)
+			return true
+		}
+	}
+
+	return false
+}
+
+// marks a node as temporarily failing
+func (fm *Frontman) markNodeFailure(node *Node) {
+	fm.failedNodes[node.URL] = time.Now()
+}
+
 func (fm *Frontman) askNodes(data []byte, res *Result) {
 	var nodeResults []string
 	var succeededNodes []string
@@ -25,6 +44,10 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 	}
 
 	for _, node := range fm.Config.Nodes {
+		if fm.nodeRecentlyFailed(&node) {
+			logrus.Warnf("Skipping recently failed node %s", node.URL)
+			continue
+		}
 		url, err := url.Parse(node.URL)
 		if err != nil {
 			logrus.Warnf("Invalid node url in config: '%s': %s", node.URL, err.Error())
@@ -47,6 +70,7 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 		resp, err := client.Do(req)
 		if err != nil {
 			logrus.Errorf("askNodes failed: %s", err.Error())
+			fm.markNodeFailure(&node)
 		} else {
 			defer resp.Body.Close()
 
@@ -55,6 +79,7 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 				nodeResults = append(nodeResults, string(body))
 			} else {
 				logrus.Errorf("askNodes recieved HTTP %v from %s", resp.StatusCode, node.URL)
+				fm.markNodeFailure(&node)
 			}
 		}
 	}
