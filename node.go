@@ -46,6 +46,7 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 	for _, node := range fm.Config.Nodes {
 		if fm.nodeRecentlyFailed(&node) {
 			logrus.Warnf("Skipping recently failed node %s", node.URL)
+			failedNodes = append(failedNodes, node.URL)
 			continue
 		}
 		url, err := url.Parse(node.URL)
