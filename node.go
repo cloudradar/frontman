@@ -197,7 +197,7 @@ func (fm *Frontman) askNodes(data []byte, res *Result) {
 	*res = fastestResult[0]
 
 	// append all node messages to Message response
-	msg := res.Message.(string) + "\n"
+	msg := fm.Config.NodeName + ": " + res.Message.(string) + "\n"
 	for _, v := range failedNodes {
 		msg += fmt.Sprintf("%s: %s\n", v, failedNodeMessage[v])
 	}
