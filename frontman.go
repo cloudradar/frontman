@@ -43,7 +43,8 @@ type Frontman struct {
 	rootCAs *x509.CertPool
 	version string
 
-	failedNodes map[string]time.Time
+	failedNodes     map[string]time.Time
+	failedNodeCache map[string]Node
 
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
