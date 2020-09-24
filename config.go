@@ -22,6 +22,7 @@ const (
 
 	SenderModeWait     = "wait"
 	SenderModeInterval = "interval"
+	SenderModeQueue    = "queue"
 
 	minHubRequestTimeout     = 1
 	maxHubRequestTimeout     = 600

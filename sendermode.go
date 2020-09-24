@@ -196,3 +196,50 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 		}
 	}
 }
+
+// used when sender_mode == "queue" (post results to hub continiously)
+func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
+
+	interval := secToDuration(float64(fm.Config.QueueSenderRequestInterval))
+
+	var results []Result
+	shouldReturn := false
+
+	for {
+		logrus.Debugf("SenderModeQueue: waiting for results")
+		select {
+		case res, ok := <-resultsChan:
+			if !ok {
+				// chan was closed, no more results left
+				logrus.Debug("chan was closed, no more results left")
+				shouldReturn = true
+				break
+			}
+
+			results = append(results, res)
+			if len(results) < fm.Config.QueueSenderBatchSize && !shouldReturn {
+				// wait for enough results before post
+				continue
+			}
+		}
+
+		sendResults := results
+		logrus.Debugf("SenderModeQueue: send %d results", len(sendResults))
+		results = []Result{}
+		err := fm.postResultsToHub(sendResults)
+		if err != nil {
+			err = fmt.Errorf("postResultsToHub error: %s", err.Error())
+		}
+
+		if shouldReturn {
+			return err
+		}
+
+		if err != nil {
+			logrus.Error(err)
+		}
+
+		logrus.Debugf("SenderModeQueue: sleep for %v", interval)
+		time.Sleep(interval)
+	}
+}

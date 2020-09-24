@@ -323,6 +323,9 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		if sleepTime > 0 {
 			time.Sleep(sleepTime)
 		}
+	case fm.Config.SenderMode == SenderModeQueue:
+		logrus.Debugf("sender_mode QUEUE")
+		err = fm.sendResultsChanToHubQueue(resultsChan)
 	}
 
 	if err != nil {
