@@ -64,7 +64,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	}
 }
 
-func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Result, checkList []ServiceCheck) int {
+func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan<- Result, checkList []ServiceCheck) int {
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
@@ -110,7 +110,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, resultsChan chan<- Resul
 					if !recovered {
 						res.Message = err.Error()
 					}
-					if !recovered && len(fm.Config.Nodes) > 0 && check.Check.Protocol != "ssl" {
+					if !recovered && len(fm.Config.Nodes) > 0 && check.Check.Protocol != "ssl" && local {
 						// NOTE: ssl checks are excluded from "ask node" feature
 						checkRequest := &Input{
 							ServiceChecks: []ServiceCheck{check},

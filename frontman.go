@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cloudradar-monitoring/selfupdate"
 	"github.com/pkg/errors"
@@ -42,6 +43,9 @@ type Frontman struct {
 	rootCAs *x509.CertPool
 	version string
 
+	failedNodes     map[string]time.Time
+	failedNodeCache map[string]Node
+
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
 	previousSNMPPorterrorsMeasure []snmpPorterrorsMeasure
@@ -55,6 +59,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		HealthCheckPassedPreviously: true,
 		hostInfoSent:                false,
 		version:                     version,
+		failedNodes:                 make(map[string]time.Time),
 	}
 
 	if rootCertsPath != "" {
