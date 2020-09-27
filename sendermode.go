@@ -202,11 +202,11 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 
 	interval := secToDuration(float64(fm.Config.QueueSenderRequestInterval))
 
-	var results []Result
+	results := []Result{}
+	sendResults := []Result{}
 	shouldReturn := false
 
 	for {
-		logrus.Debugf("SenderModeQueue: waiting for results")
 		select {
 		case res, ok := <-resultsChan:
 			if !ok {
@@ -223,12 +223,16 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 			}
 		}
 
-		sendResults := results
+		sendResults = results
 		logrus.Debugf("SenderModeQueue: send %d results", len(sendResults))
-		results = []Result{}
-		err := fm.postResultsToHub(sendResults)
-		if err != nil {
-			err = fmt.Errorf("postResultsToHub error: %s", err.Error())
+		results = nil
+
+		var err error
+		if len(sendResults) > 0 {
+			err = fm.postResultsToHub(sendResults)
+			if err != nil {
+				err = fmt.Errorf("postResultsToHub error: %s", err.Error())
+			}
 		}
 
 		if shouldReturn {
