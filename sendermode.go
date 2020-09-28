@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -88,7 +89,7 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	logrus.Debugf("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
+	logrus.Infof("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return errors.New(resp.Status)
@@ -234,6 +235,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 				err = fmt.Errorf("postResultsToHub error: %s", err.Error())
 			}
 		}
+		logrus.Infof("Results in channel: %d", len(resultsChan))
 
 		if shouldReturn {
 			return err
@@ -243,7 +245,10 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 			logrus.Error(err)
 		}
 
-		logrus.Debugf("SenderModeQueue: sleep for %v", interval)
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		logrus.Debugf("SenderModeQueue: sleep for %v. Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", interval, m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+
 		time.Sleep(interval)
 	}
 }
