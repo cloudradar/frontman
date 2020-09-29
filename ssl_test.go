@@ -80,7 +80,7 @@ func TestFrontman_runSSLCheck(t *testing.T) {
 		goodSSL = goodSSL[:2]
 	}
 
-	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg := NewConfig()
 	fm := helperCreateFrontman(t, cfg)
 
 	for _, badSSLHost := range badSSL {
