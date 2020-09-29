@@ -45,7 +45,7 @@ func (fm *Frontman) runPing(addr string) (m map[string]interface{}, err error) {
 	pinger.Timeout = secToDuration(fm.Config.ICMPTimeout)
 	pinger.Count = 5
 
-	pinger.run()
+	pinger.Run()
 
 	var total time.Duration
 	for _, rtt := range pinger.rtts {

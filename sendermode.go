@@ -133,54 +133,6 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	return nil
 }
 
-// used when sender_mode == "interval" (post results to hub by fixed interval)
-func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan *chan Result) error {
-	started := time.Now()
-	delay := secToDuration(fm.Config.SenderModeInterval)
-	sendResultsTicker := time.NewTicker(delay)
-	defer sendResultsTicker.Stop()
-
-	var results []Result
-	shouldReturn := false
-
-	for {
-		select {
-		case res, ok := <-*resultsChan:
-			if !ok {
-				// chan was closed, no more results left
-				shouldReturn = true
-				break
-			}
-
-			results = append(results, res)
-			// skip postResultsToHub
-			continue
-		case <-sendResultsTicker.C:
-			break
-		}
-
-		logrus.Debugf("SenderModeInterval: send %d results", len(results))
-		err := fm.postResultsToHub(results)
-		if err != nil {
-			err = fmt.Errorf("postResultsToHub error: %s", err.Error())
-		}
-
-		// sleep until interval has passed in full
-		timeLeft := delay - time.Since(started)
-		if timeLeft > 0 {
-			time.Sleep(timeLeft)
-		}
-
-		if shouldReturn {
-			return err
-		}
-
-		if err != nil {
-			logrus.Error(err)
-		}
-	}
-}
-
 // used when sender_mode == "queue" (post results to hub continiously)
 func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 

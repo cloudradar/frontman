@@ -20,9 +20,8 @@ const (
 	IOModeFile = "file"
 	IOModeHTTP = "http"
 
-	SenderModeWait     = "wait"
-	SenderModeInterval = "interval"
-	SenderModeQueue    = "queue"
+	SenderModeWait  = "wait"
+	SenderModeQueue = "queue"
 
 	minHubRequestTimeout     = 1
 	maxHubRequestTimeout     = 600
@@ -80,8 +79,7 @@ type Config struct {
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
 	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold" comment:"Min days remain on the SSL cert to pass the check"`
 
-	SenderMode         string  `toml:"sender_mode" comment:"sender_mode = \"wait\"\nFrontman waits for all checks to finish.\nResults are sent back and frontman sleeps the sleep interval.\nIf the round has taken more than the sleep interval the next round starts immediately.\n\nsender_mode = \"interval\"\nFrontman fetches the list of checks and performs the checks.\nAfter the given period of sender_mode_interval frontman detaches from all checks\nnot finished yet and sends back what it has collected. The unfinished checks keep running.\nDuring the next round, all checks which are still running from the previous round\nare skipped to avoid double runs of checks.\nIf during the start of frontman \"sender_mode\" is \"interval\" and \"sender_mode_interval\" is larger\nthan sleep frontman throws an error and denies starting because it would cause congestion.\n\nsender_mode = \"queue\"\nFrontman fetches the list of checks and performs the checks.\nCheck results are put into a queue of finished checks.\nA continuously running worker thread consumes the queue and sends back the results in batches to the hub.\nDuring the next round, all checks which are still running from the previous round\nare skipped to avoid double runs of checks.\nThe queue is stored in memory and get's discarded on process termination.\nA regular process termination 'kill <PID>'  waits for the queue to be empty."`
-	SenderModeInterval float64 `toml:"sender_mode_interval" comment:"interval in seconds to post results to HUB server\nrequires sender_mode = \"interval\", ignored on sender_mode = \"wait\""`
+	SenderMode string `toml:"sender_mode" comment:"sender_mode = \"wait\"\nFrontman waits for all checks to finish.\nResults are sent back and frontman sleeps the sleep interval.\nIf the round has taken more than the sleep interval the next round starts immediately.\n\nsender_mode = \"queue\"\nFrontman fetches the list of checks and performs the checks.\nCheck results are put into a queue of finished checks.\nA continuously running worker thread consumes the queue and sends back the results in batches to the hub.\nDuring the next round, all checks which are still running from the previous round\nare skipped to avoid double runs of checks.\nThe queue is stored in memory and get's discarded on process termination.\nA regular process termination 'kill <PID>'  waits for the queue to be empty."`
 
 	QueueSenderBatchSize int `toml:"queue_sender_batch_size" comment:"Do not send back more than N results per POST request"`
 
@@ -175,8 +173,7 @@ func NewConfig() *Config {
 		StatsFile:                  defaultStatsFilePath,
 		ICMPTimeout:                0.1,
 		Sleep:                      30,
-		SenderMode:                 SenderModeInterval,
-		SenderModeInterval:         20,
+		SenderMode:                 SenderModeQueue,
 		QueueSenderBatchSize:       100,
 		QueueSenderRequestInterval: 2,
 		HTTPCheckMaxRedirects:      10,
@@ -319,10 +316,6 @@ func (cfg *Config) sanitize() error {
 	if cfg.HubRequestTimeout < minHubRequestTimeout || cfg.HubRequestTimeout > maxHubRequestTimeout {
 		cfg.HubRequestTimeout = defaultHubRequestTimeout
 		return fmt.Errorf("hub_request_timeout must be between %d and %d", minHubRequestTimeout, maxHubRequestTimeout)
-	}
-
-	if cfg.SenderModeInterval <= 0 {
-		cfg.SenderModeInterval = 30
 	}
 
 	// backwards compatibility with old configs. system_fields is deprecated!

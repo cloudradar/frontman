@@ -59,7 +59,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	case <-done:
 		return results, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		logrus.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
+		logrus.Errorf("serviceCheck %s %s: %s got unexpected timeout after %.0fs", check.Check.Protocol, check.Check.Connect, check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
 	}
 }
