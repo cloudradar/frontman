@@ -212,7 +212,6 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 		if duration >= interval {
 
 			if len(results) >= fm.Config.QueueSenderBatchSize {
-				logrus.Infof("%d results in queue... cutting", len(results))
 				sendResults = results[0:fm.Config.QueueSenderBatchSize]
 				results = results[fm.Config.QueueSenderBatchSize:]
 			} else {
@@ -220,7 +219,6 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 				results = nil
 			}
 
-			// when interval time passed, we should take X items off results queue and send off to hub
 			if len(sendResults) > 0 {
 				logrus.Infof("Send %d results to hub, %d results in queue", len(sendResults), len(results))
 				lastSentToHub = time.Now()

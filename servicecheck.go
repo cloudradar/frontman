@@ -68,7 +68,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
-		go func(check ServiceCheck) {
+		go func(wg *sync.WaitGroup, check ServiceCheck, resultsChan *chan Result) {
 			defer wg.Done()
 
 			if check.UUID == "" {
@@ -130,7 +130,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 			}
 
 			*resultsChan <- res
-		}(check)
+		}(wg, check, resultsChan)
 	}
 	return succeed
 }
