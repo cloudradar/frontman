@@ -208,7 +208,8 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	return &i, nil
 }
 
-func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
+func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
+
 	fm.Stats.StartedAt = time.Now()
 	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
 	fm.StartWritingStats()
@@ -221,6 +222,28 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			fm.selfUpdater.Shutdown()
 		}
 	}()
+
+	if !fm.hostInfoSent {
+		var err error
+		var hostInfo MeasurementsMap
+
+		// Only try to collect HostInfo when defined in config
+		if len(fm.Config.HostInfo) > 0 {
+			hostInfo, err = fm.HostInfoResults()
+			if err != nil {
+				logrus.Warnf("Failed to fetch HostInfo: %s", err)
+				hostInfo["error"] = err.Error()
+			}
+		}
+
+		// Send hostInfo as first result
+		resultsChan <- Result{
+			Measurements: hostInfo,
+			CheckType:    "hostInfo",
+			Timestamp:    time.Now().Unix(),
+		}
+		fm.hostInfoSent = true
+	}
 
 	for {
 		if err := fm.HealthCheck(); err != nil {
@@ -257,7 +280,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		case err != nil:
 			logrus.Error(err)
 		default:
-			if err := fm.RunOnce(input, outputFile, interrupt); err != nil {
+			if err := fm.RunOnce(input, outputFile, interrupt, resultsChan); err != nil {
 				logrus.Error(err)
 			}
 		}
@@ -271,38 +294,11 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}) error {
+func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) error {
+
 	var err error
-	var hostInfo MeasurementsMap
 
-	// in case HUB server will hang on response we will need a buffer to continue perform checks
-	resultsChan := make(chan Result, 100)
-
-	// since fm.Run calls fm.RunOnce over and over again, we need this check here
-	if !fm.hostInfoSent {
-		// Only try to collect HostInfo when defined in config
-		if len(fm.Config.HostInfo) > 0 {
-			hostInfo, err = fm.HostInfoResults()
-			if err != nil {
-				logrus.Warnf("Failed to fetch HostInfo: %s", err)
-				hostInfo["error"] = err.Error()
-			}
-		}
-
-		// Send hostInfo as first result
-		resultsChan <- Result{
-			Measurements: hostInfo,
-			CheckType:    "hostInfo",
-			Timestamp:    time.Now().Unix(),
-		}
-		fm.hostInfoSent = true
-	}
-
-	if input != nil {
-		go fm.processInput(input, true, resultsChan)
-	} else {
-		close(resultsChan)
-	}
+	go fm.processInputContinious(input, true, interrupt, resultsChan)
 
 	switch {
 	case outputFile != nil:
@@ -366,6 +362,22 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 // local is false if check originated from a remote node
+func (fm *Frontman) processInputContinious(input *Input, local bool, interrupt chan struct{}, resultsChan chan<- Result) {
+
+	for {
+		fm.processInput(input, local, resultsChan)
+
+		select {
+		case <-interrupt:
+			logrus.Info("processInput INTERRUPTED")
+			close(resultsChan)
+			return
+		default:
+		}
+	}
+}
+
+// local is false if check originated from a remote node
 func (fm *Frontman) processInput(input *Input, local bool, resultsChan chan<- Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
@@ -375,7 +387,6 @@ func (fm *Frontman) processInput(input *Input, local bool, resultsChan chan<- Re
 	succeed += runSNMPChecks(fm, &wg, local, resultsChan, input.SNMPChecks)
 
 	wg.Wait()
-	close(resultsChan)
 
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
 	fm.Stats.ChecksPerformedTotal += uint64(totChecks)

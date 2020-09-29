@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -104,25 +103,6 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	return nil
 }
 
-func (fm *Frontman) sendResultsChanToFileContinuously(resultsChan chan Result, outputFile *os.File) error {
-	var errs []string
-	var jsonEncoder = json.NewEncoder(outputFile)
-
-	// encode and add results to the file as we get it from the chan
-	for res := range resultsChan {
-		err := jsonEncoder.Encode(res)
-		if err != nil {
-			errs = append(errs, err.Error())
-		}
-	}
-
-	if errs != nil {
-		return fmt.Errorf("JSON encoding errors: %s", strings.Join(errs, "; "))
-	}
-
-	return nil
-}
-
 func (fm *Frontman) sendResultsChanToFile(resultsChan chan Result, outputFile *os.File) error {
 	var results []Result
 	var jsonEncoder = json.NewEncoder(outputFile)
@@ -207,6 +187,8 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 	sendResults := []Result{}
 	shouldReturn := false
 
+	lastSentToHub := time.Unix(0, 0)
+
 	for {
 		select {
 		case res, ok := <-resultsChan:
@@ -219,36 +201,41 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 
 			results = append(results, res)
 			if len(results) < fm.Config.QueueSenderBatchSize && !shouldReturn {
-				// wait for enough results before post
 				continue
 			}
 		}
 
-		sendResults = results
-		logrus.Debugf("SenderModeQueue: send %d results", len(sendResults))
-		results = nil
+		duration := time.Since(lastSentToHub)
+		if duration >= interval {
 
-		var err error
-		if len(sendResults) > 0 {
-			err = fm.postResultsToHub(sendResults)
-			if err != nil {
-				err = fmt.Errorf("postResultsToHub error: %s", err.Error())
+			if len(results) >= fm.Config.QueueSenderBatchSize {
+				logrus.Infof("%d results in queue... cutting", len(results))
+				sendResults = results[0:fm.Config.QueueSenderBatchSize]
+				results = results[fm.Config.QueueSenderBatchSize:]
+			} else {
+				sendResults = results
+				results = nil
+			}
+
+			// when interval time passed, we should take X items off results queue and send off to hub
+			if len(sendResults) > 0 {
+				logrus.Infof("Send %d results to hub, %d results in queue", len(sendResults), len(results))
+				lastSentToHub = time.Now()
+				go func(r []Result) {
+					err := fm.postResultsToHub(r)
+					if err != nil {
+						logrus.Errorf("postResultsToHub error: %s", err.Error())
+					}
+
+					var m runtime.MemStats
+					runtime.ReadMemStats(&m)
+					logrus.Debugf("SenderModeQueue: Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+				}(sendResults)
 			}
 		}
-		logrus.Infof("Results in channel: %d", len(resultsChan))
 
 		if shouldReturn {
-			return err
+			return nil
 		}
-
-		if err != nil {
-			logrus.Error(err)
-		}
-
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-		logrus.Debugf("SenderModeQueue: sleep for %v. Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", interval, m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
-
-		time.Sleep(interval)
 	}
 }

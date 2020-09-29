@@ -149,6 +149,9 @@ func main() {
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
+	// in case HUB server will hang on response we will need a buffer to continue perform checks
+	resultsChan := make(chan frontman.Result, 100)
+
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
 	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
@@ -167,7 +170,7 @@ func main() {
 		syscall.SIGTERM)
 	doneChan := make(chan struct{})
 	go func() {
-		fm.Run(*inputFilePtr, output, interruptChan)
+		fm.Run(*inputFilePtr, output, interruptChan, resultsChan)
 		doneChan <- struct{}{}
 	}()
 
@@ -425,7 +428,8 @@ func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputF
 		os.Exit(1)
 	}
 
-	err = fm.RunOnce(input, output, interruptChan)
+	resultsChan := make(chan frontman.Result, 100)
+	err = fm.RunOnce(input, output, interruptChan, resultsChan)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -626,15 +630,17 @@ func runUnderOsServiceManager(fm *frontman.Frontman) {
 // in order to run Frontman under OS Service Manager
 type serviceWrapper struct {
 	Frontman      *frontman.Frontman
+	ResultsChan   chan frontman.Result
 	InterruptChan chan struct{}
 	DoneChan      chan struct{}
 }
 
 func (sw *serviceWrapper) Start(s service.Service) error {
+	sw.ResultsChan = make(chan frontman.Result, 100)
 	sw.InterruptChan = make(chan struct{})
 	sw.DoneChan = make(chan struct{})
 	go func() {
-		sw.Frontman.Run("", nil, sw.InterruptChan)
+		sw.Frontman.Run("", nil, sw.InterruptChan, sw.ResultsChan)
 		sw.DoneChan <- struct{}{}
 	}()
 
