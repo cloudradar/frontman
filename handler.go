@@ -260,29 +260,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
-		input, err := fm.FetchInput(inputFilePath)
-		switch {
-		case err != nil && err == ErrorMissingHubOrInput:
-			logrus.Warnln(err)
-			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
-			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
-			time.Sleep(10 * time.Second)
-			os.Exit(0)
-		case err != nil && err == ErrorHubGeneral:
-			logrus.Warnln("ErrorHubGeneral", err)
-			// sleep until the next data submission is due
-			fm.sleepUntilNextInterval()
-
-		case err != nil && err == ErrorHubTooManyRequests:
-			logrus.Warnln(err)
-			// for error code 429, wait 10 seconds and try again
-			time.Sleep(10 * time.Second)
-		case err != nil:
+		if err := fm.RunOnce(inputFilePath, outputFile, interrupt, resultsChan); err != nil {
 			logrus.Error(err)
-		default:
-			if err := fm.RunOnce(input, outputFile, interrupt, resultsChan); err != nil {
-				logrus.Error(err)
-			}
 		}
 
 		select {
@@ -294,11 +273,11 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) error {
+func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) error {
 
 	var err error
 
-	go fm.processInputContinious(input, true, interrupt, resultsChan)
+	go fm.processInputContinious(inputFilePath, true, interrupt, resultsChan)
 
 	switch {
 	case outputFile != nil:
@@ -328,6 +307,7 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	return nil
 }
 
+// FetchInput reads checks from a json file or the hub
 func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	var input *Input
 	var err error
@@ -362,9 +342,42 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInputContinious(input *Input, local bool, interrupt chan struct{}, resultsChan chan<- Result) {
+func (fm *Frontman) processInputContinious(inputFilePath string, local bool, interrupt chan struct{}, resultsChan chan<- Result) {
+
+	lastFetch := time.Unix(0, 0)
+	interval := secToDuration(fm.Config.Sleep)
+
+	var err error
+	var input *Input
 
 	for {
+		duration := time.Since(lastFetch)
+		if duration >= interval {
+
+			input, err = fm.FetchInput(inputFilePath)
+			lastFetch = time.Now()
+			switch {
+			case err != nil && err == ErrorMissingHubOrInput:
+				logrus.Warnln(err)
+				// This is necessary because MSI does not respect if service quits with status 0 but quickly.
+				// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
+				time.Sleep(10 * time.Second)
+				os.Exit(0)
+			case err != nil && err == ErrorHubGeneral:
+				logrus.Warnln("ErrorHubGeneral", err)
+				// sleep until the next data submission is due
+				fm.sleepUntilNextInterval()
+
+			case err != nil && err == ErrorHubTooManyRequests:
+				logrus.Warnln(err)
+				// for error code 429, wait 10 seconds and try again
+				time.Sleep(10 * time.Second)
+			case err != nil:
+				logrus.Error(err)
+			default:
+			}
+		}
+
 		fm.processInput(input, local, resultsChan)
 
 		select {

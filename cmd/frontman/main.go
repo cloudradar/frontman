@@ -422,14 +422,8 @@ func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputF
 		log.Infoln("All health checks are positive. Resuming normal operation.")
 	}
 
-	input, err := fm.FetchInput(inputFile)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
 	resultsChan := make(chan frontman.Result, 100)
-	err = fm.RunOnce(input, output, interruptChan, resultsChan)
+	err := fm.RunOnce(inputFile, output, interruptChan, resultsChan)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
