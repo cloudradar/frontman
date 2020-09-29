@@ -257,7 +257,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		case err != nil:
 			logrus.Error(err)
 		default:
-			if err := fm.RunOnce(input, outputFile, interrupt, false); err != nil {
+			if err := fm.RunOnce(input, outputFile, interrupt); err != nil {
 				logrus.Error(err)
 			}
 		}
@@ -271,7 +271,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
+func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}) error {
 	var err error
 	var hostInfo MeasurementsMap
 
@@ -305,9 +305,6 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	}
 
 	switch {
-	case outputFile != nil && writeResultsChanToFileContinously:
-		logrus.Debugf("sender_mode sendResultsChanToFileContinuously")
-		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
 	case outputFile != nil:
 		logrus.Debugf("sender_mode sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)

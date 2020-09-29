@@ -221,7 +221,6 @@ func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
 	}
 }
 
-
 func handleFlagUpdate(update *bool, assumeYes *bool) {
 	if update != nil && *update {
 		updates, err := printAvailableUpdates()
@@ -426,7 +425,7 @@ func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputF
 		os.Exit(1)
 	}
 
-	err = fm.RunOnce(input, output, interruptChan, false)
+	err = fm.RunOnce(input, output, interruptChan)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
