@@ -64,7 +64,7 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	}
 }
 
-func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan<- Result, checkList []ServiceCheck) int {
+func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []ServiceCheck) int {
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
@@ -129,7 +129,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 				}
 			}
 
-			resultsChan <- res
+			*resultsChan <- res
 		}(check)
 	}
 	return succeed

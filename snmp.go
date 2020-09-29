@@ -711,7 +711,7 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 	return
 }
 
-func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan<- Result, checkList []SNMPCheck) int {
+func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []SNMPCheck) int {
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
@@ -751,7 +751,7 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan cha
 				succeed++
 			}
 
-			resultsChan <- res
+			*resultsChan <- res
 		}(check)
 	}
 	return succeed

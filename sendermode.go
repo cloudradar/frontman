@@ -103,22 +103,25 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	return nil
 }
 
-func (fm *Frontman) sendResultsChanToFile(resultsChan chan Result, outputFile *os.File) error {
+func (fm *Frontman) sendResultsChanToFile(resultsChan *chan Result, outputFile *os.File) error {
 	var results []Result
 	var jsonEncoder = json.NewEncoder(outputFile)
-	for res := range resultsChan {
+	for res := range *resultsChan {
 		results = append(results, res)
 	}
 
 	return jsonEncoder.Encode(results)
 }
 
-// used when sender_mode == "wait" (post results to hub after each round)
-func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
+// used when sender_mode == "wait" (post results to hub after each round). resulsChan must be closed before calling this
+func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	var results []Result
-	for res := range resultsChan {
+	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(*resultsChan))
+
+	for res := range *resultsChan {
 		results = append(results, res)
 	}
+	logrus.Infof("sendResultsChanToHub posting. len %v", len(results))
 	err := fm.postResultsToHub(results)
 	if err != nil {
 		return fmt.Errorf("postResultsToHub: %s", err.Error())
@@ -131,7 +134,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan chan Result) error {
 }
 
 // used when sender_mode == "interval" (post results to hub by fixed interval)
-func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) error {
+func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan *chan Result) error {
 	started := time.Now()
 	delay := secToDuration(fm.Config.SenderModeInterval)
 	sendResultsTicker := time.NewTicker(delay)
@@ -142,7 +145,7 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 
 	for {
 		select {
-		case res, ok := <-resultsChan:
+		case res, ok := <-*resultsChan:
 			if !ok {
 				// chan was closed, no more results left
 				shouldReturn = true
@@ -179,7 +182,7 @@ func (fm *Frontman) sendResultsChanToHubWithInterval(resultsChan chan Result) er
 }
 
 // used when sender_mode == "queue" (post results to hub continiously)
-func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
+func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
 	interval := secToDuration(float64(fm.Config.QueueSenderRequestInterval))
 
@@ -191,7 +194,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan chan Result) error {
 
 	for {
 		select {
-		case res, ok := <-resultsChan:
+		case res, ok := <-*resultsChan:
 			if !ok {
 				// chan was closed, no more results left
 				logrus.Debug("chan was closed, no more results left")

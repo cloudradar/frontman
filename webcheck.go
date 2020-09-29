@@ -259,7 +259,7 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 	return client
 }
 
-func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan<- Result, checkList []WebCheck) int {
+func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []WebCheck) int {
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
@@ -326,7 +326,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan
 				succeed++
 			}
 
-			resultsChan <- res
+			*resultsChan <- res
 		}(check)
 	}
 	return succeed

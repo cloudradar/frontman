@@ -260,7 +260,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
-		if err := fm.RunOnce(inputFilePath, outputFile, interrupt, resultsChan); err != nil {
+		if err := fm.RunOnce(inputFilePath, outputFile, interrupt, &resultsChan); err != nil {
 			logrus.Error(err)
 		}
 
@@ -273,11 +273,9 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) error {
+func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
 
 	var err error
-
-	go fm.processInputContinious(inputFilePath, true, interrupt, resultsChan)
 
 	switch {
 	case outputFile != nil:
@@ -287,15 +285,27 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 		logrus.Debugf("sender_mode INTERVAL")
 		err = fm.sendResultsChanToHubWithInterval(resultsChan)
 	case fm.Config.SenderMode == SenderModeWait:
-		logrus.Debugf("sender_mode WAIT")
+
+		input, err := fm.FetchInput(inputFilePath)
+		fm.handleHubError(err)
+
+		fm.processInput(input, true, resultsChan)
+
+		logrus.Infof("sender_mode WAIT")
 		sleepTime := secToDuration(fm.Config.Sleep)
 		start := time.Now()
+		close(*resultsChan)
 		err = fm.sendResultsChanToHub(resultsChan)
+
+		*resultsChan = make(chan Result, 100)
 		sleepTime -= time.Since(start)
+		logrus.Infof("WAIT SLEEP FOR %v", sleepTime)
 		if sleepTime > 0 {
 			time.Sleep(sleepTime)
 		}
 	case fm.Config.SenderMode == SenderModeQueue:
+		go fm.processInputContinious(inputFilePath, true, interrupt, resultsChan)
+
 		logrus.Debugf("sender_mode QUEUE")
 		err = fm.sendResultsChanToHubQueue(resultsChan)
 	}
@@ -305,6 +315,29 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 	}
 
 	return nil
+}
+
+func (fm *Frontman) handleHubError(err error) {
+	switch {
+	case err != nil && err == ErrorMissingHubOrInput:
+		logrus.Warnln(err)
+		// This is necessary because MSI does not respect if service quits with status 0 but quickly.
+		// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
+		time.Sleep(10 * time.Second)
+		os.Exit(0)
+	case err != nil && err == ErrorHubGeneral:
+		logrus.Warnln("ErrorHubGeneral", err)
+		// sleep until the next data submission is due
+		fm.sleepUntilNextInterval()
+
+	case err != nil && err == ErrorHubTooManyRequests:
+		logrus.Warnln(err)
+		// for error code 429, wait 10 seconds and try again
+		time.Sleep(10 * time.Second)
+	case err != nil:
+		logrus.Error(err)
+	default:
+	}
 }
 
 // FetchInput reads checks from a json file or the hub
@@ -342,7 +375,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInputContinious(inputFilePath string, local bool, interrupt chan struct{}, resultsChan chan<- Result) {
+func (fm *Frontman) processInputContinious(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
 
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
@@ -356,26 +389,7 @@ func (fm *Frontman) processInputContinious(inputFilePath string, local bool, int
 
 			input, err = fm.FetchInput(inputFilePath)
 			lastFetch = time.Now()
-			switch {
-			case err != nil && err == ErrorMissingHubOrInput:
-				logrus.Warnln(err)
-				// This is necessary because MSI does not respect if service quits with status 0 but quickly.
-				// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
-				time.Sleep(10 * time.Second)
-				os.Exit(0)
-			case err != nil && err == ErrorHubGeneral:
-				logrus.Warnln("ErrorHubGeneral", err)
-				// sleep until the next data submission is due
-				fm.sleepUntilNextInterval()
-
-			case err != nil && err == ErrorHubTooManyRequests:
-				logrus.Warnln(err)
-				// for error code 429, wait 10 seconds and try again
-				time.Sleep(10 * time.Second)
-			case err != nil:
-				logrus.Error(err)
-			default:
-			}
+			fm.handleHubError(err)
 		}
 
 		fm.processInput(input, local, resultsChan)
@@ -383,7 +397,7 @@ func (fm *Frontman) processInputContinious(inputFilePath string, local bool, int
 		select {
 		case <-interrupt:
 			logrus.Info("processInput INTERRUPTED")
-			close(resultsChan)
+			close(*resultsChan)
 			return
 		default:
 		}
@@ -391,7 +405,7 @@ func (fm *Frontman) processInputContinious(inputFilePath string, local bool, int
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInput(input *Input, local bool, resultsChan chan<- Result) {
+func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
 
