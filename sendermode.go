@@ -144,19 +144,19 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
 	lastSentToHub := time.Unix(0, 0)
 
+	fm.TerminateQueue.Add(1)
+
 	for {
 		select {
 		case res, ok := <-*resultsChan:
 			if !ok {
 				// chan was closed, no more results left
-				logrus.Debug("chan was closed, no more results left")
 				shouldReturn = true
-				break
-			}
-
-			results = append(results, res)
-			if len(results) < fm.Config.QueueSenderBatchSize && !shouldReturn {
-				continue
+			} else {
+				results = append(results, res)
+				if len(results) < fm.Config.QueueSenderBatchSize && len(*resultsChan) > 0 {
+					continue
+				}
 			}
 		}
 
@@ -187,7 +187,8 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 			}
 		}
 
-		if shouldReturn {
+		if shouldReturn && len(results) == 0 {
+			fm.TerminateQueue.Done()
 			return nil
 		}
 	}

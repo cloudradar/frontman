@@ -179,6 +179,7 @@ func main() {
 	case sig := <-sigc:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
 		interruptChan <- struct{}{}
+		fm.TerminateQueue.Wait()
 		os.Exit(0)
 	case <-doneChan:
 		os.Exit(0)

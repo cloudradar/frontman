@@ -288,7 +288,7 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 
 		fm.processInput(input, true, resultsChan)
 
-		logrus.Infof("sender_mode WAIT")
+		logrus.Debugf("sender_mode WAIT")
 		sleepTime := secToDuration(fm.Config.Sleep)
 		start := time.Now()
 		close(*resultsChan)
@@ -296,7 +296,7 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 
 		*resultsChan = make(chan Result, 100)
 		sleepTime -= time.Since(start)
-		logrus.Infof("WAIT SLEEP FOR %v", sleepTime)
+		logrus.Debugf("WAIT SLEEP FOR %v", sleepTime)
 		if sleepTime > 0 {
 			time.Sleep(sleepTime)
 		}
@@ -394,7 +394,6 @@ func (fm *Frontman) processInputContinious(inputFilePath string, local bool, int
 
 		select {
 		case <-interrupt:
-			logrus.Info("processInput INTERRUPTED")
 			close(*resultsChan)
 			return
 		default:

@@ -49,6 +49,8 @@ type Frontman struct {
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
 	previousSNMPPorterrorsMeasure []snmpPorterrorsMeasure
+
+	TerminateQueue sync.WaitGroup
 }
 
 func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
@@ -60,6 +62,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		hostInfoSent:                false,
 		version:                     version,
 		failedNodes:                 make(map[string]time.Time),
+		TerminateQueue:              sync.WaitGroup{},
 	}
 
 	if rootCertsPath != "" {
