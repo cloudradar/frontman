@@ -369,7 +369,6 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	for {
 		duration := time.Since(lastFetch)
 		if duration >= interval {
-
 			input, err = fm.FetchInput(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
@@ -386,6 +385,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	}
 }
 
+// processInput processes the whole list of checks in input
 // local is false if check originated from a remote node
 func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Result) {
 	wg := sync.WaitGroup{}

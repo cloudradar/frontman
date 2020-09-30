@@ -10,7 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{}, error) {
+// func (fm *Frontman) runServiceCheck(check ServiceCheck)
+func (check ServiceCheck) Run(fm *Frontman) (map[string]interface{}, error) {
 	var done = make(chan struct{})
 	var err error
 	var results map[string]interface{}
@@ -91,7 +92,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 				res.Message = "Missing data.connect key"
 			} else {
 				var err error
-				res.Measurements, err = fm.runServiceCheck(check)
+				res.Measurements, err = check.Run(fm)
 				if err != nil {
 					recovered := false
 					if fm.Config.FailureConfirmation > 0 {
@@ -100,7 +101,7 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
 							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
 							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
-							res.Measurements, err = fm.runServiceCheck(check)
+							res.Measurements, err = check.Run(fm)
 							if err == nil {
 								recovered = true
 								break
