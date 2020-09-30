@@ -208,6 +208,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	return &i, nil
 }
 
+// Run runs all checks continuously and sends result to hub or file
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
 
 	fm.Stats.StartedAt = time.Now()
@@ -245,6 +246,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		fm.hostInfoSent = true
 	}
 
+	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
+
 	for {
 		if err := fm.HealthCheck(); err != nil {
 			fm.HealthCheckPassedPreviously = false
@@ -260,7 +263,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
-		if err := fm.RunOnce(inputFilePath, outputFile, interrupt, &resultsChan); err != nil {
+		if err := fm.sendResultsChanToHubQueue(&resultsChan); err != nil {
 			logrus.Error(err)
 		}
 
@@ -273,42 +276,24 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
+// RunOnce runs all checks once and send result to hub or file
 func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
 
 	var err error
 
-	switch {
-	case outputFile != nil:
-		logrus.Debugf("sender_mode sendResultsChanToFile")
+	input, err := fm.FetchInput(inputFilePath)
+	fm.handleHubError(err)
+
+	fm.processInput(input, true, resultsChan)
+
+	logrus.Debugf("RunOnce")
+	close(*resultsChan)
+
+	if outputFile != nil {
+		logrus.Debugf("sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
-	case fm.Config.SenderMode == SenderModeWait:
-
-		input, err := fm.FetchInput(inputFilePath)
-		fm.handleHubError(err)
-
-		fm.processInput(input, true, resultsChan)
-
-		logrus.Debugf("sender_mode WAIT")
-		sleepTime := secToDuration(fm.Config.Sleep)
-		start := time.Now()
-		close(*resultsChan)
+	} else {
 		err = fm.sendResultsChanToHub(resultsChan)
-
-		*resultsChan = make(chan Result, 100)
-		sleepTime -= time.Since(start)
-		logrus.Debugf("WAIT SLEEP FOR %v", sleepTime)
-		if sleepTime > 0 {
-			time.Sleep(sleepTime)
-		}
-	case fm.Config.SenderMode == SenderModeQueue:
-		go fm.processInputContinious(inputFilePath, true, interrupt, resultsChan)
-
-		logrus.Debugf("sender_mode QUEUE")
-		err = fm.sendResultsChanToHubQueue(resultsChan)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to process results: %s", err.Error())
 	}
 
 	return nil
@@ -373,7 +358,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInputContinious(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
+func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
 
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)

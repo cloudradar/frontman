@@ -133,7 +133,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	return nil
 }
 
-// used when sender_mode == "queue" (post results to hub continiously)
+// used when sender_mode == "queue" (post results to hub continuously)
 func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
 	interval := secToDuration(float64(fm.Config.QueueSenderRequestInterval))
