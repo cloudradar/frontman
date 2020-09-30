@@ -20,8 +20,8 @@ const (
 	IOModeFile = "file"
 	IOModeHTTP = "http"
 
-	SenderModeWait     = "wait"
-	SenderModeInterval = "interval"
+	SenderModeWait  = "wait"
+	SenderModeQueue = "queue"
 
 	minHubRequestTimeout     = 1
 	maxHubRequestTimeout     = 600
@@ -79,18 +79,11 @@ type Config struct {
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
 	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold" comment:"Min days remain on the SSL cert to pass the check"`
 
-	SenderMode string `toml:"sender_mode" comment:"sender_mode = \"wait\" waits for all checks to finish.\n
-Results are sent back and # frontman sleeps the sleep interval.\n
-If the round has taken more than the sleep interval the next round starts immediately.\n\n
-sender_mode = \"interval\"\n
-Frontman fetches the list of checks and performs the checks.\n
-After the given period of sender_mode_interval frontman detaches from all checks\n
-not finished yet and sends back what it has collected. The unfinished checks keep running.\n
-During the next round, all checks which are still running from the previous round\n
-are skipped to avoid double runs of checks.\n
-If during the start of frontman \"sender_mode\" is "interval" and \"sender_mode_interval\" is larger\n
-than sleep frontman throws an error and denies starting because it would cause congestion."`
-	SenderModeInterval float64 `toml:"sender_mode_interval" comment:"interval in seconds to post results to HUB server\nrequires sender_mode = \"interval\", ignored on sender_mode = \"wait\""`
+	SenderMode string `toml:"sender_mode" comment:"sender_mode = \"wait\"\nFrontman waits for all checks to finish.\nResults are sent back and frontman sleeps the sleep interval.\nIf the round has taken more than the sleep interval the next round starts immediately.\n\nsender_mode = \"queue\"\nFrontman fetches the list of checks and performs the checks.\nCheck results are put into a queue of finished checks.\nA continuously running worker thread consumes the queue and sends back the results in batches to the hub.\nDuring the next round, all checks which are still running from the previous round\nare skipped to avoid double runs of checks.\nThe queue is stored in memory and get's discarded on process termination.\nA regular process termination 'kill <PID>'  waits for the queue to be empty."`
+
+	QueueSenderBatchSize int `toml:"queue_sender_batch_size" comment:"Do not send back more than N results per POST request"`
+
+	QueueSenderRequestInterval int `toml:"queue_sender_request_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
 
 	HealthChecks HealthCheckConfig `toml:"health_checks" comment:"Frontman can verify a reliable internet uplink by pinging some reference hosts before each check round starts.\nPing all hosts of the list.\nOnly if frontman gets a positive answer form all of them, frontman continues.\nOtherwise, the entire check round is skipped. No data is sent back.\nFailed health checks are recorded to the log.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel.\nDisabled by default. Enable by declaring reference_ping_hosts targets\n"`
 
@@ -174,19 +167,20 @@ func init() {
 
 func NewConfig() *Config {
 	cfg := &Config{
-		MinValuableConfig:      *NewMinimumConfig(),
-		NodeName:               "Frontman",
-		LogFile:                defaultLogPath,
-		StatsFile:              defaultStatsFilePath,
-		ICMPTimeout:            0.1,
-		Sleep:                  30,
-		SenderMode:             SenderModeInterval,
-		SenderModeInterval:     20,
-		HTTPCheckMaxRedirects:  10,
-		HTTPCheckTimeout:       15,
-		NetTCPTimeout:          3,
-		NetUDPTimeout:          3,
-		SSLCertExpiryThreshold: 7,
+		MinValuableConfig:          *NewMinimumConfig(),
+		NodeName:                   "Frontman",
+		LogFile:                    defaultLogPath,
+		StatsFile:                  defaultStatsFilePath,
+		ICMPTimeout:                0.1,
+		Sleep:                      30,
+		SenderMode:                 SenderModeQueue,
+		QueueSenderBatchSize:       100,
+		QueueSenderRequestInterval: 2,
+		HTTPCheckMaxRedirects:      10,
+		HTTPCheckTimeout:           15,
+		NetTCPTimeout:              3,
+		NetUDPTimeout:              3,
+		SSLCertExpiryThreshold:     7,
 		HealthChecks: HealthCheckConfig{
 			ReferencePingTimeout: 1,
 			ReferencePingCount:   1,
@@ -322,10 +316,6 @@ func (cfg *Config) sanitize() error {
 	if cfg.HubRequestTimeout < minHubRequestTimeout || cfg.HubRequestTimeout > maxHubRequestTimeout {
 		cfg.HubRequestTimeout = defaultHubRequestTimeout
 		return fmt.Errorf("hub_request_timeout must be between %d and %d", minHubRequestTimeout, maxHubRequestTimeout)
-	}
-
-	if cfg.SenderModeInterval <= 0 {
-		cfg.SenderModeInterval = 30
 	}
 
 	// backwards compatibility with old configs. system_fields is deprecated!

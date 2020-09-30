@@ -149,6 +149,9 @@ func main() {
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
+	// in case HUB server will hang on response we will need a buffer to continue perform checks
+	resultsChan := make(chan frontman.Result, 100)
+
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
 	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
@@ -167,7 +170,7 @@ func main() {
 		syscall.SIGTERM)
 	doneChan := make(chan struct{})
 	go func() {
-		fm.Run(*inputFilePtr, output, interruptChan)
+		fm.Run(*inputFilePtr, output, interruptChan, resultsChan)
 		doneChan <- struct{}{}
 	}()
 
@@ -176,6 +179,7 @@ func main() {
 	case sig := <-sigc:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
 		interruptChan <- struct{}{}
+		fm.TerminateQueue.Wait()
 		os.Exit(0)
 	case <-doneChan:
 		os.Exit(0)
@@ -220,7 +224,6 @@ func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
 		os.Exit(0)
 	}
 }
-
 
 func handleFlagUpdate(update *bool, assumeYes *bool) {
 	if update != nil && *update {
@@ -420,13 +423,8 @@ func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputF
 		log.Infoln("All health checks are positive. Resuming normal operation.")
 	}
 
-	input, err := fm.FetchInput(inputFile)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = fm.RunOnce(input, output, interruptChan, false)
+	resultsChan := make(chan frontman.Result, 100)
+	err := fm.RunOnce(inputFile, output, interruptChan, &resultsChan)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -627,15 +625,17 @@ func runUnderOsServiceManager(fm *frontman.Frontman) {
 // in order to run Frontman under OS Service Manager
 type serviceWrapper struct {
 	Frontman      *frontman.Frontman
+	ResultsChan   chan frontman.Result
 	InterruptChan chan struct{}
 	DoneChan      chan struct{}
 }
 
 func (sw *serviceWrapper) Start(s service.Service) error {
+	sw.ResultsChan = make(chan frontman.Result, 100)
 	sw.InterruptChan = make(chan struct{})
 	sw.DoneChan = make(chan struct{})
 	go func() {
-		sw.Frontman.Run("", nil, sw.InterruptChan)
+		sw.Frontman.Run("", nil, sw.InterruptChan, sw.ResultsChan)
 		sw.DoneChan <- struct{}{}
 	}()
 

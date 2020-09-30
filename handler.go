@@ -208,7 +208,8 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	return &i, nil
 }
 
-func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}) {
+func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
+
 	fm.Stats.StartedAt = time.Now()
 	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
 	fm.StartWritingStats()
@@ -222,64 +223,10 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		}
 	}()
 
-	for {
-		if err := fm.HealthCheck(); err != nil {
-			fm.HealthCheckPassedPreviously = false
-			logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
-			select {
-			case <-interrupt:
-				return
-			case <-time.After(secToDuration(fm.Config.Sleep)):
-				continue
-			}
-		} else if !fm.HealthCheckPassedPreviously {
-			fm.HealthCheckPassedPreviously = true
-			logrus.Infoln("All health checks are positive. Resuming normal operation.")
-		}
-
-		input, err := fm.FetchInput(inputFilePath)
-		switch {
-		case err != nil && err == ErrorMissingHubOrInput:
-			logrus.Warnln(err)
-			// This is necessary because MSI does not respect if service quits with status 0 but quickly.
-			// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
-			time.Sleep(10 * time.Second)
-			os.Exit(0)
-		case err != nil && err == ErrorHubGeneral:
-			logrus.Warnln("ErrorHubGeneral", err)
-			// sleep until the next data submission is due
-			fm.sleepUntilNextInterval()
-
-		case err != nil && err == ErrorHubTooManyRequests:
-			logrus.Warnln(err)
-			// for error code 429, wait 10 seconds and try again
-			time.Sleep(10 * time.Second)
-		case err != nil:
-			logrus.Error(err)
-		default:
-			if err := fm.RunOnce(input, outputFile, interrupt, false); err != nil {
-				logrus.Error(err)
-			}
-		}
-
-		select {
-		case <-interrupt:
-			return
-		default:
-			continue
-		}
-	}
-}
-
-func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan struct{}, writeResultsChanToFileContinously bool) error {
-	var err error
-	var hostInfo MeasurementsMap
-
-	// in case HUB server will hang on response we will need a buffer to continue perform checks
-	resultsChan := make(chan Result, 100)
-
-	// since fm.Run calls fm.RunOnce over and over again, we need this check here
 	if !fm.hostInfoSent {
+		var err error
+		var hostInfo MeasurementsMap
+
 		// Only try to collect HostInfo when defined in config
 		if len(fm.Config.HostInfo) > 0 {
 			hostInfo, err = fm.HostInfoResults()
@@ -298,31 +245,66 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 		fm.hostInfoSent = true
 	}
 
-	if input != nil {
-		go fm.processInput(input, true, resultsChan)
-	} else {
-		close(resultsChan)
+	for {
+		if err := fm.HealthCheck(); err != nil {
+			fm.HealthCheckPassedPreviously = false
+			logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
+			select {
+			case <-interrupt:
+				return
+			case <-time.After(secToDuration(fm.Config.Sleep)):
+				continue
+			}
+		} else if !fm.HealthCheckPassedPreviously {
+			fm.HealthCheckPassedPreviously = true
+			logrus.Infoln("All health checks are positive. Resuming normal operation.")
+		}
+
+		if err := fm.RunOnce(inputFilePath, outputFile, interrupt, &resultsChan); err != nil {
+			logrus.Error(err)
+		}
+
+		select {
+		case <-interrupt:
+			return
+		default:
+			continue
+		}
 	}
+}
+
+func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
+
+	var err error
 
 	switch {
-	case outputFile != nil && writeResultsChanToFileContinously:
-		logrus.Debugf("sender_mode sendResultsChanToFileContinuously")
-		err = fm.sendResultsChanToFileContinuously(resultsChan, outputFile)
 	case outputFile != nil:
 		logrus.Debugf("sender_mode sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
-	case fm.Config.SenderMode == SenderModeInterval:
-		logrus.Debugf("sender_mode INTERVAL")
-		err = fm.sendResultsChanToHubWithInterval(resultsChan)
 	case fm.Config.SenderMode == SenderModeWait:
+
+		input, err := fm.FetchInput(inputFilePath)
+		fm.handleHubError(err)
+
+		fm.processInput(input, true, resultsChan)
+
 		logrus.Debugf("sender_mode WAIT")
 		sleepTime := secToDuration(fm.Config.Sleep)
 		start := time.Now()
+		close(*resultsChan)
 		err = fm.sendResultsChanToHub(resultsChan)
+
+		*resultsChan = make(chan Result, 100)
 		sleepTime -= time.Since(start)
+		logrus.Debugf("WAIT SLEEP FOR %v", sleepTime)
 		if sleepTime > 0 {
 			time.Sleep(sleepTime)
 		}
+	case fm.Config.SenderMode == SenderModeQueue:
+		go fm.processInputContinious(inputFilePath, true, interrupt, resultsChan)
+
+		logrus.Debugf("sender_mode QUEUE")
+		err = fm.sendResultsChanToHubQueue(resultsChan)
 	}
 
 	if err != nil {
@@ -332,6 +314,31 @@ func (fm *Frontman) RunOnce(input *Input, outputFile *os.File, interrupt chan st
 	return nil
 }
 
+func (fm *Frontman) handleHubError(err error) {
+	switch {
+	case err != nil && err == ErrorMissingHubOrInput:
+		logrus.Warnln(err)
+		// This is necessary because MSI does not respect if service quits with status 0 but quickly.
+		// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
+		time.Sleep(10 * time.Second)
+		os.Exit(0)
+	case err != nil && err == ErrorHubGeneral:
+		logrus.Warnln("ErrorHubGeneral", err)
+		// sleep until the next data submission is due
+		delay := secToDuration(fm.Config.Sleep)
+		logrus.Debugf("handleHubError sleeping for %v", delay)
+		time.Sleep(delay)
+	case err != nil && err == ErrorHubTooManyRequests:
+		logrus.Warnln(err)
+		// for error code 429, wait 10 seconds and try again
+		time.Sleep(10 * time.Second)
+	case err != nil:
+		logrus.Error(err)
+	default:
+	}
+}
+
+// FetchInput reads checks from a json file or the hub
 func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 	var input *Input
 	var err error
@@ -366,7 +373,36 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInput(input *Input, local bool, resultsChan chan<- Result) {
+func (fm *Frontman) processInputContinious(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
+
+	lastFetch := time.Unix(0, 0)
+	interval := secToDuration(fm.Config.Sleep)
+
+	var err error
+	var input *Input
+
+	for {
+		duration := time.Since(lastFetch)
+		if duration >= interval {
+
+			input, err = fm.FetchInput(inputFilePath)
+			lastFetch = time.Now()
+			fm.handleHubError(err)
+		}
+
+		fm.processInput(input, local, resultsChan)
+
+		select {
+		case <-interrupt:
+			close(*resultsChan)
+			return
+		default:
+		}
+	}
+}
+
+// local is false if check originated from a remote node
+func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Result) {
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
 
@@ -375,23 +411,8 @@ func (fm *Frontman) processInput(input *Input, local bool, resultsChan chan<- Re
 	succeed += runSNMPChecks(fm, &wg, local, resultsChan, input.SNMPChecks)
 
 	wg.Wait()
-	close(resultsChan)
 
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
 	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
-}
-
-// Used in case of hub failure. Sleeps for the configured interval according to sender_mode INTERVAL/WAIT configuration
-func (fm *Frontman) sleepUntilNextInterval() {
-	if fm.Config.SenderMode == SenderModeInterval {
-		delay := secToDuration(fm.Config.SenderModeInterval)
-		logrus.Debugf("sleepUntilNextInterval INTERVAL sleeping for %v", delay)
-		time.Sleep(delay)
-	}
-	if fm.Config.SenderMode == SenderModeWait {
-		delay := secToDuration(fm.Config.Sleep)
-		logrus.Debugf("sleepUntilNextInterval WAIT sleeping for %v", delay)
-		time.Sleep(delay)
-	}
 }

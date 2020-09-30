@@ -711,11 +711,11 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 	return
 }
 
-func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan<- Result, checkList []SNMPCheck) int {
+func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []SNMPCheck) int {
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
-		go func(check SNMPCheck) {
+		go func(wg *sync.WaitGroup, check SNMPCheck, resultsChan *chan Result) {
 			defer wg.Done()
 
 			if check.UUID == "" {
@@ -751,8 +751,8 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan cha
 				succeed++
 			}
 
-			resultsChan <- res
-		}(check)
+			*resultsChan <- res
+		}(wg, check, resultsChan)
 	}
 	return succeed
 }

@@ -59,16 +59,16 @@ func (fm *Frontman) runServiceCheck(check ServiceCheck) (map[string]interface{},
 	case <-done:
 		return results, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		logrus.Errorf("serviceCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
+		logrus.Errorf("serviceCheck %s %s: %s got unexpected timeout after %.0fs", check.Check.Protocol, check.Check.Connect, check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
 	}
 }
 
-func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan chan<- Result, checkList []ServiceCheck) int {
+func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []ServiceCheck) int {
 	succeed := 0
 	for _, check := range checkList {
 		wg.Add(1)
-		go func(check ServiceCheck) {
+		go func(wg *sync.WaitGroup, check ServiceCheck, resultsChan *chan Result) {
 			defer wg.Done()
 
 			if check.UUID == "" {
@@ -129,8 +129,8 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 				}
 			}
 
-			resultsChan <- res
-		}(check)
+			*resultsChan <- res
+		}(wg, check, resultsChan)
 	}
 	return succeed
 }

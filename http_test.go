@@ -32,8 +32,7 @@ func TestHttpCheckHandler(t *testing.T) {
 		  }]
 	  }`
 
-	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
-	assert.Nil(t, err)
+	cfg := NewConfig()
 	fm := helperCreateFrontman(t, cfg)
 
 	reader := strings.NewReader(checks)
