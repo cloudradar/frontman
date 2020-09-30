@@ -38,9 +38,6 @@ hub_proxy_user = "" # requires hub_proxy to be set
 hub_proxy_password = "" # requires hub_proxy_user to be set
 hub_request_timeout = 10
 
-sender_mode = "wait" # "wait" – to post results to HUB after each round; "interval" – to post results to HUB by fixed interval; requires io_mode to be "http"
-sender_mode_interval = 0.0 # interval in seconds to post results to HUB server  # requires sender_mode to be "interval";s number must contains decimal point
-
 # System
 # host_info of frontman machine will be sent to hub
 # default ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostname','memory_total_B']
