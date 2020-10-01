@@ -411,7 +411,7 @@ func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Res
 
 // runs all checks in checkList and sends results to resultsChan
 func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local bool) int {
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	succeed := 0
 	for _, check := range checkList {
@@ -420,14 +420,17 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 			defer wg.Done()
 
 			res, err := check.run(fm)
+
+			// XXX handle retry logic inside check.run() !!!!! ?
+
 			if err != nil {
 				recovered := false
 				if fm.Config.FailureConfirmation > 0 {
-					logrus.Debugf("runChecks failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.UUID, err.Error())
+					logrus.Debugf("runChecks failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.uniqueID(), err.Error())
 
 					for i := 1; i <= fm.Config.FailureConfirmation; i++ {
 						time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
-						logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
+						logrus.Debugf("Retry %d for failed check %s", i, check.uniqueID())
 						res, err = check.run(fm)
 						if err == nil {
 							recovered = true
@@ -448,15 +451,15 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 				}
 
 				if !recovered {
-					logrus.Debugf("runChecks: %s: %s", check.UUID, err.Error())
-				}
-
-				if res.Message == "" {
-					succeed++
+					logrus.Debugf("runChecks: %s: %s", check.uniqueID(), err.Error())
 				}
 			}
 
-			*resultsChan <- res
+			if res.Message == "" {
+				succeed++
+			}
+
+			*resultsChan <- *res
 		}(wg, check, resultsChan)
 	}
 

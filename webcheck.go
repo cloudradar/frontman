@@ -108,6 +108,10 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPre
 	return nil
 }
 
+func (check WebCheck) uniqueID() string {
+	return check.UUID
+}
+
 func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	if check.UUID == "" {
 		return nil, fmt.Errorf("missing checkUuid key")

@@ -44,6 +44,10 @@ type snmpPorterrorsMeasure struct {
 	ifInUnknownProtos uint
 }
 
+func (check SNMPCheck) uniqueID() string {
+	return check.UUID
+}
+
 func (check SNMPCheck) run(fm *Frontman) (*Result, error) {
 	if check.UUID == "" {
 		return nil, fmt.Errorf("missing checkUuid key")

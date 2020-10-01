@@ -4,6 +4,7 @@ import "encoding/json"
 
 type Check interface {
 	run(fm *Frontman) (*Result, error)
+	uniqueID() string
 }
 
 type Input struct {

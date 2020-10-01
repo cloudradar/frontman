@@ -8,6 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func (check ServiceCheck) uniqueID() string {
+	return check.UUID
+}
+
 func (check ServiceCheck) run(fm *Frontman) (*Result, error) {
 
 	if check.UUID == "" {
