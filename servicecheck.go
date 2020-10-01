@@ -10,7 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// func (fm *Frontman) runServiceCheck(check ServiceCheck)
 func (check ServiceCheck) Run(fm *Frontman) (map[string]interface{}, error) {
 	var done = make(chan struct{})
 	var err error

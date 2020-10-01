@@ -110,37 +110,37 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPre
 	return nil
 }
 
-func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, error) {
-	prefix := fmt.Sprintf("http.%s.", data.Method)
+func (check WebCheck) Run(fm *Frontman) (map[string]interface{}, error) {
+	prefix := fmt.Sprintf("http.%s.", check.Check.Method)
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
 	// In case the webcheck disables redirect following we set maxRedirects to 0
 	maxRedirects := 0
-	if !data.DontFollowRedirects {
+	if !check.Check.DontFollowRedirects {
 		maxRedirects = fm.Config.HTTPCheckMaxRedirects
 	}
-	var httpTransport = fm.newHTTPTransport(data.IgnoreSSLErrors)
+	var httpTransport = fm.newHTTPTransport(check.Check.IgnoreSSLErrors)
 	httpClient := fm.newClientWithOptions(httpTransport, maxRedirects)
 
 	timeout := fm.Config.HTTPCheckTimeout
 
 	// set individual timeout in case it is less than in this check
-	if data.Timeout > 0 && data.Timeout < timeout {
-		timeout = data.Timeout
+	if check.Check.Timeout > 0 && check.Check.Timeout < timeout {
+		timeout = check.Check.Timeout
 	}
 
-	data.Method = strings.ToUpper(data.Method)
+	check.Check.Method = strings.ToUpper(check.Check.Method)
 
 	ctx, cancel := context.WithTimeout(context.Background(), secToDuration(timeout))
 	defer cancel()
 
-	url, err := normalizeURLPort(data.URL)
+	url, err := normalizeURLPort(check.Check.URL)
 	if err != nil {
 		return m, err
 	}
 
-	req, err := http.NewRequest(data.Method, url, nil)
+	req, err := http.NewRequest(check.Check.Method, url, nil)
 	if err != nil {
 		return m, err
 	}
@@ -154,7 +154,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	req.Header.Set("User-Agent", fm.userAgent())
 
 	var hostHeader string
-	for key, val := range data.Headers {
+	for key, val := range check.Check.Headers {
 		req.Header.Set(key, val)
 		if hostHeader == "" && strings.ToLower(key) == "host" {
 			hostHeader = val
@@ -166,8 +166,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Host = hostHeader
 	}
 
-	if data.Method == "POST" && data.PostData != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(data.PostData))
+	if check.Check.Method == "POST" && check.Check.PostData != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(check.Check.PostData))
 		// close noop closer to bypass lint warnings
 		_ = req.Body.Close()
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -193,8 +193,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	// Set the httpStatusCode in case we got a response
 	m[prefix+"httpStatusCode"] = resp.StatusCode
 
-	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
-		return m, fmt.Errorf("bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
+	if check.Check.ExpectedHTTPStatus > 0 && resp.StatusCode != check.Check.ExpectedHTTPStatus {
+		return m, fmt.Errorf("bad status code. Expected %d, got %d", check.Check.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
 	// wrap body reader with the ReadCloserCounter
@@ -206,8 +206,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
 	}
 
-	if data.ExpectedPattern != "" {
-		err = checkBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, data.ExpectedPatternPresence, !data.SearchHTMLSource)
+	if check.Check.ExpectedPattern != "" {
+		err = checkBodyReaderMatchesPattern(resp.Body, check.Check.ExpectedPattern, check.Check.ExpectedPatternPresence, !check.Check.SearchHTMLSource)
 	} else {
 		// we don't need the content itself because we don't need to check any pattern
 		// just read the reader, so bodyReaderWithCounter will be able to count bytes
@@ -290,7 +290,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *cha
 				res.Message = "Missing check.url key"
 			default:
 				var err error
-				res.Measurements, err = fm.runWebCheck(check.Check)
+				res.Measurements, err = check.Run(fm)
 				if err != nil {
 					recovered := false
 					if fm.Config.FailureConfirmation > 0 {
@@ -299,7 +299,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *cha
 						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
 							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
 							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
-							res.Measurements, err = fm.runWebCheck(check.Check)
+							res.Measurements, err = check.Run(fm)
 							if err == nil {
 								recovered = true
 								break
