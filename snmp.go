@@ -5,7 +5,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -45,7 +44,7 @@ type snmpPorterrorsMeasure struct {
 	ifInUnknownProtos uint
 }
 
-func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
+func (check SNMPCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	var done = make(chan map[string]interface{})
 	var err error
 	go func() {
@@ -711,6 +710,7 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 	return
 }
 
+/*
 func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []SNMPCheck) int {
 	succeed := 0
 	for _, check := range checkList {
@@ -738,7 +738,7 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *ch
 				res.Message = "Missing check.connect key"
 			} else {
 				var err error
-				res.Measurements, err = fm.runSNMPCheck(&check)
+				res.Measurements, err = check.Run(fm)
 
 				// NOTE: failed snmp checks are excluded from "ask neighbour" feature
 				if err != nil {
@@ -756,3 +756,4 @@ func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *ch
 	}
 	return succeed
 }
+*/

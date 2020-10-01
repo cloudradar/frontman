@@ -374,6 +374,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			fm.handleHubError(err)
 		}
 
+		// XXX dont use processInput here, instead run in paralell continuously so done checks can be started again while other is progressing
 		fm.processInput(input, local, resultsChan)
 
 		select {
@@ -391,13 +392,97 @@ func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Res
 	wg := sync.WaitGroup{}
 	startedAt := time.Now()
 
-	succeed := runServiceChecks(fm, &wg, local, resultsChan, input.ServiceChecks)
-	succeed += runWebChecks(fm, &wg, local, resultsChan, input.WebChecks)
-	succeed += runSNMPChecks(fm, &wg, local, resultsChan, input.SNMPChecks)
+	checks := []Check{}
+	for _, c := range input.ServiceChecks {
+		checks = append(checks, c)
+	}
+	for _, c := range input.WebChecks {
+		checks = append(checks, c)
+	}
+	for _, c := range input.SNMPChecks {
+		checks = append(checks, c)
+	}
 
+	succeed := fm.runChecks(&wg, local, resultsChan, checks)
+	/*
+		succeed := runServiceChecks(fm, &wg, local, resultsChan, input.ServiceChecks)
+		succeed += runWebChecks(fm, &wg, local, resultsChan, input.WebChecks)
+		succeed += runSNMPChecks(fm, &wg, local, resultsChan, input.SNMPChecks)
+	*/
 	wg.Wait()
 
 	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
 	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+}
+
+func (fm *Frontman) runChecks(wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []Check) int {
+	succeed := 0
+	for _, check := range checkList {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, check Check, resultsChan *chan Result) {
+			defer wg.Done()
+
+			if check.UUID == "" {
+				// in case checkUuid is missing we can ignore this item
+				logrus.Info("runChecks: missing checkUuid key")
+				return
+			}
+
+			res := Result{
+				Node:      fm.Config.NodeName,
+				CheckType: "serviceCheck", // XXX
+				CheckUUID: check.UUID,
+				Timestamp: time.Now().Unix(),
+			}
+
+			res.Check = check.Check
+
+			if check.Check.Connect == "" {
+				logrus.Info("runChecks: missing data.connect key")
+				res.Message = "Missing data.connect key"
+			} else {
+				var err error
+				res.Measurements, err = check.run(fm)
+				if err != nil {
+					recovered := false
+					if fm.Config.FailureConfirmation > 0 {
+						logrus.Debugf("runChecks failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.UUID, err.Error())
+
+						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
+							res.Measurements, err = check.run(fm)
+							if err == nil {
+								recovered = true
+								break
+							}
+						}
+					}
+					if !recovered {
+						res.Message = err.Error()
+					}
+					if !recovered && len(fm.Config.Nodes) > 0 && check.Check.Protocol != "ssl" && local {
+						// NOTE: ssl checks are excluded from "ask node" feature
+						checkRequest := &Input{
+							ServiceChecks: []ServiceCheck{check}, // XXX
+						}
+						data, _ := json.Marshal(checkRequest)
+						fm.askNodes(data, &res)
+					}
+
+					if !recovered {
+						logrus.Debugf("runChecks: %s: %s", check.UUID, err.Error())
+					}
+				}
+
+				if res.Message == "" {
+					succeed++
+				}
+			}
+
+			*resultsChan <- res
+		}(wg, check, resultsChan)
+	}
+	return succeed
 }

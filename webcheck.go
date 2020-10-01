@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,7 +12,6 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -110,7 +108,7 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPre
 	return nil
 }
 
-func (check WebCheck) Run(fm *Frontman) (map[string]interface{}, error) {
+func (check WebCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	prefix := fmt.Sprintf("http.%s.", check.Check.Method)
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
@@ -259,6 +257,7 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 	return client
 }
 
+/*
 func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []WebCheck) int {
 	succeed := 0
 	for _, check := range checkList {
@@ -331,6 +330,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *cha
 	}
 	return succeed
 }
+*/
 
 // removes ports from URL if it is the default port for given scheme
 func normalizeURLPort(u string) (string, error) {

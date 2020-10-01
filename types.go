@@ -11,12 +11,6 @@ const (
 	ServiceICMPPing = "ping"
 )
 
-type Input struct {
-	ServiceChecks []ServiceCheck `json:"serviceChecks"`
-	WebChecks     []WebCheck     `json:"webChecks"`
-	SNMPChecks    []SNMPCheck    `json:"snmpChecks"`
-}
-
 type Results struct {
 	Results  []Result               `json:"results"`
 	HostInfo map[string]interface{} `json:"hostInfo,omitempty"`

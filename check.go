@@ -3,7 +3,13 @@ package frontman
 import "encoding/json"
 
 type Check interface {
-	Run(fm *Frontman) (map[string]interface{}, error)
+	run(fm *Frontman) (map[string]interface{}, error)
+}
+
+type Input struct {
+	ServiceChecks []ServiceCheck `json:"serviceChecks"`
+	WebChecks     []WebCheck     `json:"webChecks"`
+	SNMPChecks    []SNMPCheck    `json:"snmpChecks"`
 }
 
 type ServiceCheck struct {

@@ -1,16 +1,14 @@
 package frontman
 
 import (
-	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-func (check ServiceCheck) Run(fm *Frontman) (map[string]interface{}, error) {
+func (check ServiceCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	var done = make(chan struct{})
 	var err error
 	var results map[string]interface{}
@@ -64,6 +62,7 @@ func (check ServiceCheck) Run(fm *Frontman) (map[string]interface{}, error) {
 	}
 }
 
+/*
 func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []ServiceCheck) int {
 	succeed := 0
 	for _, check := range checkList {
@@ -134,3 +133,4 @@ func runServiceChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan 
 	}
 	return succeed
 }
+*/
