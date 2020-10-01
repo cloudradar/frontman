@@ -44,7 +44,22 @@ type snmpPorterrorsMeasure struct {
 	ifInUnknownProtos uint
 }
 
-func (check SNMPCheck) run(fm *Frontman) (map[string]interface{}, error) {
+func (check SNMPCheck) run(fm *Frontman) (*Result, error) {
+	if check.UUID == "" {
+		return nil, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Connect == "" {
+		return nil, fmt.Errorf("missing check.connect key")
+	}
+
+	res := Result{
+		Node:      fm.Config.NodeName,
+		CheckType: "snmpCheck",
+		CheckUUID: check.UUID,
+		Check:     check.Check,
+		Timestamp: time.Now().Unix(),
+	}
+
 	var done = make(chan map[string]interface{})
 	var err error
 	go func() {
@@ -62,8 +77,9 @@ func (check SNMPCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
 	// instead use individual timeouts inside all checks
 	select {
-	case res := <-done:
-		return res, err
+	case m := <-done:
+		res.Measurements = m
+		return &res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")

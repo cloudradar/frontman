@@ -108,7 +108,25 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPre
 	return nil
 }
 
-func (check WebCheck) run(fm *Frontman) (map[string]interface{}, error) {
+func (check WebCheck) run(fm *Frontman) (*Result, error) {
+	if check.UUID == "" {
+		return nil, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Method == "" {
+		return nil, fmt.Errorf("missing check.method key")
+	}
+	if check.Check.URL == "" {
+		return nil, fmt.Errorf("missing check.url key")
+	}
+
+	res := Result{
+		Node:      fm.Config.NodeName,
+		CheckType: "webCheck",
+		CheckUUID: check.UUID,
+		Check:     check.Check,
+		Timestamp: time.Now().Unix(),
+	}
+
 	prefix := fmt.Sprintf("http.%s.", check.Check.Method)
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
@@ -135,12 +153,12 @@ func (check WebCheck) run(fm *Frontman) (map[string]interface{}, error) {
 
 	url, err := normalizeURLPort(check.Check.URL)
 	if err != nil {
-		return m, err
+		return nil, err
 	}
 
 	req, err := http.NewRequest(check.Check.Method, url, nil)
 	if err != nil {
-		return m, err
+		return nil, err
 	}
 
 	startedConnectionAt := time.Now()
@@ -182,9 +200,9 @@ func (check WebCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	resp, err := httpClient.Do(req.WithContext(httptrace.WithClientTrace(ctx, trace)))
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return m, fmt.Errorf("timeout exceeded")
+			return nil, fmt.Errorf("timeout exceeded")
 		}
-		return m, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -192,7 +210,7 @@ func (check WebCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	m[prefix+"httpStatusCode"] = resp.StatusCode
 
 	if check.Check.ExpectedHTTPStatus > 0 && resp.StatusCode != check.Check.ExpectedHTTPStatus {
-		return m, fmt.Errorf("bad status code. Expected %d, got %d", check.Check.ExpectedHTTPStatus, resp.StatusCode)
+		return nil, fmt.Errorf("bad status code. Expected %d, got %d", check.Check.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
 	// wrap body reader with the ReadCloserCounter
@@ -223,13 +241,14 @@ func (check WebCheck) run(fm *Frontman) (map[string]interface{}, error) {
 
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return m, fmt.Errorf("timeout exceeded")
+			return nil, fmt.Errorf("timeout exceeded")
 		}
-		return m, err
+		return nil, err
 	}
 
 	m[prefix+"success"] = 1
-	return m, nil
+	res.Measurements = m
+	return &res, nil
 }
 
 func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects int) *http.Client {

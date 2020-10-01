@@ -3,7 +3,7 @@ package frontman
 import "encoding/json"
 
 type Check interface {
-	run(fm *Frontman) (map[string]interface{}, error)
+	run(fm *Frontman) (*Result, error)
 }
 
 type Input struct {

@@ -8,12 +8,28 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (check ServiceCheck) run(fm *Frontman) (map[string]interface{}, error) {
+func (check ServiceCheck) run(fm *Frontman) (*Result, error) {
+
+	if check.UUID == "" {
+		return nil, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Connect == "" {
+		return nil, fmt.Errorf("missing data.connect key")
+	}
+
+	res := Result{
+		Node:      fm.Config.NodeName,
+		CheckType: "serviceCheck",
+		CheckUUID: check.UUID,
+		Check:     check.Check,
+		Timestamp: time.Now().Unix(),
+	}
+
 	var done = make(chan struct{})
 	var err error
 	var results map[string]interface{}
-	go func() {
 
+	go func() {
 		switch check.Check.Protocol {
 		case ProtocolICMP:
 			results, err = fm.runPing(check.Check.Connect)
@@ -55,7 +71,8 @@ func (check ServiceCheck) run(fm *Frontman) (map[string]interface{}, error) {
 	// instead use individual timeouts inside all checks
 	select {
 	case <-done:
-		return results, err
+		res.Measurements = results
+		return &res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("serviceCheck %s %s: %s got unexpected timeout after %.0fs", check.Check.Protocol, check.Check.Connect, check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return nil, fmt.Errorf("got unexpected timeout")
