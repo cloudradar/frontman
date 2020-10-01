@@ -20,9 +20,6 @@ const (
 	IOModeFile = "file"
 	IOModeHTTP = "http"
 
-	SenderModeWait  = "wait"
-	SenderModeQueue = "queue"
-
 	minHubRequestTimeout     = 1
 	maxHubRequestTimeout     = 600
 	defaultHubRequestTimeout = 30
@@ -79,9 +76,9 @@ type Config struct {
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
 	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold" comment:"Min days remain on the SSL cert to pass the check"`
 
-	QueueSenderBatchSize int `toml:"queue_sender_batch_size" comment:"Do not send back more than N results per POST request"`
+	SenderBatchSize int `toml:"sender_batch_size" comment:"Do not send back more than N results per POST request"`
 
-	QueueSenderRequestInterval int `toml:"queue_sender_request_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
+	SenderInterval int `toml:"sender_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
 
 	HealthChecks HealthCheckConfig `toml:"health_checks" comment:"Frontman can verify a reliable internet uplink by pinging some reference hosts before each check round starts.\nPing all hosts of the list.\nOnly if frontman gets a positive answer form all of them, frontman continues.\nOtherwise, the entire check round is skipped. No data is sent back.\nFailed health checks are recorded to the log.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel.\nDisabled by default. Enable by declaring reference_ping_hosts targets\n"`
 
@@ -165,19 +162,19 @@ func init() {
 
 func NewConfig() *Config {
 	cfg := &Config{
-		MinValuableConfig:          *NewMinimumConfig(),
-		NodeName:                   "Frontman",
-		LogFile:                    defaultLogPath,
-		StatsFile:                  defaultStatsFilePath,
-		ICMPTimeout:                0.1,
-		Sleep:                      30,
-		QueueSenderBatchSize:       100,
-		QueueSenderRequestInterval: 2,
-		HTTPCheckMaxRedirects:      10,
-		HTTPCheckTimeout:           15,
-		NetTCPTimeout:              3,
-		NetUDPTimeout:              3,
-		SSLCertExpiryThreshold:     7,
+		MinValuableConfig:      *NewMinimumConfig(),
+		NodeName:               "Frontman",
+		LogFile:                defaultLogPath,
+		StatsFile:              defaultStatsFilePath,
+		ICMPTimeout:            0.1,
+		Sleep:                  30,
+		SenderBatchSize:        100,
+		SenderInterval:         2,
+		HTTPCheckMaxRedirects:  10,
+		HTTPCheckTimeout:       15,
+		NetTCPTimeout:          3,
+		NetUDPTimeout:          3,
+		SSLCertExpiryThreshold: 7,
 		HealthChecks: HealthCheckConfig{
 			ReferencePingTimeout: 1,
 			ReferencePingCount:   1,

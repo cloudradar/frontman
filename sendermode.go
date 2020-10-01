@@ -136,7 +136,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 // used when sender_mode == "queue" (post results to hub continuously)
 func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
-	interval := secToDuration(float64(fm.Config.QueueSenderRequestInterval))
+	interval := secToDuration(float64(fm.Config.SenderInterval))
 
 	results := []Result{}
 	sendResults := []Result{}
@@ -154,7 +154,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 				shouldReturn = true
 			} else {
 				results = append(results, res)
-				if len(results) < fm.Config.QueueSenderBatchSize && len(*resultsChan) > 0 {
+				if len(results) < fm.Config.SenderBatchSize && len(*resultsChan) > 0 {
 					continue
 				}
 			}
@@ -163,9 +163,9 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 		duration := time.Since(lastSentToHub)
 		if duration >= interval {
 
-			if len(results) >= fm.Config.QueueSenderBatchSize {
-				sendResults = results[0:fm.Config.QueueSenderBatchSize]
-				results = results[fm.Config.QueueSenderBatchSize:]
+			if len(results) >= fm.Config.SenderBatchSize {
+				sendResults = results[0:fm.Config.SenderBatchSize]
+				results = results[fm.Config.SenderBatchSize:]
 			} else {
 				sendResults = results
 				results = nil
