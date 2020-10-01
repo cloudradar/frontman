@@ -441,13 +441,8 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 				if !recovered {
 					res.Message = err.Error()
 				}
-				if !recovered && len(fm.Config.Nodes) > 0 && check.Check.Protocol != "ssl" && local {
-					// NOTE: ssl checks are excluded from "ask node" feature
-					checkRequest := &Input{
-						ServiceChecks: []ServiceCheck{check}, // XXX
-					}
-					data, _ := json.Marshal(checkRequest)
-					fm.askNodes(data, &res)
+				if !recovered && local {
+					fm.askNodes(check, res)
 				}
 
 				if !recovered {
