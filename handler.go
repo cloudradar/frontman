@@ -421,8 +421,6 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 
 			res, err := check.run(fm)
 
-			// XXX handle retry logic inside check.run() !!!!! ?
-
 			if err != nil {
 				recovered := false
 				if fm.Config.FailureConfirmation > 0 {
@@ -448,9 +446,7 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 				if !recovered {
 					logrus.Debugf("runChecks: %s: %s", check.uniqueID(), err.Error())
 				}
-			}
-
-			if res.Message == "" {
+			} else {
 				succeed++
 			}
 
