@@ -379,17 +379,20 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 	var err error
 	var checks []Check
+	var newChecks []Check
 
 	for {
 		duration := time.Since(lastFetch)
 		if duration >= interval {
-			// XXX append to input queue
-			checks, err = fm.fetchInputChecks(inputFilePath)
+			// append new checks to input Check queue
+			newChecks, err = fm.fetchInputChecks(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
+			checks = append(checks, newChecks...)
 		}
 
-		// XXX dont use processInput here, instead run in paralell continuously so done checks can be started again while other is progressing
+		// XXX dont use processInput here, instead run in paralell continuously so done checks can
+		//     be started again while other is progressing
 		fm.processInput(checks, local, resultsChan)
 
 		select {
