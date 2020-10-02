@@ -40,7 +40,7 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 
 	// perform the checks, collect result and pass it back as json
 	resultsChan := make(chan Result, 100)
-	fm.processInput(&inputConfig, false, &resultsChan)
+	fm.processInput(inputConfig.asChecks(), false, &resultsChan)
 	close(resultsChan)
 
 	res := []Result{}

@@ -32,7 +32,7 @@ func TestSNMPv1(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v1",
 			Check: SNMPCheckData{
@@ -46,7 +46,7 @@ func TestSNMPv1(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -61,7 +61,7 @@ func TestSNMPv2(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2",
 			Check: SNMPCheckData{
@@ -75,7 +75,7 @@ func TestSNMPv2(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -99,7 +99,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 	cfg.Sleep = delaySeconds
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2_bandwidth",
 			Check: SNMPCheckData{
@@ -113,7 +113,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
@@ -133,7 +133,7 @@ func TestSNMPv2PresetBandwidth(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.bandwidth.success"])
@@ -157,7 +157,7 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 	cfg.Sleep = delaySeconds
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2_oid_hex",
 			Check: SNMPCheckData{
@@ -174,7 +174,7 @@ func TestSNMPv2PresetOidHexValue(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -197,7 +197,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	cfg.Sleep = delaySeconds
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2_oid_delta_per_sec",
 			Check: SNMPCheckData{
@@ -215,7 +215,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -225,7 +225,7 @@ func TestSNMPv2PresetOidDeltaPerSecValue(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
@@ -247,7 +247,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	cfg.Sleep = delaySeconds
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2_oid_delta",
 			Check: SNMPCheckData{
@@ -265,7 +265,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -275,7 +275,7 @@ func TestSNMPv2PresetOidDeltaValue(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res = <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.oid.success"])
@@ -297,7 +297,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 	cfg.Sleep = delaySeconds
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2_porterrors",
 			Check: SNMPCheckData{
@@ -311,7 +311,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.porterrors.success"])
@@ -329,7 +329,7 @@ func TestSNMPv2PresetPorterrors(t *testing.T) {
 	time.Sleep(time.Duration(delaySeconds) * time.Second)
 
 	resultsChan = make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res = <-resultsChan
 
 	require.Equal(t, nil, res.Message)
@@ -352,7 +352,7 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v2_invalid_community",
 			Check: SNMPCheckData{
@@ -366,7 +366,7 @@ func TestSNMPv2InvalidCommunity(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	// NOTE: the only error we get on invalid community name is a timeout
 	require.Equal(t, "get err: Request timeout (after 0 retries)", res.Message)
@@ -383,7 +383,7 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v3_noAuthNoPriv",
 			Check: SNMPCheckData{
@@ -398,7 +398,7 @@ func TestSNMPv3NoAuthNoPriv(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 
@@ -414,7 +414,7 @@ func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v3_noAuthNoPriv_unknown_user",
 			Check: SNMPCheckData{
@@ -429,7 +429,7 @@ func TestSNMPv3NoAuthNoPrivUnknownUser(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, "unknown user name", res.Message)
 	require.Equal(t, 0, res.Measurements["snmpCheck.basedata.success"])
@@ -445,7 +445,7 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v3_auth",
 			Check: SNMPCheckData{
@@ -462,7 +462,7 @@ func TestSNMPv3AuthNoPriv(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -476,7 +476,7 @@ func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v3_authNoPriv",
 			Check: SNMPCheckData{
@@ -493,7 +493,7 @@ func TestSNMPv3AuthNoPrivWrongPassword(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	// NOTE: snmp protocol doesn't have a specific error message for wrong password
 	require.Equal(t, "wrong digests, possibly wrong password", res.Message)
@@ -510,7 +510,7 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v3_priv",
 			Check: SNMPCheckData{
@@ -529,7 +529,7 @@ func TestSNMPv3AuthPriv(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["snmpCheck.basedata.success"])
@@ -547,7 +547,7 @@ func TestSNMPv3PresetBandwidthWrongCredentials(t *testing.T) {
 	cfg.Sleep = delaySeconds
 	fm := helperCreateFrontman(t, cfg)
 
-	inputConfig := &Input{
+	input := &Input{
 		SNMPChecks: []SNMPCheck{{
 			UUID: "snmp_basedata_v3_bandwidth_wrong_credentials",
 			Check: SNMPCheckData{
@@ -564,7 +564,7 @@ func TestSNMPv3PresetBandwidthWrongCredentials(t *testing.T) {
 		}},
 	}
 	resultsChan := make(chan Result, 100)
-	fm.processInput(inputConfig, true, &resultsChan)
+	fm.processInput(input.asChecks(), true, &resultsChan)
 	res := <-resultsChan
 
 	require.Equal(t, "wrong digests, possibly wrong password", res.Message)

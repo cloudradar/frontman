@@ -49,19 +49,20 @@ func (check SNMPCheck) uniqueID() string {
 }
 
 func (check SNMPCheck) run(fm *Frontman) (*Result, error) {
-	if check.UUID == "" {
-		return nil, fmt.Errorf("missing checkUuid key")
-	}
-	if check.Check.Connect == "" {
-		return nil, fmt.Errorf("missing check.connect key")
-	}
 
-	res := Result{
+	res := &Result{
 		Node:      fm.Config.NodeName,
 		CheckType: "snmpCheck",
 		CheckUUID: check.UUID,
 		Check:     check.Check,
 		Timestamp: time.Now().Unix(),
+	}
+
+	if check.UUID == "" {
+		return res, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Connect == "" {
+		return res, fmt.Errorf("missing check.connect key")
 	}
 
 	var done = make(chan map[string]interface{})
@@ -83,10 +84,10 @@ func (check SNMPCheck) run(fm *Frontman) (*Result, error) {
 	select {
 	case m := <-done:
 		res.Measurements = m
-		return &res, err
+		return res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
-		return nil, fmt.Errorf("got unexpected timeout")
+		return res, fmt.Errorf("got unexpected timeout")
 	}
 }
 

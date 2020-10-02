@@ -14,19 +14,19 @@ func (check ServiceCheck) uniqueID() string {
 
 func (check ServiceCheck) run(fm *Frontman) (*Result, error) {
 
-	if check.UUID == "" {
-		return nil, fmt.Errorf("missing checkUuid key")
-	}
-	if check.Check.Connect == "" {
-		return nil, fmt.Errorf("missing data.connect key")
-	}
-
-	res := Result{
+	res := &Result{
 		Node:      fm.Config.NodeName,
 		CheckType: "serviceCheck",
 		CheckUUID: check.UUID,
 		Check:     check.Check,
 		Timestamp: time.Now().Unix(),
+	}
+
+	if check.UUID == "" {
+		return res, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Connect == "" {
+		return res, fmt.Errorf("missing data.connect key")
 	}
 
 	var done = make(chan struct{})
@@ -76,10 +76,10 @@ func (check ServiceCheck) run(fm *Frontman) (*Result, error) {
 	select {
 	case <-done:
 		res.Measurements = results
-		return &res, err
+		return res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("serviceCheck %s %s: %s got unexpected timeout after %.0fs", check.Check.Protocol, check.Check.Connect, check.UUID, serviceCheckEmergencyTimeout.Seconds())
-		return nil, fmt.Errorf("got unexpected timeout")
+		return res, fmt.Errorf("got unexpected timeout")
 	}
 }
 

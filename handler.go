@@ -281,10 +281,10 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 
 	var err error
 
-	input, err := fm.FetchInput(inputFilePath)
+	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
 
-	fm.processInput(input, true, resultsChan)
+	fm.processInput(checks, true, resultsChan)
 
 	logrus.Debugf("RunOnce")
 	close(*resultsChan)
@@ -323,8 +323,22 @@ func (fm *Frontman) handleHubError(err error) {
 	}
 }
 
-// FetchInput reads checks from a json file or the hub
-func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
+func (input *Input) asChecks() []Check {
+	checks := []Check{}
+	for _, c := range input.ServiceChecks {
+		checks = append(checks, c)
+	}
+	for _, c := range input.WebChecks {
+		checks = append(checks, c)
+	}
+	for _, c := range input.SNMPChecks {
+		checks = append(checks, c)
+	}
+	return checks
+}
+
+// fetchInputChecks reads checks from a json file or the hub
+func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 	var input *Input
 	var err error
 
@@ -333,7 +347,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		if err != nil {
 			return nil, fmt.Errorf("InputFromFile(%s) error: %s", inputFilePath, err.Error())
 		}
-		return input, nil
+		return input.asChecks(), nil
 	}
 
 	if fm.Config.HubURL == "" {
@@ -354,7 +368,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		return nil, fmt.Errorf("inputFromHub: %s", err.Error())
 	}
 
-	return input, nil
+	return input.asChecks(), nil
 }
 
 // local is false if check originated from a remote node
@@ -364,18 +378,19 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	interval := secToDuration(fm.Config.Sleep)
 
 	var err error
-	var input *Input
+	var checks []Check
 
 	for {
 		duration := time.Since(lastFetch)
 		if duration >= interval {
-			input, err = fm.FetchInput(inputFilePath)
+			// XXX append to input queue
+			checks, err = fm.fetchInputChecks(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
 		}
 
 		// XXX dont use processInput here, instead run in paralell continuously so done checks can be started again while other is progressing
-		fm.processInput(input, local, resultsChan)
+		fm.processInput(checks, local, resultsChan)
 
 		select {
 		case <-interrupt:
@@ -388,23 +403,12 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 // processInput processes the whole list of checks in input
 // local is false if check originated from a remote node
-func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Result) {
+func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan Result) {
 	startedAt := time.Now()
-
-	checks := []Check{}
-	for _, c := range input.ServiceChecks {
-		checks = append(checks, c)
-	}
-	for _, c := range input.WebChecks {
-		checks = append(checks, c)
-	}
-	for _, c := range input.SNMPChecks {
-		checks = append(checks, c)
-	}
 
 	succeed := fm.runChecks(checks, resultsChan, local)
 
-	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
+	totChecks := len(checks)
 	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }
