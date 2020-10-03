@@ -446,34 +446,8 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 		go func(wg *sync.WaitGroup, check Check, resultsChan *chan Result) {
 			defer wg.Done()
 
-			res, err := check.run(fm)
-
-			if err != nil {
-				recovered := false
-				if fm.Config.FailureConfirmation > 0 {
-					logrus.Debugf("runChecks failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.uniqueID(), err.Error())
-
-					for i := 1; i <= fm.Config.FailureConfirmation; i++ {
-						time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
-						logrus.Debugf("Retry %d for failed check %s", i, check.uniqueID())
-						res, err = check.run(fm)
-						if err == nil {
-							recovered = true
-							break
-						}
-					}
-				}
-				if !recovered {
-					res.Message = err.Error()
-				}
-				if !recovered && local {
-					fm.askNodes(check, res)
-				}
-
-				if !recovered {
-					logrus.Debugf("runChecks: %s: %s", check.uniqueID(), err.Error())
-				}
-			} else {
+			res, err := fm.runCheck(check, local)
+			if err == nil {
 				succeed++
 			}
 
@@ -484,4 +458,36 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 	wg.Wait()
 
 	return succeed
+}
+
+func (fm *Frontman) runCheck(check Check, local bool) (*Result, error) {
+	res, err := check.run(fm)
+
+	if err != nil {
+		recovered := false
+		if fm.Config.FailureConfirmation > 0 {
+			logrus.Debugf("runChecks failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.uniqueID(), err.Error())
+
+			for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+				time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+				logrus.Debugf("Retry %d for failed check %s", i, check.uniqueID())
+				res, err = check.run(fm)
+				if err == nil {
+					recovered = true
+					break
+				}
+			}
+		}
+		if !recovered {
+			res.Message = err.Error()
+		}
+		if !recovered && local {
+			fm.askNodes(check, res)
+		}
+
+		if !recovered {
+			logrus.Debugf("runChecks: %s: %s", check.uniqueID(), err.Error())
+		}
+	}
+	return res, err
 }
