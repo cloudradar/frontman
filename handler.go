@@ -405,16 +405,23 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	for {
 		duration := time.Since(lastFetch)
 		if duration >= interval {
+			logrus.Infof("check queue %v", len(checks))
 			newChecks, err = fm.fetchInputChecks(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
 			checks = addUniqueChecks(checks, newChecks)
 		}
 
-		// XXX dont use processInput here, instead run in paralell continuously so done checks can
-		//     be started again while other is progressing
-		fm.processInput(checks, local, resultsChan)
+		if len(checks) > 0 {
+			// take oldest check from queue
+			currentCheck := checks[0]
+			checks = checks[1:]
 
+			go func(check Check, results *chan Result) {
+				res, _ := fm.runCheck(check, local)
+				*results <- *res
+			}(currentCheck, resultsChan)
+		}
 		select {
 		case <-interrupt:
 			close(*resultsChan)
