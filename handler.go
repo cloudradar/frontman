@@ -371,6 +371,27 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 	return input.asChecks(), nil
 }
 
+// appends new checks with unique UUID to input Check queue
+func addUniqueChecks(input []Check, new []Check) []Check {
+	filtered := input
+	for _, c := range new {
+		if !hasCheck(input, c.uniqueID()) {
+			filtered = append(filtered, c)
+		}
+	}
+	logrus.Infof("addUniqueChecks: in %v, new %v, filtered %v", len(input), len(new), len(filtered))
+	return filtered
+}
+
+func hasCheck(s []Check, uuid string) bool {
+	for _, v := range s {
+		if v.uniqueID() == uuid {
+			return true
+		}
+	}
+	return false
+}
+
 // local is false if check originated from a remote node
 func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
 
@@ -384,11 +405,10 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	for {
 		duration := time.Since(lastFetch)
 		if duration >= interval {
-			// append new checks to input Check queue
 			newChecks, err = fm.fetchInputChecks(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
-			checks = append(checks, newChecks...)
+			checks = addUniqueChecks(checks, newChecks)
 		}
 
 		// XXX dont use processInput here, instead run in paralell continuously so done checks can

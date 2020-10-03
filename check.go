@@ -5,6 +5,8 @@ import "encoding/json"
 type Check interface {
 	// run always returns a *Result, even in case of failure
 	run(fm *Frontman) (*Result, error)
+
+	// uniqueUD returns the check UUID
 	uniqueID() string
 }
 
