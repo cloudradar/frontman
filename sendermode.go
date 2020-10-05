@@ -113,7 +113,7 @@ func (fm *Frontman) sendResultsChanToFile(resultsChan *chan Result, outputFile *
 	return jsonEncoder.Encode(results)
 }
 
-// used when sender_mode == "wait" (post results to hub after each round). resulsChan must be closed before calling this
+// posts results to hub
 func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	var results []Result
 	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(*resultsChan))
@@ -182,8 +182,10 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
 					var m runtime.MemStats
 					runtime.ReadMemStats(&m)
-					logrus.Debugf("SenderModeQueue: Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+					logrus.Debugf("Sender queue: Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
 				}(sendResults)
+			} else {
+				logrus.Debugf("Sender queue: nothing to do. outgoing queue empty.")
 			}
 		}
 
