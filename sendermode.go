@@ -91,7 +91,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	logrus.Infof("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return errors.New(resp.Status)
+		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
+		return ErrorHubGeneral
 	}
 
 	// in case of successful POST reset the offline buffer
@@ -177,6 +178,10 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 				go func(r []Result) {
 					err := fm.postResultsToHub(r)
 					if err != nil {
+						if err == ErrorHubGeneral {
+							// If the hub doesn't respond with 2XX, the results remain in the queue.
+							results = append(results, sendResults...)
+						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
 					}
 
