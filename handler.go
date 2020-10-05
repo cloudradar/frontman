@@ -409,9 +409,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	interval := secToDuration(fm.Config.Sleep)
 
 	var err error
-	var checks []Check
 	var newChecks []Check
-	var ipc inProgressChecks
 
 	for {
 		duration := time.Since(lastFetch)
@@ -419,21 +417,22 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			newChecks, err = fm.fetchInputChecks(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
-			checks = addUniqueChecks(checks, newChecks)
+			fm.checks = addUniqueChecks(fm.checks, newChecks)
+			logrus.Infof("CHECKS: total queue %v, in-progress %v", len(fm.checks), len(fm.ipc.uuids))
 		}
 
-		if len(checks) > 0 {
+		if len(fm.checks) > 0 {
 			// take oldest check from queue
 			// XXX TODO: instead, find a check that is not already in progress and poll it. need another "in-progress queue"
-			currentCheck := checks[0]
-			checks = checks[1:]
-			ipc.add(currentCheck.uniqueID())
+			currentCheck := fm.checks[0]
+			fm.checks = fm.checks[1:]
+			fm.ipc.add(currentCheck.uniqueID())
 
 			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
 				res, _ := fm.runCheck(check, local)
 				inProgress.remove(check.uniqueID())
 				*results <- *res
-			}(currentCheck, resultsChan, &ipc)
+			}(currentCheck, resultsChan, &fm.ipc)
 		}
 		select {
 		case <-interrupt:
