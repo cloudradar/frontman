@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"encoding/json"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
@@ -80,21 +81,26 @@ type SNMPCheckData struct {
 
 // used to keep track of in-progress checks being run
 type inProgressChecks struct {
+	mutex sync.Mutex
 	uuids []string
 }
 
 func (ipc *inProgressChecks) add(uuid string) {
+	ipc.mutex.Lock()
+	defer ipc.mutex.Unlock()
 	ipc.uuids = append(ipc.uuids, uuid)
 }
 
 func (ipc *inProgressChecks) remove(uuid string) {
+	ipc.mutex.Lock()
+	defer ipc.mutex.Unlock()
 	for i, v := range ipc.uuids {
 		if v == uuid {
 			ipc.uuids = append(ipc.uuids[:i], ipc.uuids[i+1:]...)
 			return
 		}
 	}
-	logrus.Errorf("inProgressChecks.remove: %v not found", uuid)
+	logrus.Errorf("inProgressChecks.remove: %v not found. len is %v", uuid, len(ipc.uuids))
 }
 
 func (ipc *inProgressChecks) isInProgress(uuid string) bool {
