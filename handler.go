@@ -385,6 +385,8 @@ func addUniqueChecks(input []Check, new []Check) []Check {
 	for _, c := range new {
 		if !hasCheck(input, c.uniqueID()) {
 			filtered = append(filtered, c)
+		} else {
+			logrus.Infof("Skipping request for check %v. Check is in queue.", c.uniqueID())
 		}
 	}
 	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", len(input), len(new), len(filtered))
@@ -409,6 +411,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	var err error
 	var checks []Check
 	var newChecks []Check
+	var ipc inProgressChecks
 
 	for {
 		duration := time.Since(lastFetch)
@@ -424,11 +427,13 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			// XXX TODO: instead, find a check that is not already in progress and poll it. need another "in-progress queue"
 			currentCheck := checks[0]
 			checks = checks[1:]
+			ipc.add(currentCheck.uniqueID())
 
-			go func(check Check, results *chan Result) {
+			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
 				res, _ := fm.runCheck(check, local)
+				inProgress.remove(check.uniqueID())
 				*results <- *res
-			}(currentCheck, resultsChan)
+			}(currentCheck, resultsChan, &ipc)
 		}
 		select {
 		case <-interrupt:

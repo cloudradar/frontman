@@ -1,6 +1,10 @@
 package frontman
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/sirupsen/logrus"
+)
 
 type Check interface {
 	// run always returns a *Result, even in case of failure
@@ -72,4 +76,32 @@ type SNMPCheckData struct {
 	Name      string `json:"name,omitempty"`
 	ValueType string `json:"value_type,omitempty"` /// auto (default), hex, delta, delta_per_sec
 	Unit      string `json:"unit,omitempty"`
+}
+
+// used to keep track of in-progress checks being run
+type inProgressChecks struct {
+	uuids []string
+}
+
+func (ipc *inProgressChecks) add(uuid string) {
+	ipc.uuids = append(ipc.uuids, uuid)
+}
+
+func (ipc *inProgressChecks) remove(uuid string) {
+	for i, v := range ipc.uuids {
+		if v == uuid {
+			ipc.uuids = append(ipc.uuids[:i], ipc.uuids[i+1:]...)
+			return
+		}
+	}
+	logrus.Errorf("inProgressChecks.remove: %v not found", uuid)
+}
+
+func (ipc *inProgressChecks) isInProgress(uuid string) bool {
+	for _, v := range ipc.uuids {
+		if v == uuid {
+			return true
+		}
+	}
+	return false
 }
