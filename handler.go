@@ -368,7 +368,15 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 		return nil, fmt.Errorf("inputFromHub: %s", err.Error())
 	}
 
-	return input.asChecks(), nil
+	checks := input.asChecks()
+	diag := fmt.Sprintf("fetchInputChecks read %v checks from hub", len(checks))
+	if len(checks) > 0 {
+		logrus.Info(diag)
+	} else {
+		logrus.Debug(diag)
+	}
+
+	return checks, nil
 }
 
 // appends new checks with unique UUID to input Check queue
@@ -379,7 +387,7 @@ func addUniqueChecks(input []Check, new []Check) []Check {
 			filtered = append(filtered, c)
 		}
 	}
-	logrus.Infof("addUniqueChecks: in %v, new %v, filtered %v", len(input), len(new), len(filtered))
+	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", len(input), len(new), len(filtered))
 	return filtered
 }
 
@@ -405,7 +413,6 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	for {
 		duration := time.Since(lastFetch)
 		if duration >= interval {
-			logrus.Infof("check queue %v", len(checks))
 			newChecks, err = fm.fetchInputChecks(inputFilePath)
 			lastFetch = time.Now()
 			fm.handleHubError(err)
@@ -414,6 +421,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 		if len(checks) > 0 {
 			// take oldest check from queue
+			// XXX TODO: instead, find a check that is not already in progress and poll it. need another "in-progress queue"
 			currentCheck := checks[0]
 			checks = checks[1:]
 
