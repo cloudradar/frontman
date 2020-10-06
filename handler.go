@@ -276,19 +276,26 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-// RunOnce runs all checks once and send result to hub or file
-func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
-
-	var err error
+// updates list of checks to execute from the hub
+func (fm *Frontman) updateInputChecks(inputFilePath string) {
+	fm.updateChecksLock.Lock()
+	defer fm.updateChecksLock.Unlock()
 
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
+	fm.checks = addUniqueChecks(fm.checks, checks)
+}
 
-	fm.processInput(checks, true, resultsChan)
+// RunOnce runs all checks once and send result to hub or file
+func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
+
+	fm.updateInputChecks(inputFilePath)
+	fm.processInput(fm.checks, true, resultsChan)
 
 	logrus.Debugf("RunOnce")
 	close(*resultsChan)
 
+	var err error
 	if outputFile != nil {
 		logrus.Debugf("sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
@@ -296,7 +303,7 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 		err = fm.sendResultsChanToHub(resultsChan)
 	}
 
-	return nil
+	return err
 }
 
 func (fm *Frontman) handleHubError(err error) {
@@ -423,16 +430,10 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
 
-	var err error
-	var newChecks []Check
-
 	for {
-		duration := time.Since(lastFetch)
-		if duration >= interval {
-			newChecks, err = fm.fetchInputChecks(inputFilePath)
+		if time.Since(lastFetch) >= interval {
 			lastFetch = time.Now()
-			fm.handleHubError(err)
-			fm.checks = addUniqueChecks(fm.checks, newChecks)
+			go fm.updateInputChecks(inputFilePath)
 		}
 
 		if len(fm.checks) > 0 {
