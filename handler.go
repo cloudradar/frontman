@@ -408,7 +408,7 @@ func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
 		return nil, false
 	}
 
-	idx, ok := fm.ipc.getIndexOfOldestNotInProgress(fm.checks)
+	idx, ok := fm.ipc.getIndexOfFirstNotInProgress(fm.checks)
 	if ok {
 		currentCheck := fm.checks[idx]
 		fm.checks = append(fm.checks[:idx], fm.checks[idx+1:]...)
@@ -433,7 +433,6 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			lastFetch = time.Now()
 			fm.handleHubError(err)
 			fm.checks = addUniqueChecks(fm.checks, newChecks)
-			logrus.Infof("CHECKS: total queue %v, in-progress %v", len(fm.checks), len(fm.ipc.uuids))
 		}
 
 		if len(fm.checks) > 0 {

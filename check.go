@@ -85,6 +85,12 @@ type inProgressChecks struct {
 	uuids []string
 }
 
+func (ipc *inProgressChecks) len() int {
+	ipc.mutex.Lock()
+	defer ipc.mutex.Unlock()
+	return len(ipc.uuids)
+}
+
 func (ipc *inProgressChecks) add(uuid string) {
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
@@ -114,8 +120,8 @@ func (ipc *inProgressChecks) isInProgress(uuid string) bool {
 	return false
 }
 
-// returns the slice index for the oldest check in `checks` that is not already in progress, false if none found
-func (ipc *inProgressChecks) getIndexOfOldestNotInProgress(checks []Check) (int, bool) {
+// returns the slice index for the first check in `checks` that is not already in progress, false if none found
+func (ipc *inProgressChecks) getIndexOfFirstNotInProgress(checks []Check) (int, bool) {
 	for idx, c := range checks {
 		if !ipc.isInProgress(c.uniqueID()) {
 			return idx, true

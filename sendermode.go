@@ -137,13 +137,15 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 // sends results to hub continuously
 func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
-	interval := secToDuration(float64(fm.Config.SenderInterval))
+	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
+	writeQueueStatsInterval := time.Second * 1
 
 	results := []Result{}
 	sendResults := []Result{}
 	shouldReturn := false
 
 	lastSentToHub := time.Unix(0, 0)
+	lastQueueStatsWrite := time.Unix(0, 0)
 
 	fm.TerminateQueue.Add(1)
 
@@ -161,9 +163,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 			}
 		}
 
-		duration := time.Since(lastSentToHub)
-		if duration >= interval {
-
+		if time.Since(lastSentToHub) >= sendInterval {
 			if len(results) >= fm.Config.SenderBatchSize {
 				sendResults = results[0:fm.Config.SenderBatchSize]
 				results = results[fm.Config.SenderBatchSize:]
@@ -192,6 +192,13 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 			} else {
 				logrus.Debugf("Sender queue: nothing to do. outgoing queue empty.")
 			}
+		}
+
+		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
+			lastQueueStatsWrite = time.Now()
+
+			// XXX write to disk!!!
+			logrus.Infof("STATS: checks queue %v, in-progress %v, results queue %v", len(fm.checks), fm.ipc.len(), len(results))
 		}
 
 		if shouldReturn && len(results) == 0 {
