@@ -402,6 +402,21 @@ func hasCheck(s []Check, uuid string) bool {
 	return false
 }
 
+// takes the oldest check from queue that is not in progress
+func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
+	if len(fm.checks) == 0 {
+		return nil, false
+	}
+
+	idx, ok := fm.ipc.getIndexOfOldestNotInProgress(fm.checks)
+	if ok {
+		currentCheck := fm.checks[idx]
+		fm.checks = append(fm.checks[:idx], fm.checks[idx+1:]...)
+		return currentCheck, true
+	}
+	return nil, false
+}
+
 // local is false if check originated from a remote node
 func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
 
@@ -422,17 +437,15 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 		}
 
 		if len(fm.checks) > 0 {
-			// take oldest check from queue
-			// XXX TODO: instead, find a check that is not already in progress and poll it. need another "in-progress queue"
-			currentCheck := fm.checks[0]
-			fm.checks = fm.checks[1:]
-			fm.ipc.add(currentCheck.uniqueID())
+			if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
+				fm.ipc.add(currentCheck.uniqueID())
 
-			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
-				res, _ := fm.runCheck(check, local)
-				inProgress.remove(check.uniqueID())
-				*results <- *res
-			}(currentCheck, resultsChan, &fm.ipc)
+				go func(check Check, results *chan Result, inProgress *inProgressChecks) {
+					res, _ := fm.runCheck(check, local)
+					inProgress.remove(check.uniqueID())
+					*results <- *res
+				}(currentCheck, resultsChan, &fm.ipc)
+			}
 		}
 		select {
 		case <-interrupt:

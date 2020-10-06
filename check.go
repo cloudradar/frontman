@@ -104,10 +104,22 @@ func (ipc *inProgressChecks) remove(uuid string) {
 }
 
 func (ipc *inProgressChecks) isInProgress(uuid string) bool {
+	ipc.mutex.Lock()
+	defer ipc.mutex.Unlock()
 	for _, v := range ipc.uuids {
 		if v == uuid {
 			return true
 		}
 	}
 	return false
+}
+
+// returns the slice index for the oldest check in `checks` that is not already in progress, false if none found
+func (ipc *inProgressChecks) getIndexOfOldestNotInProgress(checks []Check) (int, bool) {
+	for idx, c := range checks {
+		if !ipc.isInProgress(c.uniqueID()) {
+			return idx, true
+		}
+	}
+	return 0, false
 }
