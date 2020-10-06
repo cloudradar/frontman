@@ -120,6 +120,7 @@ func (ipc *inProgressChecks) getIndexOfOldestNotInProgress(checks []Check) (int,
 		if !ipc.isInProgress(c.uniqueID()) {
 			return idx, true
 		}
+		logrus.Infof("Skipping request for check %v. Check still in progress.", c.uniqueID())
 	}
 	return 0, false
 }
