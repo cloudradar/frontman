@@ -138,7 +138,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
-	writeQueueStatsInterval := time.Second * 1
+	writeQueueStatsInterval := time.Millisecond * 200
 
 	results := []Result{}
 	sendResults := []Result{}
@@ -173,7 +173,6 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 			}
 
 			if len(sendResults) > 0 {
-				logrus.Infof("Send %d results to hub, %d results in queue", len(sendResults), len(results))
 				lastSentToHub = time.Now()
 				go func(r []Result) {
 					err := fm.postResultsToHub(r)
