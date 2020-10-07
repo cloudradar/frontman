@@ -79,6 +79,23 @@ host_info = ['uname','os_kernel','os_family','os_arch','cpu_model','fqdn','hostn
  # Cache errors for N seconds. If the connection to a node fails for whatever reason, this node is not asked again, until the error cache has expired.
  node_cache_errors = 10.0
 
+# Do not forward failed checks to the foreign node(s) if the message contains one of the following regular expresions.
+# Matching is case insensitive.
+forward_except = [
+  'bad status code',
+  'certificate.*(expire|unknown)',
+  '(tls|ssl) (error|failed|handshake)',
+  'service.*support (ssl|tls)',
+  'failed to verify .* service',
+  'connection.*refused',
+  'no such host',
+  'x509',
+  'pattern.*extraxcted text'
+]
+
+# Log all checks forwarded to foreign node(s). 
+# The log contains the check ID, the check type, and the message of the local check result.
+forward_log = "/tmp/frontman-forward.log"
 
 [http_listener]
   # HTTP Listener
