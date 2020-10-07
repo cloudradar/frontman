@@ -37,6 +37,7 @@ var DefaultCfgPath string
 var defaultLogPath string
 var rootCertsPath string
 var defaultStatsFilePath string
+var defaultQueueStatsFilePath string
 
 type MinValuableConfig struct {
 	LogLevel    LogLevel `toml:"log_level" comment:"\"debug\", \"info\", \"error\" verbose level; can be overridden with -v flag"`
@@ -55,12 +56,13 @@ type MinValuableConfig struct {
 }
 
 type Config struct {
-	NodeName  string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_nodes)"`
-	Sleep     float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
-	PidFile   string  `toml:"pid" comment:"path to pid file"`
-	LogFile   string  `toml:"log,omitempty" comment:"path to log file"`
-	LogSyslog string  `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
-	StatsFile string  `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
+	NodeName       string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_nodes)"`
+	Sleep          float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
+	PidFile        string  `toml:"pid" comment:"path to pid file"`
+	LogFile        string  `toml:"log,omitempty" comment:"path to log file"`
+	LogSyslog      string  `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
+	StatsFile      string  `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
+	QueueStatsFile string  `toml:"queue_stats_file" comment:"Path to the file where we write frontman queue statistics"`
 
 	MinValuableConfig
 
@@ -148,15 +150,18 @@ func init() {
 		DefaultCfgPath = filepath.Join(exPath, "./frontman.conf")
 		defaultLogPath = filepath.Join(exPath, "./frontman.log")
 		defaultStatsFilePath = "C:\\Windows\\temp\\frontman.stats"
+		defaultQueueStatsFilePath = "C:\\Windows\\temp\\frontman.queuestats"
 	case "darwin":
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
 		defaultStatsFilePath = "/tmp/frontman.stats"
+		defaultQueueStatsFilePath = "/tmp/frontman.queuestats"
 	default:
 		rootCertsPath = "/etc/frontman/cacert.pem"
 		DefaultCfgPath = "/etc/frontman/frontman.conf"
 		defaultLogPath = "/var/log/frontman/frontman.log"
 		defaultStatsFilePath = "/tmp/frontman.stats"
+		defaultQueueStatsFilePath = "/tmp/frontman.queuestats"
 	}
 }
 
@@ -166,6 +171,7 @@ func NewConfig() *Config {
 		NodeName:               "Frontman",
 		LogFile:                defaultLogPath,
 		StatsFile:              defaultStatsFilePath,
+		QueueStatsFile:         defaultQueueStatsFilePath,
 		ICMPTimeout:            0.1,
 		Sleep:                  30,
 		SenderBatchSize:        100,

@@ -197,8 +197,24 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
 			lastQueueStatsWrite = time.Now()
 
-			// XXX write to disk!!!
-			logrus.Infof("STATS: checks queue %v, in-progress %v, results queue %v", len(fm.checks), fm.ipc.len(), len(results))
+			data, _ := json.Marshal(map[string]int{
+				"checks_queue":       len(fm.checks),
+				"checks_in_progress": fm.ipc.len(),
+				"results_queue":      len(results)})
+
+			if fm.Config.QueueStatsFile != "" {
+				go func(b []byte) {
+					f, err := os.Create(fm.Config.QueueStatsFile)
+					if err != nil {
+						logrus.Error(err)
+					}
+					defer f.Close()
+					_, err = f.Write(b)
+					if err != nil {
+						logrus.Error(err)
+					}
+				}(data)
+			}
 		}
 
 		if shouldReturn && len(results) == 0 {
