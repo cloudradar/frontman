@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -50,6 +51,25 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	if len(fm.Config.Nodes) < 1 {
 		return
+	}
+
+	// only forward if result message don't match ForwardExcept config
+	if len(fm.Config.Node.ForwardExcept > 0) {
+		msg := res.Message.(string)
+		logrus.Infof("Matching local result message %v vs %v", msg, fm.Config.Node.ForwardExcept)
+		for _, rexp := range fm.Config.Node.ForwardExcept {
+			// case insensitive match
+			irexp := "(?i)" + rexp
+			match, err := regexp.MatchString(irexp, msg)
+			if err != nil {
+				logrus.Errorfs("forward_except regexp error", err)
+			} else if match {
+				logrus.Info("forward_except matched, won't forward", msg)
+				return
+			} else {
+				logrus.Info("forward_except did not match", irexp, msg)
+			}
+		}
 	}
 
 	if c, ok := check.(ServiceCheck); ok {
