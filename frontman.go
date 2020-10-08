@@ -50,6 +50,8 @@ type Frontman struct {
 	failedNodes     map[string]time.Time
 	failedNodeCache map[string]Node
 
+	forwardLog *os.File
+
 	// current checks queue
 	checks     []Check
 	checksLock sync.Mutex

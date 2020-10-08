@@ -189,6 +189,14 @@ func (fm *Frontman) configureLogger() {
 		}
 	}
 
+	if fm.Config.Node.ForwardLog != "" {
+		var err error
+		fm.forwardLog, err = os.OpenFile(fm.Config.Node.ForwardLog, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			logrus.Error("Can't set up forward_log: ", err.Error())
+		}
+	}
+
 	// Add hook to logrus that updates our LastInternalError statistics
 	// whenever an error log is done
 	addErrorHook(fm.stats)
