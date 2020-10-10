@@ -196,10 +196,13 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
 			lastQueueStatsWrite = time.Now()
 
-			data, _ := json.Marshal(map[string]int{
+			data, err := json.Marshal(map[string]int{
 				"checks_queue":       len(fm.checks),
 				"checks_in_progress": fm.ipc.len(),
 				"results_queue":      len(results)})
+			if err != nil {
+				logrus.Error(err)
+			}
 
 			if fm.Config.QueueStatsFile != "" {
 				go func(b []byte) {
