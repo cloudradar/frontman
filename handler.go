@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cloudradar-monitoring/selfupdate"
@@ -472,7 +473,7 @@ func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan R
 func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local bool) int {
 	wg := &sync.WaitGroup{}
 
-	succeed := 0
+	succeed := int32(0)
 	for _, check := range checkList {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, check Check, resultsChan *chan Result) {
@@ -480,7 +481,7 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 
 			res, err := fm.runCheck(check, local)
 			if err == nil {
-				succeed++
+				atomic.AddInt32(&succeed, 1)
 			}
 
 			*resultsChan <- *res
@@ -489,7 +490,7 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 
 	wg.Wait()
 
-	return succeed
+	return int(succeed)
 }
 
 func (fm *Frontman) runCheck(check Check, local bool) (*Result, error) {
