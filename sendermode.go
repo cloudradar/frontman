@@ -206,6 +206,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 					f, err := os.Create(fm.Config.QueueStatsFile)
 					if err != nil {
 						logrus.Error(err)
+						return
 					}
 					defer f.Close()
 					_, err = f.Write(b)
