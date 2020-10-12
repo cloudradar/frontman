@@ -202,9 +202,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 				"results_queue":      len(results)})
 			if err != nil {
 				logrus.Error(err)
-			}
-
-			if fm.Config.QueueStatsFile != "" {
+			} else if fm.Config.QueueStatsFile != "" {
 				go func(b []byte) {
 					f, err := os.Create(fm.Config.QueueStatsFile)
 					if err != nil {
