@@ -91,7 +91,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	logrus.Infof("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return errors.New(resp.Status)
+		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
+		return ErrorHubGeneral
 	}
 
 	// in case of successful POST reset the offline buffer
@@ -113,7 +114,7 @@ func (fm *Frontman) sendResultsChanToFile(resultsChan *chan Result, outputFile *
 	return jsonEncoder.Encode(results)
 }
 
-// used when sender_mode == "wait" (post results to hub after each round). resulsChan must be closed before calling this
+// posts results to hub
 func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	var results []Result
 	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(*resultsChan))
@@ -133,16 +134,18 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	return nil
 }
 
-// used when sender_mode == "queue" (post results to hub continiously)
+// sends results to hub continuously
 func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
-	interval := secToDuration(float64(fm.Config.QueueSenderRequestInterval))
+	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
+	writeQueueStatsInterval := time.Millisecond * 200
 
 	results := []Result{}
 	sendResults := []Result{}
 	shouldReturn := false
 
 	lastSentToHub := time.Unix(0, 0)
+	lastQueueStatsWrite := time.Unix(0, 0)
 
 	fm.TerminateQueue.Add(1)
 
@@ -154,36 +157,64 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 				shouldReturn = true
 			} else {
 				results = append(results, res)
-				if len(results) < fm.Config.QueueSenderBatchSize && len(*resultsChan) > 0 {
+				if len(results) < fm.Config.SenderBatchSize && len(*resultsChan) > 0 {
 					continue
 				}
 			}
 		}
 
-		duration := time.Since(lastSentToHub)
-		if duration >= interval {
-
-			if len(results) >= fm.Config.QueueSenderBatchSize {
-				sendResults = results[0:fm.Config.QueueSenderBatchSize]
-				results = results[fm.Config.QueueSenderBatchSize:]
+		if time.Since(lastSentToHub) >= sendInterval {
+			if len(results) >= fm.Config.SenderBatchSize {
+				sendResults = results[0:fm.Config.SenderBatchSize]
+				results = results[fm.Config.SenderBatchSize:]
 			} else {
 				sendResults = results
 				results = nil
 			}
 
 			if len(sendResults) > 0 {
-				logrus.Infof("Send %d results to hub, %d results in queue", len(sendResults), len(results))
 				lastSentToHub = time.Now()
 				go func(r []Result) {
 					err := fm.postResultsToHub(r)
 					if err != nil {
+						if err == ErrorHubGeneral {
+							// If the hub doesn't respond with 2XX, the results remain in the queue.
+							results = append(results, sendResults...)
+						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
 					}
 
 					var m runtime.MemStats
 					runtime.ReadMemStats(&m)
-					logrus.Debugf("SenderModeQueue: Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+					logrus.Debugf("Sender queue: Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
 				}(sendResults)
+			} else {
+				logrus.Debugf("Sender queue: nothing to do. outgoing queue empty.")
+			}
+		}
+
+		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
+			lastQueueStatsWrite = time.Now()
+
+			data, err := json.Marshal(map[string]int{
+				"checks_queue":       len(fm.checks),
+				"checks_in_progress": fm.ipc.len(),
+				"results_queue":      len(results)})
+			if err != nil {
+				logrus.Error(err)
+			} else if fm.Config.QueueStatsFile != "" {
+				go func(b []byte) {
+					f, err := os.Create(fm.Config.QueueStatsFile)
+					if err != nil {
+						logrus.Error(err)
+						return
+					}
+					defer f.Close()
+					_, err = f.Write(b)
+					if err != nil {
+						logrus.Error(err)
+					}
+				}(data)
 			}
 		}
 

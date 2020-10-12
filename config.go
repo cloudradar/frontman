@@ -20,9 +20,6 @@ const (
 	IOModeFile = "file"
 	IOModeHTTP = "http"
 
-	SenderModeWait  = "wait"
-	SenderModeQueue = "queue"
-
 	minHubRequestTimeout     = 1
 	maxHubRequestTimeout     = 600
 	defaultHubRequestTimeout = 30
@@ -40,6 +37,7 @@ var DefaultCfgPath string
 var defaultLogPath string
 var rootCertsPath string
 var defaultStatsFilePath string
+var defaultQueueStatsFilePath string
 
 type MinValuableConfig struct {
 	LogLevel    LogLevel `toml:"log_level" comment:"\"debug\", \"info\", \"error\" verbose level; can be overridden with -v flag"`
@@ -58,12 +56,13 @@ type MinValuableConfig struct {
 }
 
 type Config struct {
-	NodeName  string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_nodes)"`
-	Sleep     float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
-	PidFile   string  `toml:"pid" comment:"path to pid file"`
-	LogFile   string  `toml:"log,omitempty" comment:"path to log file"`
-	LogSyslog string  `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
-	StatsFile string  `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
+	NodeName       string  `toml:"node_name" comment:"Name of the Frontman\nUsed to identify group measurements if multiple frontmen run in grouped-mode (ask_nodes)"`
+	Sleep          float64 `toml:"sleep" comment:"delay before starting a new round of checks in second\nsleep refers to the start timestamp of the check round.\nIf sleep is 30 seconds and the round takes 25 seconds frontman waits 5 seconds to start the next round.\nIf sleep is less than the round takes, there is no delay."`
+	PidFile        string  `toml:"pid" comment:"path to pid file"`
+	LogFile        string  `toml:"log,omitempty" comment:"path to log file"`
+	LogSyslog      string  `toml:"log_syslog" comment:"\"local\" for local unix socket or URL e.g. \"udp://localhost:514\" for remote syslog server"`
+	StatsFile      string  `toml:"stats_file" comment:"Path to the file where we write frontman statistics"`
+	QueueStatsFile string  `toml:"queue_stats_file" comment:"Path to the file where we write frontman queue statistics"`
 
 	MinValuableConfig
 
@@ -79,11 +78,9 @@ type Config struct {
 	IgnoreSSLErrors        bool    `toml:"ignore_ssl_errors"`
 	SSLCertExpiryThreshold int     `toml:"ssl_cert_expiry_threshold" comment:"Min days remain on the SSL cert to pass the check"`
 
-	SenderMode string `toml:"sender_mode" comment:"sender_mode = \"wait\"\nFrontman waits for all checks to finish.\nResults are sent back and frontman sleeps the sleep interval.\nIf the round has taken more than the sleep interval the next round starts immediately.\n\nsender_mode = \"queue\"\nFrontman fetches the list of checks and performs the checks.\nCheck results are put into a queue of finished checks.\nA continuously running worker thread consumes the queue and sends back the results in batches to the hub.\nDuring the next round, all checks which are still running from the previous round\nare skipped to avoid double runs of checks.\nThe queue is stored in memory and get's discarded on process termination.\nA regular process termination 'kill <PID>'  waits for the queue to be empty."`
+	SenderBatchSize int `toml:"sender_batch_size" comment:"Do not send back more than N results per POST request"`
 
-	QueueSenderBatchSize int `toml:"queue_sender_batch_size" comment:"Do not send back more than N results per POST request"`
-
-	QueueSenderRequestInterval int `toml:"queue_sender_request_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
+	SenderInterval int `toml:"sender_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
 
 	HealthChecks HealthCheckConfig `toml:"health_checks" comment:"Frontman can verify a reliable internet uplink by pinging some reference hosts before each check round starts.\nPing all hosts of the list.\nOnly if frontman gets a positive answer form all of them, frontman continues.\nOtherwise, the entire check round is skipped. No data is sent back.\nFailed health checks are recorded to the log.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel.\nDisabled by default. Enable by declaring reference_ping_hosts targets\n"`
 
@@ -153,34 +150,37 @@ func init() {
 		DefaultCfgPath = filepath.Join(exPath, "./frontman.conf")
 		defaultLogPath = filepath.Join(exPath, "./frontman.log")
 		defaultStatsFilePath = "C:\\Windows\\temp\\frontman.stats"
+		defaultQueueStatsFilePath = "C:\\Windows\\temp\\frontman.queuestats"
 	case "darwin":
 		DefaultCfgPath = os.Getenv("HOME") + "/.frontman/frontman.conf"
 		defaultLogPath = os.Getenv("HOME") + "/.frontman/frontman.log"
 		defaultStatsFilePath = "/tmp/frontman.stats"
+		defaultQueueStatsFilePath = "/tmp/frontman.queuestats"
 	default:
 		rootCertsPath = "/etc/frontman/cacert.pem"
 		DefaultCfgPath = "/etc/frontman/frontman.conf"
 		defaultLogPath = "/var/log/frontman/frontman.log"
 		defaultStatsFilePath = "/tmp/frontman.stats"
+		defaultQueueStatsFilePath = "/tmp/frontman.queuestats"
 	}
 }
 
 func NewConfig() *Config {
 	cfg := &Config{
-		MinValuableConfig:          *NewMinimumConfig(),
-		NodeName:                   "Frontman",
-		LogFile:                    defaultLogPath,
-		StatsFile:                  defaultStatsFilePath,
-		ICMPTimeout:                0.1,
-		Sleep:                      30,
-		SenderMode:                 SenderModeQueue,
-		QueueSenderBatchSize:       100,
-		QueueSenderRequestInterval: 2,
-		HTTPCheckMaxRedirects:      10,
-		HTTPCheckTimeout:           15,
-		NetTCPTimeout:              3,
-		NetUDPTimeout:              3,
-		SSLCertExpiryThreshold:     7,
+		MinValuableConfig:      *NewMinimumConfig(),
+		NodeName:               "Frontman",
+		LogFile:                defaultLogPath,
+		StatsFile:              defaultStatsFilePath,
+		QueueStatsFile:         defaultQueueStatsFilePath,
+		ICMPTimeout:            0.1,
+		Sleep:                  30,
+		SenderBatchSize:        100,
+		SenderInterval:         2,
+		HTTPCheckMaxRedirects:  10,
+		HTTPCheckTimeout:       15,
+		NetTCPTimeout:          3,
+		NetUDPTimeout:          3,
+		SSLCertExpiryThreshold: 7,
 		HealthChecks: HealthCheckConfig{
 			ReferencePingTimeout: 1,
 			ReferencePingCount:   1,

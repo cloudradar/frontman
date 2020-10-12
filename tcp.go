@@ -41,11 +41,11 @@ func (fm *Frontman) runTCPCheck(hostname string, port int, service string) (Meas
 	// Check if we have to autodetect port by service name
 	if port <= 0 {
 		// Lookup service by default port
-		port, exists := defaultPortByService[service]
+		p, exists := defaultPortByService[service]
 		if !exists {
 			return nil, fmt.Errorf("failed to auto-determine port for '%s'", service)
 		}
-		port = port
+		port = p
 	}
 
 	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, port)

@@ -46,6 +46,15 @@ type Frontman struct {
 	failedNodes     map[string]time.Time
 	failedNodeCache map[string]Node
 
+	// current checks queue
+	checks []Check
+
+	// in-progress checks
+	ipc inProgressChecks
+
+	// used to keep hub fetch of new checks in sync
+	updateChecksLock sync.Mutex
+
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
 	previousSNMPPorterrorsMeasure []snmpPorterrorsMeasure

@@ -43,15 +43,36 @@ func (fm *Frontman) getCachedNodeFailure(node *Node) *Node {
 	return nil
 }
 
-func (fm *Frontman) askNodes(data []byte, res *Result) {
-	var nodeResults []string
-	var succeededNodes []string
-	var failedNodes []string
-	failedNodeMessage := make(map[string]string)
+// asking other nodes to try a failed check
+func (fm *Frontman) askNodes(check Check, res *Result) {
+
+	var data []byte
 
 	if len(fm.Config.Nodes) < 1 {
 		return
 	}
+
+	if c, ok := check.(ServiceCheck); ok {
+		if c.Check.Protocol == "ssl" {
+			// ssl checks are excluded from "ask node" feature
+			return
+		}
+		req := &Input{ServiceChecks: []ServiceCheck{c}}
+		data, _ = json.Marshal(req)
+	}
+	if c, ok := check.(WebCheck); ok {
+		req := &Input{WebChecks: []WebCheck{c}}
+		data, _ = json.Marshal(req)
+	}
+	if c, ok := check.(SNMPCheck); ok {
+		req := &Input{SNMPChecks: []SNMPCheck{c}}
+		data, _ = json.Marshal(req)
+	}
+
+	var nodeResults []string
+	var succeededNodes []string
+	var failedNodes []string
+	failedNodeMessage := make(map[string]string)
 
 	for _, node := range fm.Config.Nodes {
 		if fm.nodeRecentlyFailed(&node) {

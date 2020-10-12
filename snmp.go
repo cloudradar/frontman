@@ -5,7 +5,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -45,7 +44,27 @@ type snmpPorterrorsMeasure struct {
 	ifInUnknownProtos uint
 }
 
-func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, error) {
+func (check SNMPCheck) uniqueID() string {
+	return check.UUID
+}
+
+func (check SNMPCheck) run(fm *Frontman) (*Result, error) {
+
+	res := &Result{
+		Node:      fm.Config.NodeName,
+		CheckType: "snmpCheck",
+		CheckUUID: check.UUID,
+		Check:     check.Check,
+		Timestamp: time.Now().Unix(),
+	}
+
+	if check.UUID == "" {
+		return res, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Connect == "" {
+		return res, fmt.Errorf("missing check.connect key")
+	}
+
 	var done = make(chan map[string]interface{})
 	var err error
 	go func() {
@@ -63,11 +82,12 @@ func (fm *Frontman) runSNMPCheck(check *SNMPCheck) (map[string]interface{}, erro
 	// Warning: do not rely on serviceCheckEmergencyTimeout as it leak goroutines(until it will be finished)
 	// instead use individual timeouts inside all checks
 	select {
-	case res := <-done:
+	case m := <-done:
+		res.Measurements = m
 		return res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
 		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
-		return nil, fmt.Errorf("got unexpected timeout")
+		return res, fmt.Errorf("got unexpected timeout")
 	}
 }
 
@@ -709,50 +729,4 @@ func (check *SNMPCheckData) presetToOids() (oids []string, form string, err erro
 		err = fmt.Errorf("unrecognized preset %s", check.Preset)
 	}
 	return
-}
-
-func runSNMPChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []SNMPCheck) int {
-	succeed := 0
-	for _, check := range checkList {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, check SNMPCheck, resultsChan *chan Result) {
-			defer wg.Done()
-
-			if check.UUID == "" {
-				// in case checkUuid is missing we can ignore this item
-				logrus.Errorf("snmpCheck: missing checkUuid key")
-				return
-			}
-
-			res := Result{
-				Node:      fm.Config.NodeName,
-				CheckType: "snmpCheck",
-				CheckUUID: check.UUID,
-				Timestamp: time.Now().Unix(),
-			}
-
-			res.Check = check.Check
-
-			if check.Check.Connect == "" {
-				logrus.Errorf("snmpCheck: missing check.connect key")
-				res.Message = "Missing check.connect key"
-			} else {
-				var err error
-				res.Measurements, err = fm.runSNMPCheck(&check)
-
-				// NOTE: failed snmp checks are excluded from "ask neighbour" feature
-				if err != nil {
-					logrus.Debugf("snmpCheck: %s: %s", check.UUID, err.Error())
-					res.Message = err.Error()
-				}
-			}
-
-			if res.Message == "" {
-				succeed++
-			}
-
-			*resultsChan <- res
-		}(wg, check, resultsChan)
-	}
-	return succeed
 }

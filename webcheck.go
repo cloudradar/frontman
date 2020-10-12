@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,7 +12,6 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -110,39 +108,62 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPre
 	return nil
 }
 
-func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, error) {
-	prefix := fmt.Sprintf("http.%s.", data.Method)
+func (check WebCheck) uniqueID() string {
+	return check.UUID
+}
+
+func (check WebCheck) run(fm *Frontman) (*Result, error) {
+
+	res := &Result{
+		Node:      fm.Config.NodeName,
+		CheckType: "webCheck",
+		CheckUUID: check.UUID,
+		Check:     check.Check,
+		Timestamp: time.Now().Unix(),
+	}
+
+	if check.UUID == "" {
+		return res, fmt.Errorf("missing checkUuid key")
+	}
+	if check.Check.Method == "" {
+		return res, fmt.Errorf("missing check.method key")
+	}
+	if check.Check.URL == "" {
+		return res, fmt.Errorf("missing check.url key")
+	}
+
+	prefix := fmt.Sprintf("http.%s.", check.Check.Method)
 	m := make(map[string]interface{})
 	m[prefix+"success"] = 0
 
 	// In case the webcheck disables redirect following we set maxRedirects to 0
 	maxRedirects := 0
-	if !data.DontFollowRedirects {
+	if !check.Check.DontFollowRedirects {
 		maxRedirects = fm.Config.HTTPCheckMaxRedirects
 	}
-	var httpTransport = fm.newHTTPTransport(data.IgnoreSSLErrors)
+	var httpTransport = fm.newHTTPTransport(check.Check.IgnoreSSLErrors)
 	httpClient := fm.newClientWithOptions(httpTransport, maxRedirects)
 
 	timeout := fm.Config.HTTPCheckTimeout
 
 	// set individual timeout in case it is less than in this check
-	if data.Timeout > 0 && data.Timeout < timeout {
-		timeout = data.Timeout
+	if check.Check.Timeout > 0 && check.Check.Timeout < timeout {
+		timeout = check.Check.Timeout
 	}
 
-	data.Method = strings.ToUpper(data.Method)
+	check.Check.Method = strings.ToUpper(check.Check.Method)
 
 	ctx, cancel := context.WithTimeout(context.Background(), secToDuration(timeout))
 	defer cancel()
 
-	url, err := normalizeURLPort(data.URL)
+	url, err := normalizeURLPort(check.Check.URL)
 	if err != nil {
-		return m, err
+		return res, err
 	}
 
-	req, err := http.NewRequest(data.Method, url, nil)
+	req, err := http.NewRequest(check.Check.Method, url, nil)
 	if err != nil {
-		return m, err
+		return res, err
 	}
 
 	startedConnectionAt := time.Now()
@@ -154,7 +175,7 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	req.Header.Set("User-Agent", fm.userAgent())
 
 	var hostHeader string
-	for key, val := range data.Headers {
+	for key, val := range check.Check.Headers {
 		req.Header.Set(key, val)
 		if hostHeader == "" && strings.ToLower(key) == "host" {
 			hostHeader = val
@@ -166,8 +187,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		req.Host = hostHeader
 	}
 
-	if data.Method == "POST" && data.PostData != "" {
-		req.Body = ioutil.NopCloser(strings.NewReader(data.PostData))
+	if check.Check.Method == "POST" && check.Check.PostData != "" {
+		req.Body = ioutil.NopCloser(strings.NewReader(check.Check.PostData))
 		// close noop closer to bypass lint warnings
 		_ = req.Body.Close()
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -184,17 +205,17 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 	resp, err := httpClient.Do(req.WithContext(httptrace.WithClientTrace(ctx, trace)))
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return m, fmt.Errorf("timeout exceeded")
+			return res, fmt.Errorf("timeout exceeded")
 		}
-		return m, err
+		return res, err
 	}
 	defer resp.Body.Close()
 
 	// Set the httpStatusCode in case we got a response
 	m[prefix+"httpStatusCode"] = resp.StatusCode
 
-	if data.ExpectedHTTPStatus > 0 && resp.StatusCode != data.ExpectedHTTPStatus {
-		return m, fmt.Errorf("bad status code. Expected %d, got %d", data.ExpectedHTTPStatus, resp.StatusCode)
+	if check.Check.ExpectedHTTPStatus > 0 && resp.StatusCode != check.Check.ExpectedHTTPStatus {
+		return res, fmt.Errorf("bad status code. Expected %d, got %d", check.Check.ExpectedHTTPStatus, resp.StatusCode)
 	}
 
 	// wrap body reader with the ReadCloserCounter
@@ -206,8 +227,8 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
 	}
 
-	if data.ExpectedPattern != "" {
-		err = checkBodyReaderMatchesPattern(resp.Body, data.ExpectedPattern, data.ExpectedPatternPresence, !data.SearchHTMLSource)
+	if check.Check.ExpectedPattern != "" {
+		err = checkBodyReaderMatchesPattern(resp.Body, check.Check.ExpectedPattern, check.Check.ExpectedPatternPresence, !check.Check.SearchHTMLSource)
 	} else {
 		// we don't need the content itself because we don't need to check any pattern
 		// just read the reader, so bodyReaderWithCounter will be able to count bytes
@@ -225,13 +246,14 @@ func (fm *Frontman) runWebCheck(data WebCheckData) (map[string]interface{}, erro
 
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return m, fmt.Errorf("timeout exceeded")
+			return res, fmt.Errorf("timeout exceeded")
 		}
-		return m, err
+		return res, err
 	}
 
 	m[prefix+"success"] = 1
-	return m, nil
+	res.Measurements = m
+	return res, nil
 }
 
 func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects int) *http.Client {
@@ -259,6 +281,7 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 	return client
 }
 
+/*
 func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *chan Result, checkList []WebCheck) int {
 	succeed := 0
 	for _, check := range checkList {
@@ -290,7 +313,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *cha
 				res.Message = "Missing check.url key"
 			default:
 				var err error
-				res.Measurements, err = fm.runWebCheck(check.Check)
+				res.Measurements, err = check.Run(fm)
 				if err != nil {
 					recovered := false
 					if fm.Config.FailureConfirmation > 0 {
@@ -299,7 +322,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *cha
 						for i := 1; i <= fm.Config.FailureConfirmation; i++ {
 							time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
 							logrus.Debugf("Retry %d for failed check %s", i, check.UUID)
-							res.Measurements, err = fm.runWebCheck(check.Check)
+							res.Measurements, err = check.Run(fm)
 							if err == nil {
 								recovered = true
 								break
@@ -331,6 +354,7 @@ func runWebChecks(fm *Frontman, wg *sync.WaitGroup, local bool, resultsChan *cha
 	}
 	return succeed
 }
+*/
 
 // removes ports from URL if it is the default port for given scheme
 func normalizeURLPort(u string) (string, error) {

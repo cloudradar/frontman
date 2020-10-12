@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cloudradar-monitoring/selfupdate"
@@ -208,6 +209,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	return &i, nil
 }
 
+// Run runs all checks continuously and sends result to hub or file
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
 
 	fm.Stats.StartedAt = time.Now()
@@ -245,6 +247,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		fm.hostInfoSent = true
 	}
 
+	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
+
 	for {
 		if err := fm.HealthCheck(); err != nil {
 			fm.HealthCheckPassedPreviously = false
@@ -260,7 +264,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
-		if err := fm.RunOnce(inputFilePath, outputFile, interrupt, &resultsChan); err != nil {
+		if err := fm.sendResultsChanToHubQueue(&resultsChan); err != nil {
 			logrus.Error(err)
 		}
 
@@ -273,45 +277,34 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
+// updates list of checks to execute from the hub
+func (fm *Frontman) updateInputChecks(inputFilePath string) {
+	fm.updateChecksLock.Lock()
+	defer fm.updateChecksLock.Unlock()
+
+	checks, err := fm.fetchInputChecks(inputFilePath)
+	fm.handleHubError(err)
+	fm.checks = addUniqueChecks(fm.checks, checks)
+}
+
+// RunOnce runs all checks once and send result to hub or file
 func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
 
+	fm.updateInputChecks(inputFilePath)
+	fm.processInput(fm.checks, true, resultsChan)
+
+	logrus.Debugf("RunOnce")
+	close(*resultsChan)
+
 	var err error
-
-	switch {
-	case outputFile != nil:
-		logrus.Debugf("sender_mode sendResultsChanToFile")
+	if outputFile != nil {
+		logrus.Debugf("sendResultsChanToFile")
 		err = fm.sendResultsChanToFile(resultsChan, outputFile)
-	case fm.Config.SenderMode == SenderModeWait:
-
-		input, err := fm.FetchInput(inputFilePath)
-		fm.handleHubError(err)
-
-		fm.processInput(input, true, resultsChan)
-
-		logrus.Debugf("sender_mode WAIT")
-		sleepTime := secToDuration(fm.Config.Sleep)
-		start := time.Now()
-		close(*resultsChan)
+	} else {
 		err = fm.sendResultsChanToHub(resultsChan)
-
-		*resultsChan = make(chan Result, 100)
-		sleepTime -= time.Since(start)
-		logrus.Debugf("WAIT SLEEP FOR %v", sleepTime)
-		if sleepTime > 0 {
-			time.Sleep(sleepTime)
-		}
-	case fm.Config.SenderMode == SenderModeQueue:
-		go fm.processInputContinious(inputFilePath, true, interrupt, resultsChan)
-
-		logrus.Debugf("sender_mode QUEUE")
-		err = fm.sendResultsChanToHubQueue(resultsChan)
 	}
 
-	if err != nil {
-		return fmt.Errorf("failed to process results: %s", err.Error())
-	}
-
-	return nil
+	return err
 }
 
 func (fm *Frontman) handleHubError(err error) {
@@ -338,8 +331,22 @@ func (fm *Frontman) handleHubError(err error) {
 	}
 }
 
-// FetchInput reads checks from a json file or the hub
-func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
+func (input *Input) asChecks() []Check {
+	checks := []Check{}
+	for _, c := range input.ServiceChecks {
+		checks = append(checks, c)
+	}
+	for _, c := range input.WebChecks {
+		checks = append(checks, c)
+	}
+	for _, c := range input.SNMPChecks {
+		checks = append(checks, c)
+	}
+	return checks
+}
+
+// fetchInputChecks reads checks from a json file or the hub
+func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 	var input *Input
 	var err error
 
@@ -348,7 +355,7 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		if err != nil {
 			return nil, fmt.Errorf("InputFromFile(%s) error: %s", inputFilePath, err.Error())
 		}
-		return input, nil
+		return input.asChecks(), nil
 	}
 
 	if fm.Config.HubURL == "" {
@@ -369,29 +376,78 @@ func (fm *Frontman) FetchInput(inputFilePath string) (*Input, error) {
 		return nil, fmt.Errorf("inputFromHub: %s", err.Error())
 	}
 
-	return input, nil
+	checks := input.asChecks()
+	diag := fmt.Sprintf("fetchInputChecks read %v checks from hub", len(checks))
+	if len(checks) > 0 {
+		logrus.Info(diag)
+	} else {
+		logrus.Debug(diag)
+	}
+
+	return checks, nil
+}
+
+// appends new checks with unique UUID to input Check queue
+func addUniqueChecks(input []Check, new []Check) []Check {
+	filtered := input
+	for _, c := range new {
+		if !hasCheck(input, c.uniqueID()) {
+			filtered = append(filtered, c)
+		} else {
+			logrus.Infof("Skipping request for check %v. Check is in queue.", c.uniqueID())
+		}
+	}
+	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", len(input), len(new), len(filtered))
+	return filtered
+}
+
+func hasCheck(s []Check, uuid string) bool {
+	for _, v := range s {
+		if v.uniqueID() == uuid {
+			return true
+		}
+	}
+	return false
+}
+
+// takes the oldest check from queue that is not in progress
+func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
+	if len(fm.checks) == 0 {
+		return nil, false
+	}
+
+	idx, ok := fm.ipc.getIndexOfFirstNotInProgress(fm.checks)
+	if ok {
+		currentCheck := fm.checks[idx]
+		fm.checks = append(fm.checks[:idx], fm.checks[idx+1:]...)
+		return currentCheck, true
+	}
+	return nil, false
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInputContinious(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
+func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
 
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
 
-	var err error
-	var input *Input
-
 	for {
-		duration := time.Since(lastFetch)
-		if duration >= interval {
-
-			input, err = fm.FetchInput(inputFilePath)
+		if time.Since(lastFetch) >= interval {
 			lastFetch = time.Now()
-			fm.handleHubError(err)
+			go fm.updateInputChecks(inputFilePath)
 		}
 
-		fm.processInput(input, local, resultsChan)
+		if len(fm.checks) > 0 {
+			if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
+				fm.ipc.add(currentCheck.uniqueID())
 
+				go func(check Check, results *chan Result, inProgress *inProgressChecks) {
+					res, _ := fm.runCheck(check, local)
+					inProgress.remove(check.uniqueID())
+					*results <- *res
+				}(currentCheck, resultsChan, &fm.ipc)
+			}
+		}
 		select {
 		case <-interrupt:
 			close(*resultsChan)
@@ -401,18 +457,72 @@ func (fm *Frontman) processInputContinious(inputFilePath string, local bool, int
 	}
 }
 
+// processInput processes the whole list of checks in input
 // local is false if check originated from a remote node
-func (fm *Frontman) processInput(input *Input, local bool, resultsChan *chan Result) {
-	wg := sync.WaitGroup{}
+func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan Result) {
 	startedAt := time.Now()
 
-	succeed := runServiceChecks(fm, &wg, local, resultsChan, input.ServiceChecks)
-	succeed += runWebChecks(fm, &wg, local, resultsChan, input.WebChecks)
-	succeed += runSNMPChecks(fm, &wg, local, resultsChan, input.SNMPChecks)
+	succeed := fm.runChecks(checks, resultsChan, local)
+
+	totChecks := len(checks)
+	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
+	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+}
+
+// runs all checks in checkList and sends results to resultsChan
+func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local bool) int {
+	wg := &sync.WaitGroup{}
+
+	succeed := int32(0)
+	for _, check := range checkList {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, check Check, resultsChan *chan Result) {
+			defer wg.Done()
+
+			res, err := fm.runCheck(check, local)
+			if err == nil {
+				atomic.AddInt32(&succeed, 1)
+			}
+
+			*resultsChan <- *res
+		}(wg, check, resultsChan)
+	}
 
 	wg.Wait()
 
-	totChecks := len(input.ServiceChecks) + len(input.WebChecks) + len(input.SNMPChecks)
-	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
-	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+	return int(succeed)
+}
+
+func (fm *Frontman) runCheck(check Check, local bool) (*Result, error) {
+	res, err := check.run(fm)
+	if err == nil {
+		return res, nil
+	}
+
+	recovered := false
+	if fm.Config.FailureConfirmation > 0 {
+		logrus.Debugf("runChecks failed, retrying up to %d times: %s: %s", fm.Config.FailureConfirmation, check.uniqueID(), err.Error())
+
+		for i := 1; i <= fm.Config.FailureConfirmation; i++ {
+			time.Sleep(time.Duration(fm.Config.FailureConfirmationDelay*1000) * time.Millisecond)
+			logrus.Debugf("Retry %d for failed check %s", i, check.uniqueID())
+			res, err = check.run(fm)
+			if err == nil {
+				recovered = true
+				break
+			}
+		}
+	}
+	if !recovered {
+		res.Message = err.Error()
+	}
+	if !recovered && local {
+		fm.askNodes(check, res)
+	}
+
+	if !recovered {
+		logrus.Debugf("runChecks: %s: %s", check.uniqueID(), err.Error())
+	}
+
+	return res, err
 }
