@@ -148,6 +148,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 	lastQueueStatsWrite := time.Unix(0, 0)
 
 	fm.TerminateQueue.Add(1)
+	defer fm.TerminateQueue.Done()
 
 	for {
 		select {
@@ -219,7 +220,6 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 		}
 
 		if shouldReturn && len(results) == 0 {
-			fm.TerminateQueue.Done()
 			return nil
 		}
 	}

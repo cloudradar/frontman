@@ -178,7 +178,7 @@ func main() {
 	select {
 	case sig := <-sigc:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
-		interruptChan <- struct{}{}
+		close(interruptChan)
 		fm.TerminateQueue.Wait()
 		os.Exit(0)
 	case <-doneChan:
