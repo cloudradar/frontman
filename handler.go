@@ -431,6 +431,8 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
 
+	waitWg := sync.WaitGroup{}
+
 	for {
 		if time.Since(lastFetch) >= interval {
 			lastFetch = time.Now()
@@ -441,15 +443,19 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
 				fm.ipc.add(currentCheck.uniqueID())
 
-				go func(check Check, results *chan Result, inProgress *inProgressChecks) {
+				go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
+					wg.Add(1)
+					defer wg.Done()
+
 					res, _ := fm.runCheck(check, local)
 					inProgress.remove(check.uniqueID())
 					*results <- *res
-				}(currentCheck, resultsChan, &fm.ipc)
+				}(currentCheck, resultsChan, &fm.ipc, &waitWg)
 			}
 		}
 		select {
 		case <-interrupt:
+			waitWg.Wait()
 			close(*resultsChan)
 			return
 		default:
