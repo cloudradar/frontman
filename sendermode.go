@@ -196,31 +196,35 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 
 		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
 			lastQueueStatsWrite = time.Now()
-
-			data, err := json.Marshal(map[string]int{
-				"checks_queue":       len(fm.checks),
-				"checks_in_progress": fm.ipc.len(),
-				"results_queue":      len(results)})
-			if err != nil {
-				logrus.Error(err)
-			} else if fm.Config.QueueStatsFile != "" {
-				go func(b []byte) {
-					f, err := os.Create(fm.Config.QueueStatsFile)
-					if err != nil {
-						logrus.Error(err)
-						return
-					}
-					defer f.Close()
-					_, err = f.Write(b)
-					if err != nil {
-						logrus.Error(err)
-					}
-				}(data)
-			}
+			fm.writeQueueStats(len(results))
 		}
 
 		if shouldReturn && len(results) == 0 {
+			fm.writeQueueStats(len(results))
 			return nil
 		}
+	}
+}
+
+func (fm *Frontman) writeQueueStats(resultsLen int) {
+	data, err := json.Marshal(map[string]int{
+		"checks_queue":       len(fm.checks),
+		"checks_in_progress": fm.ipc.len(),
+		"results_queue":      resultsLen})
+	if err != nil {
+		logrus.Error(err)
+	} else if fm.Config.QueueStatsFile != "" {
+		go func(b []byte) {
+			f, err := os.Create(fm.Config.QueueStatsFile)
+			if err != nil {
+				logrus.Error(err)
+				return
+			}
+			defer f.Close()
+			_, err = f.Write(b)
+			if err != nil {
+				logrus.Error(err)
+			}
+		}(data)
 	}
 }
