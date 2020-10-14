@@ -168,10 +168,10 @@ func main() {
 		syscall.SIGHUP,
 		syscall.SIGINT,
 		syscall.SIGTERM)
-	doneChan := make(chan struct{})
+	doneChan := make(chan bool)
 	go func() {
 		fm.Run(*inputFilePtr, output, interruptChan, resultsChan)
-		doneChan <- struct{}{}
+		doneChan <- true
 	}()
 
 	//  Handle interrupts
@@ -643,7 +643,7 @@ func (sw *serviceWrapper) Start(s service.Service) error {
 }
 
 func (sw *serviceWrapper) Stop(s service.Service) error {
-	sw.InterruptChan <- struct{}{}
+	close(sw.InterruptChan)
 	log.Println("Finishing the batch and stop the service...")
 	<-sw.DoneChan
 	return nil

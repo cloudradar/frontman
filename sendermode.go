@@ -135,7 +135,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 }
 
 // sends results to hub continuously
-func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
+func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
 	writeQueueStatsInterval := time.Millisecond * 200
@@ -151,17 +151,8 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 	defer fm.TerminateQueue.Done()
 
 	for {
-		select {
-		case res, ok := <-*resultsChan:
-			if !ok {
-				// chan was closed, no more results left
-				shouldReturn = true
-			} else {
-				results = append(results, res)
-				if len(results) < fm.Config.SenderBatchSize && len(*resultsChan) > 0 {
-					continue
-				}
-			}
+		for res := range *resultsChan {
+			results = append(results, res)
 		}
 
 		if time.Since(lastSentToHub) >= sendInterval {
@@ -199,9 +190,17 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 			fm.writeQueueStats(len(results))
 		}
 
+		select {
+		case <-interrupt:
+			logrus.Infof("sendResultsChanToHubQueue interrupt caught, should return")
+			shouldReturn = true
+		default:
+		}
+
 		if shouldReturn && len(results) == 0 {
 			fm.writeQueueStats(len(results))
-			return nil
+			logrus.Infof("sendResultsChanToHubQueue RETURNS!")
+			return
 		}
 	}
 }

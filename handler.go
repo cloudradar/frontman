@@ -248,6 +248,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 
 	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
+	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
 
 	for {
 		if err := fm.HealthCheck(); err != nil {
@@ -262,10 +263,6 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		} else if !fm.HealthCheckPassedPreviously {
 			fm.HealthCheckPassedPreviously = true
 			logrus.Infoln("All health checks are positive. Resuming normal operation.")
-		}
-
-		if err := fm.sendResultsChanToHubQueue(&resultsChan); err != nil {
-			logrus.Error(err)
 		}
 
 		select {
@@ -433,8 +430,20 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 	waitWg := sync.WaitGroup{}
 
+	logrus.Infof("STARTING processInputContinuous")
+
 	for {
+		select {
+		case <-interrupt:
+			logrus.Infof("XXX processInputContinuous got interrupt,waiting & stopping")
+			waitWg.Wait()
+			//close(*resultsChan)
+			return
+		default:
+		}
+
 		if time.Since(lastFetch) >= interval {
+			logrus.Infof("XXX processInputContinuous running updateInputChecks")
 			lastFetch = time.Now()
 			go fm.updateInputChecks(inputFilePath)
 		}
@@ -444,6 +453,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 				fm.ipc.add(currentCheck.uniqueID())
 
 				go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
+					logrus.Infof("XXX run 1 check")
 					wg.Add(1)
 					defer wg.Done()
 
@@ -452,13 +462,6 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 					*results <- *res
 				}(currentCheck, resultsChan, &fm.ipc, &waitWg)
 			}
-		}
-		select {
-		case <-interrupt:
-			waitWg.Wait()
-			close(*resultsChan)
-			return
-		default:
 		}
 	}
 }

@@ -105,16 +105,16 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 	return fm, nil
 }
 
-func (ca *Frontman) configureAutomaticSelfUpdates() error {
-	if !ca.Config.Updates.Enabled {
+func (fm *Frontman) configureAutomaticSelfUpdates() error {
+	if !fm.Config.Updates.Enabled {
 		return nil
 	}
 	updatesConfig := selfupdate.DefaultConfig()
 	updatesConfig.AppName = "frontman"
 	updatesConfig.SigningCertificatedName = "cloudradar GmbH"
 	updatesConfig.CurrentVersion = Version
-	updatesConfig.CheckInterval = ca.Config.Updates.GetCheckInterval()
-	updatesConfig.UpdatesFeedURL = ca.Config.Updates.URL
+	updatesConfig.CheckInterval = fm.Config.Updates.GetCheckInterval()
+	updatesConfig.UpdatesFeedURL = fm.Config.Updates.URL
 	logrus.Debugf("using %s as self-updates feed URL", updatesConfig.UpdatesFeedURL)
 
 	err := selfupdate.Configure(updatesConfig)
