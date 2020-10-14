@@ -115,7 +115,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 				body, _ := ioutil.ReadAll(resp.Body)
 				nodeResults = append(nodeResults, string(body))
 			} else {
-				logrus.Errorf("askNodes recieved HTTP %v from %s", resp.StatusCode, node.URL)
+				logrus.Errorf("askNodes received HTTP %v from %s", resp.StatusCode, node.URL)
 				fm.markNodeFailure(&node)
 			}
 		}
@@ -123,7 +123,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	if len(nodeResults) == 0 {
 		// all nodes failed, use original measure
-		logrus.Errorf("askNodes recieved no successful results")
+		logrus.Errorf("askNodes received no successful results")
 		return
 	}
 

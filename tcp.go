@@ -50,7 +50,7 @@ func (fm *Frontman) runTCPCheck(hostname string, port int, service string) (Meas
 
 	prefix := fmt.Sprintf("net.tcp.%s.%d.", service, port)
 
-	// Initialise MeasurementsMap
+	// Initialize MeasurementsMap
 	m := MeasurementsMap{
 		prefix + "success": 0,
 	}
