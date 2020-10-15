@@ -15,9 +15,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func (fm *Frontman) clearOfflineResultsBuffer() {
+	fm.offlineResultsLock.Lock()
+	defer fm.offlineResultsLock.Unlock()
+	fm.offlineResultsBuffer = []Result{}
+}
+
 func (fm *Frontman) postResultsToHub(results []Result) error {
 
+	fm.offlineResultsLock.Lock()
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
+	fm.offlineResultsLock.Unlock()
+
 	b, err := json.Marshal(Results{
 		Results: fm.offlineResultsBuffer,
 	})
@@ -32,7 +41,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 			fm.Config.HubMaxOfflineBufferBytes,
 			len(results))
 
-		fm.offlineResultsBuffer = []Result{}
+		fm.clearOfflineResultsBuffer()
+
 		b, err = json.Marshal(Results{Results: results})
 		if err != nil {
 			return err
@@ -94,11 +104,13 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 		return ErrorHubGeneral
 	}
 
-	// in case of successful POST reset the offline buffer
-	fm.offlineResultsBuffer = []Result{}
+	// in case of successful POST, we reset the offline buffer
+	fm.clearOfflineResultsBuffer()
 
 	// Update frontman statistics
+	fm.offlineResultsLock.Lock()
 	fm.Stats.BytesSentToHubTotal += uint64(bodyLength)
+	fm.offlineResultsLock.Unlock()
 
 	return nil
 }
@@ -129,7 +141,8 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 
 	fm.Stats.CheckResultsSentToHub += uint64(len(results))
 
-	fm.offlineResultsBuffer = []Result{}
+	fm.clearOfflineResultsBuffer()
+
 	return nil
 }
 

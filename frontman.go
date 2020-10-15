@@ -38,7 +38,9 @@ type Frontman struct {
 	hubClientOnce sync.Once
 	hostInfoSent  bool
 
+	// local cached results in case the hub is temporarily offline
 	offlineResultsBuffer []Result
+	offlineResultsLock   sync.Mutex
 
 	rootCAs *x509.CertPool
 	version string
