@@ -286,7 +286,10 @@ func (fm *Frontman) updateInputChecks(inputFilePath string) {
 func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
 	fm.initHubClient()
 	fm.updateInputChecks(inputFilePath)
+
+	fm.updateChecksLock.Lock()
 	fm.processInput(fm.checks, true, resultsChan)
+	fm.updateChecksLock.Unlock()
 
 	logrus.Debugf("RunOnce")
 	close(*resultsChan)
@@ -407,6 +410,9 @@ func hasCheck(s []Check, uuid string) bool {
 
 // takes the oldest check from queue that is not in progress
 func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
+	fm.updateChecksLock.Lock()
+	defer fm.updateChecksLock.Unlock()
+
 	if len(fm.checks) == 0 {
 		return nil, false
 	}
@@ -433,7 +439,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	for {
 		select {
 		case <-interrupt:
-			logrus.Infof("XXX processInputContinuous got interrupt,waiting & stopping")
+			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
 			waitWg.Wait()
 			//close(*resultsChan)
 			return
@@ -441,25 +447,22 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 		}
 
 		if time.Since(lastFetch) >= interval {
-			logrus.Infof("XXX processInputContinuous running updateInputChecks")
+			logrus.Infof("processInputContinuous running updateInputChecks")
 			lastFetch = time.Now()
 			go fm.updateInputChecks(inputFilePath)
 		}
 
-		if len(fm.checks) > 0 {
-			if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
-				fm.ipc.add(currentCheck.uniqueID())
+		if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
+			fm.ipc.add(currentCheck.uniqueID())
 
-				go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
-					logrus.Infof("XXX run 1 check")
-					wg.Add(1)
-					defer wg.Done()
+			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
+				wg.Add(1)
+				defer wg.Done()
 
-					res, _ := fm.runCheck(check, local)
-					inProgress.remove(check.uniqueID())
-					*results <- *res
-				}(currentCheck, resultsChan, &fm.ipc, &waitWg)
-			}
+				res, _ := fm.runCheck(check, local)
+				inProgress.remove(check.uniqueID())
+				*results <- *res
+			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
 		}
 	}
 }

@@ -13,12 +13,20 @@ func helperCreateFrontman(t *testing.T, cfg *Config) *Frontman {
 	return fm
 }
 
-// XXX end-2-end test
-
 func TestFrontmanHubInput(t *testing.T) {
-	// XXX 1. mock hub. fetch checks
+	hub := NewMockHub("localhost:9100")
+	go hub.Serve()
 
-	hub := NewMockHub()
-	go hub.Serve() // XXX no way to close cleanly
+	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
+	assert.Nil(t, err)
 
+	cfg.HubURL = hub.URL() + "/?serviceChecks=0&webChecks=2"
+
+	fm := helperCreateFrontman(t, cfg)
+
+	resultsChan := make(chan Result, 100)
+	interruptChan := make(chan struct{})
+
+	fm.Run("", nil, interruptChan, resultsChan)
+	// XXX stop after some time
 }
