@@ -63,6 +63,9 @@ type Frontman struct {
 }
 
 func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
+	if version == "" {
+		version = "{undefined}"
+	}
 	fm := &Frontman{
 		Config:                      cfg,
 		ConfigLocation:              cfgPath,
@@ -127,11 +130,8 @@ func (fm *Frontman) configureAutomaticSelfUpdates() error {
 	return nil
 }
 
+// returns an user agent string
 func (fm *Frontman) userAgent() string {
-	if fm.version == "" {
-		fm.version = "{undefined}"
-	}
 	parts := strings.Split(fm.version, "-")
-
 	return fmt.Sprintf("Frontman v%s %s %s", parts[0], runtime.GOOS, runtime.GOARCH)
 }
