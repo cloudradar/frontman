@@ -11,7 +11,6 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	hub := frontman.NewMockHub()
-
+	hub := frontman.NewMockHub("localhost:9100")
 	hub.Serve()
 }

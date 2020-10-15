@@ -13,10 +13,17 @@ import (
 )
 
 type MockHub struct {
+	address string
 }
 
-func NewMockHub() *MockHub {
-	return &MockHub{}
+func NewMockHub(address string) *MockHub {
+	return &MockHub{
+		address: address,
+	}
+}
+
+func (hub *MockHub) URL() string {
+	return "http://" + hub.address
 }
 
 // returns some mocked checks
@@ -35,7 +42,7 @@ func (hub *MockHub) postHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	log.Println("post got data", data)
+	log.Println("MockHub: got post data", string(data))
 }
 
 func (hub *MockHub) getHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +62,7 @@ func (hub *MockHub) getHandler(w http.ResponseWriter, r *http.Request) {
 		webChecks = 5
 	}
 
-	log.Println("responding with", serviceChecks, "serviceChecks", webChecks, "webChecks")
+	log.Println("responding with", serviceChecks, "serviceChecks and", webChecks, "webChecks")
 
 	checks := Input{
 		ServiceChecks: mockServiceChecks(int(serviceChecks)),
@@ -68,12 +75,9 @@ func (hub *MockHub) getHandler(w http.ResponseWriter, r *http.Request) {
 
 func (hub *MockHub) Serve() {
 
-	var listenAddr = "localhost:9100"
-
 	http.HandleFunc("/", hub.indexHandler)
-
-	log.Println("mock hub listening at", "http://"+listenAddr)
-	http.ListenAndServe(listenAddr, nil)
+	log.Println("mock hub listening at", hub.URL())
+	http.ListenAndServe(hub.address, nil)
 }
 
 func mockServiceChecks(n int) []ServiceCheck {
