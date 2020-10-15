@@ -18,7 +18,7 @@ type Check interface {
 type Input struct {
 	ServiceChecks []ServiceCheck `json:"serviceChecks"`
 	WebChecks     []WebCheck     `json:"webChecks"`
-	SNMPChecks    []SNMPCheck    `json:"snmpChecks"`
+	SNMPChecks    []SNMPCheck    `json:"snmpChecks,omitempty"`
 }
 
 type ServiceCheck struct {
