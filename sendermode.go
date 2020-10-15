@@ -108,9 +108,9 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	fm.clearOfflineResultsBuffer()
 
 	// Update frontman statistics
-	fm.offlineResultsLock.Lock()
-	fm.Stats.BytesSentToHubTotal += uint64(bodyLength)
-	fm.offlineResultsLock.Unlock()
+	fm.statsLock.Lock()
+	fm.stats.BytesSentToHubTotal += uint64(bodyLength)
+	fm.statsLock.Unlock()
 
 	return nil
 }
@@ -139,7 +139,9 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 		return fmt.Errorf("postResultsToHub: %s", err.Error())
 	}
 
-	fm.Stats.CheckResultsSentToHub += uint64(len(results))
+	fm.statsLock.Lock()
+	fm.stats.CheckResultsSentToHub += uint64(len(results))
+	fm.statsLock.Unlock()
 
 	fm.clearOfflineResultsBuffer()
 

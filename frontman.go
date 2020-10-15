@@ -29,7 +29,9 @@ type Frontman struct {
 	Config         *Config
 	ConfigLocation string
 
-	Stats                       *stats.FrontmanStats
+	stats     *stats.FrontmanStats
+	statsLock sync.Mutex
+
 	HealthCheckPassedPreviously bool
 
 	selfUpdater *selfupdate.Updater
@@ -69,7 +71,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 	fm := &Frontman{
 		Config:                      cfg,
 		ConfigLocation:              cfgPath,
-		Stats:                       &stats.FrontmanStats{},
+		stats:                       &stats.FrontmanStats{},
 		HealthCheckPassedPreviously: true,
 		hostInfoSent:                false,
 		version:                     version,

@@ -170,9 +170,11 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 			err = errors.Wrap(err, netErr.Error())
 		}
 
-		fm.Stats.HubLastErrorMessage = err.Error()
-		fm.Stats.HubLastErrorTimestamp = uint64(time.Now().Second())
-		fm.Stats.HubErrorsTotal++
+		fm.statsLock.Lock()
+		fm.stats.HubLastErrorMessage = err.Error()
+		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Second())
+		fm.stats.HubErrorsTotal++
+		fm.statsLock.Unlock()
 		return nil, err
 	}
 
@@ -200,8 +202,10 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	}
 
 	// Update frontman statistics
-	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
-	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
+	fm.statsLock.Lock()
+	fm.stats.BytesFetchedFromHubTotal += uint64(len(body))
+	fm.stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
+	fm.statsLock.Unlock()
 
 	return &i, nil
 }
@@ -210,9 +214,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
 
 	fm.initHubClient()
-	fm.Stats.StartedAt = time.Now()
-	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
-	fm.StartWritingStats()
+	go fm.startWritingStats()
 
 	if fm.Config.Updates.Enabled {
 		fm.selfUpdater = selfupdate.StartChecking()
@@ -471,11 +473,13 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 // local is false if check originated from a remote node
 func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan Result) {
 	startedAt := time.Now()
-
 	succeed := fm.runChecks(checks, resultsChan, local)
-
 	totChecks := len(checks)
-	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
+
+	fm.statsLock.Lock()
+	fm.stats.ChecksPerformedTotal += uint64(totChecks)
+	fm.statsLock.Unlock()
+
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }
 
