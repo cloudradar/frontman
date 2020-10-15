@@ -84,7 +84,6 @@ func (fm *Frontman) initHubClient() {
 // * for TOML: CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
 // * for WinUI: CheckHubCredentials(ctx, "URL", "User", "Password")
 func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldHubUser, fieldHubPassword string) error {
-	fm.initHubClient()
 
 	if fm.Config.HubURL == "" {
 		return newEmptyFieldError(fieldHubURL)
@@ -142,8 +141,6 @@ func (fm *Frontman) checkClientError(resp *http.Response, err error, fieldHubUse
 }
 
 func (fm *Frontman) inputFromHub() (*Input, error) {
-	fm.initHubClient()
-
 	if fm.Config.HubURL == "" {
 		return nil, newEmptyFieldError("hub_url")
 	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
@@ -212,6 +209,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 // Run runs all checks continuously and sends result to hub or file
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
 
+	fm.initHubClient()
 	fm.Stats.StartedAt = time.Now()
 	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
 	fm.StartWritingStats()
@@ -286,7 +284,7 @@ func (fm *Frontman) updateInputChecks(inputFilePath string) {
 
 // RunOnce runs all checks once and send result to hub or file
 func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
-
+	fm.initHubClient()
 	fm.updateInputChecks(inputFilePath)
 	fm.processInput(fm.checks, true, resultsChan)
 

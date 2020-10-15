@@ -16,7 +16,6 @@ import (
 )
 
 func (fm *Frontman) postResultsToHub(results []Result) error {
-	fm.initHubClient()
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
 	b, err := json.Marshal(Results{
@@ -151,8 +150,17 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 	defer fm.TerminateQueue.Done()
 
 	for {
-		for res := range *resultsChan {
-			results = append(results, res)
+		select {
+		case res, ok := <-*resultsChan:
+			if !ok {
+				// chan was closed, no more results left
+				shouldReturn = true
+			} else {
+				results = append(results, res)
+				if len(results) < fm.Config.SenderBatchSize && len(*resultsChan) > 0 {
+					continue
+				}
+			}
 		}
 
 		if time.Since(lastSentToHub) >= sendInterval {
