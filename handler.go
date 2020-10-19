@@ -276,8 +276,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 
 // updates list of checks to execute from the hub
 func (fm *Frontman) updateInputChecks(inputFilePath string) {
-	fm.updateChecksLock.Lock()
-	defer fm.updateChecksLock.Unlock()
+	fm.checksLock.Lock()
+	defer fm.checksLock.Unlock()
 
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
@@ -289,9 +289,9 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 	fm.initHubClient()
 	fm.updateInputChecks(inputFilePath)
 
-	fm.updateChecksLock.Lock()
+	fm.checksLock.Lock()
 	fm.processInput(fm.checks, true, resultsChan)
-	fm.updateChecksLock.Unlock()
+	fm.checksLock.Unlock()
 
 	logrus.Debugf("RunOnce")
 	close(*resultsChan)
@@ -412,8 +412,8 @@ func hasCheck(s []Check, uuid string) bool {
 
 // takes the oldest check from queue that is not in progress
 func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
-	fm.updateChecksLock.Lock()
-	defer fm.updateChecksLock.Unlock()
+	fm.checksLock.Lock()
+	defer fm.checksLock.Unlock()
 
 	if len(fm.checks) == 0 {
 		return nil, false

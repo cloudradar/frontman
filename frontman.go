@@ -51,8 +51,8 @@ type Frontman struct {
 	failedNodeCache map[string]Node
 
 	// current checks queue
-	checks           []Check
-	updateChecksLock sync.Mutex
+	checks     []Check
+	checksLock sync.Mutex
 
 	// in-progress checks
 	ipc inProgressChecks
