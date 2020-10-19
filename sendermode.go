@@ -229,24 +229,32 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 }
 
 func (fm *Frontman) writeQueueStats(resultsLen int) {
+	if fm.Config.QueueStatsFile == "" {
+		return
+	}
+
+	fm.checksLock.Lock()
 	data, err := json.Marshal(map[string]int{
 		"checks_queue":       len(fm.checks),
 		"checks_in_progress": fm.ipc.len(),
 		"results_queue":      resultsLen})
+	fm.checksLock.Unlock()
+
 	if err != nil {
 		logrus.Error(err)
-	} else if fm.Config.QueueStatsFile != "" {
-		go func(b []byte) {
-			f, err := os.Create(fm.Config.QueueStatsFile)
-			if err != nil {
-				logrus.Error(err)
-				return
-			}
-			defer f.Close()
-			_, err = f.Write(b)
-			if err != nil {
-				logrus.Error(err)
-			}
-		}(data)
+		return
 	}
+
+	go func(b []byte) {
+		f, err := os.Create(fm.Config.QueueStatsFile)
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+		defer f.Close()
+		_, err = f.Write(b)
+		if err != nil {
+			logrus.Error(err)
+		}
+	}(data)
 }
