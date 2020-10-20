@@ -53,16 +53,16 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		return
 	}
 
+	msg := res.Message.(string)
 	// only forward if result message don't match ForwardExcept config
-	if len(fm.Config.Node.ForwardExcept > 0) {
-		msg := res.Message.(string)
+	if len(fm.Config.Node.ForwardExcept) > 0 {
 		logrus.Infof("Matching local result message %v vs %v", msg, fm.Config.Node.ForwardExcept)
 		for _, rexp := range fm.Config.Node.ForwardExcept {
 			// case insensitive match
 			irexp := "(?i)" + rexp
 			match, err := regexp.MatchString(irexp, msg)
 			if err != nil {
-				logrus.Errorfs("forward_except regexp error", err)
+				logrus.Errorf("forward_except regexp error", err)
 			} else if match {
 				logrus.Info("forward_except matched, won't forward", msg)
 				return
@@ -72,19 +72,27 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		}
 	}
 
+	uuid := ""
+	checkType := ""
 	if c, ok := check.(ServiceCheck); ok {
 		if c.Check.Protocol == "ssl" {
 			// ssl checks are excluded from "ask node" feature
 			return
 		}
+		uuid = c.UUID
+		checkType = "serviceCheck"
 		req := &Input{ServiceChecks: []ServiceCheck{c}}
 		data, _ = json.Marshal(req)
 	}
 	if c, ok := check.(WebCheck); ok {
+		uuid = c.UUID
+		checkType = "webCheck"
 		req := &Input{WebChecks: []WebCheck{c}}
 		data, _ = json.Marshal(req)
 	}
 	if c, ok := check.(SNMPCheck); ok {
+		uuid = c.UUID
+		checkType = "snmpCheck"
 		req := &Input{SNMPChecks: []SNMPCheck{c}}
 		data, _ = json.Marshal(req)
 	}
@@ -121,6 +129,8 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			}
 		}
+
+		fm.logForward(fmt.Sprintf("Forwarding check %s, type %s, msg '%s' to %s", uuid, checkType, msg, node.URL))
 		req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(data))
 		req.SetBasicAuth(node.Username, node.Password)
 		req.Header.Set("Content-Type", "application/json")
@@ -238,15 +248,15 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	*res = fastestResult[0]
 
 	// append all node messages to Message response
-	msg := fm.Config.NodeName + ": " + res.Message.(string) + "\n"
+	nodeMsg := fm.Config.NodeName + ": " + res.Message.(string) + "\n"
 	for _, v := range failedNodes {
-		msg += fmt.Sprintf("%s: %s\n", v, failedNodeMessage[v])
+		nodeMsg += fmt.Sprintf("%s: %s\n", v, failedNodeMessage[v])
 	}
 	for _, v := range succeededNodes {
-		msg += fmt.Sprintf("%s: check succeeded\n", v)
+		nodeMsg += fmt.Sprintf("%s: check succeeded\n", v)
 	}
 
-	(*res).Message = msg
+	(*res).Message = nodeMsg
 
 	// combine the other measurments with the failing measurement
 	for idx := range nodeResults {
@@ -271,4 +281,13 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	json.Unmarshal(tmp, &locallMeasurementInterface)
 
 	(*res).NodeMeasurements = append((*res).NodeMeasurements, locallMeasurementInterface)
+}
+
+func (fm *Frontman) logForward(s string) {
+	if fm.forwardLog == nil {
+		return
+	}
+	t := time.Now()
+	s = t.Format(time.RFC3339) + " " + s + "\n"
+	fm.forwardLog.WriteString(s)
 }
