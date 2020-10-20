@@ -56,18 +56,16 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	msg := res.Message.(string)
 	// only forward if result message don't match ForwardExcept config
 	if len(fm.Config.Node.ForwardExcept) > 0 {
-		logrus.Infof("Matching local result message %v vs %v", msg, fm.Config.Node.ForwardExcept)
+		logrus.Infof("Matching local result message %v vs forward_except", msg)
 		for _, rexp := range fm.Config.Node.ForwardExcept {
 			// case insensitive match
 			irexp := "(?i)" + rexp
 			match, err := regexp.MatchString(irexp, msg)
 			if err != nil {
-				logrus.Errorf("forward_except regexp error", err)
+				logrus.Error("forward_except regexp error", err)
 			} else if match {
 				logrus.Info("forward_except matched, won't forward", msg)
 				return
-			} else {
-				logrus.Info("forward_except did not match", irexp, msg)
 			}
 		}
 	}
@@ -247,8 +245,13 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	// make the fastest node measurement the main result
 	*res = fastestResult[0]
 
+	fastestMsg := ""
+	if f, ok := res.Message.(string); ok {
+		fastestMsg = f
+	}
+
 	// append all node messages to Message response
-	nodeMsg := fm.Config.NodeName + ": " + res.Message.(string) + "\n"
+	nodeMsg := fm.Config.NodeName + ": " + fastestMsg + "\n"
 	for _, v := range failedNodes {
 		nodeMsg += fmt.Sprintf("%s: %s\n", v, failedNodeMessage[v])
 	}

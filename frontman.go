@@ -78,6 +78,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		hostInfoSent:                false,
 		version:                     version,
 		failedNodes:                 make(map[string]time.Time),
+		failedNodeCache:             make(map[string]Node),
 		TerminateQueue:              sync.WaitGroup{},
 	}
 
