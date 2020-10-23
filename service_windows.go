@@ -1,14 +1,12 @@
 // +build windows
 
-package main
+package frontman
 
 import (
 	"github.com/kardianos/service"
-
-	"github.com/cloudradar-monitoring/frontman"
 )
 
-func updateServiceConfig(ca *frontman.Frontman, username string) {
+func updateServiceConfig(fm *Frontman, username string) {
 	// nothing to do
 }
 

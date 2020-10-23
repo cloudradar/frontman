@@ -4,15 +4,13 @@
 
 // +build windows
 
-package main
+package winui
 
 import (
 	"errors"
 	"syscall"
 	"unsafe"
-)
 
-import (
 	"github.com/lxn/walk"
 	"github.com/lxn/win"
 )

@@ -1,6 +1,6 @@
 // +build !windows
 
-package main
+package frontman
 
 import (
 	"fmt"
@@ -12,11 +12,9 @@ import (
 
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
-
-	"github.com/cloudradar-monitoring/frontman"
 )
 
-func updateServiceConfig(ca *frontman.Frontman, userName string) {
+func updateServiceConfig(fm *Frontman, userName string) {
 	u, err := user.Lookup(userName)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -26,7 +24,7 @@ func updateServiceConfig(ca *frontman.Frontman, userName string) {
 	svcConfig.UserName = userName
 	// we need to chown log file with user who will run service
 	// because installer can be run under root so the log file will be also created under root
-	err = chownFile(ca.Config.LogFile, u)
+	err = chownFile(fm.Config.LogFile, u)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"user": userName,

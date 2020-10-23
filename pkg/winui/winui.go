@@ -1,6 +1,6 @@
 // +build windows
 
-package main
+package winui
 
 import (
 	"bytes"
@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/lxn/walk"
@@ -89,6 +92,45 @@ func (se *setupErrors) Describe() string {
 	fmt.Fprint(buf, "Services restarted and you are all set up!")
 
 	return buf.String()
+}
+
+func HandleFeedback(fm *frontman.Frontman, cfgPath string) {
+	// handle URL schema arguments on windows
+	if runtime.GOOS != "windows" {
+		return
+	}
+
+	if len(os.Args) < 2 {
+		return
+	}
+
+	switch os.Args[1] {
+	case urlScheme + ":settings":
+		// hide console window
+		console := w32.GetConsoleWindow()
+		if console != 0 {
+			w32.ShowWindow(console, w32.SW_HIDE)
+		}
+		WindowsShowSettingsUI(fm, false)
+	case urlScheme + ":install":
+		// hide console window
+		console := w32.GetConsoleWindow()
+		if console != 0 {
+			w32.ShowWindow(console, w32.SW_HIDE)
+		}
+		WindowsShowSettingsUI(fm, true)
+	case urlScheme + ":test":
+		fm.HandleFlagTest()
+	case urlScheme + ":config":
+		openConfigInNotepad(cfgPath)
+	}
+}
+
+func openConfigInNotepad(cfgPath string) error {
+	r := strings.NewReplacer("&", "^&")
+	cfgPath = r.Replace(cfgPath)
+	defer os.Exit(1)
+	return exec.Command("cmd", "/C", "start", "", "notepad", cfgPath).Start()
 }
 
 // saveAndReloadProxySettings saves the proxy settings to the config and reloads the service
@@ -176,9 +218,9 @@ func (ui *UI) testSaveAndReloadHubSettings(testOnly bool) {
 	}
 }
 
-// windowsShowSettingsUI draws a window and waits until it will be closed.
+// WindowsShowSettingsUI draws a window and waits until it will be closed.
 // When installationMode is true, close the window after successful test&save.
-func windowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
+func WindowsShowSettingsUI(frontman *frontman.Frontman, installationMode bool) {
 	ui := &UI{
 		frontman:         frontman,
 		installationMode: installationMode,
