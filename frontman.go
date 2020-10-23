@@ -47,6 +47,7 @@ type Frontman struct {
 	rootCAs *x509.CertPool
 	version string
 
+	failedNodeLock  sync.Mutex
 	failedNodes     map[string]time.Time
 	failedNodeCache map[string]Node
 

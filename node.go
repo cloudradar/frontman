@@ -20,6 +20,9 @@ import (
 func (fm *Frontman) nodeRecentlyFailed(node *Node) bool {
 	limit := time.Second * time.Duration(fm.Config.Node.NodeCacheErrors)
 
+	fm.failedNodeLock.Lock()
+	defer fm.failedNodeLock.Unlock()
+
 	if when, ok := fm.failedNodes[node.URL]; ok {
 		if time.Since(when) < limit {
 			logrus.Debugf("skipping recently failed node %s", node.URL)
@@ -32,12 +35,17 @@ func (fm *Frontman) nodeRecentlyFailed(node *Node) bool {
 
 // marks a node as temporarily failing
 func (fm *Frontman) markNodeFailure(node *Node) {
+	fm.failedNodeLock.Lock()
+	defer fm.failedNodeLock.Unlock()
 	fm.failedNodes[node.URL] = time.Now()
 	fm.failedNodeCache[node.URL] = *node
 }
 
 // returns the most recent cached node failure
 func (fm *Frontman) getCachedNodeFailure(node *Node) *Node {
+	fm.failedNodeLock.Lock()
+	defer fm.failedNodeLock.Unlock()
+
 	if n, ok := fm.failedNodeCache[node.URL]; ok {
 		return &n
 	}
