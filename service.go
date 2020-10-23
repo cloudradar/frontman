@@ -56,14 +56,14 @@ func tryInstallService(s service.Service, assumeYesPtr *bool) {
 	}
 }
 
-func tryUpgradeServiceUnit(s service.Service) {
+func (fm *Frontman) tryUpgradeServiceUnit(s service.Service) {
 	_, err := s.Status()
 	if err == service.ErrNotInstalled {
 		logrus.Error("Can't upgrade service: service is not installed")
 		return
 	}
 
-	configureServiceEnabledState(s)
+	fm.configureServiceEnabledState(s)
 
 	err = s.Stop()
 	if err != nil {

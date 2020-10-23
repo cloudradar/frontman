@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cloudradar-monitoring/selfupdate"
+	"github.com/kardianos/service"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -52,6 +53,8 @@ type Frontman struct {
 	failedNodeCache map[string][]byte
 
 	forwardLog *os.File
+
+	serviceConfig service.Config
 
 	// current checks queue
 	checks     []Check
