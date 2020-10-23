@@ -34,20 +34,20 @@ func (fm *Frontman) nodeRecentlyFailed(node *Node) bool {
 }
 
 // marks a node as temporarily failing
-func (fm *Frontman) markNodeFailure(node *Node) {
+func (fm *Frontman) markNodeFailure(node *Node, data []byte) {
 	fm.failedNodeLock.Lock()
 	defer fm.failedNodeLock.Unlock()
 	fm.failedNodes[node.URL] = time.Now()
-	fm.failedNodeCache[node.URL] = *node
+	fm.failedNodeCache[node.URL] = data
 }
 
-// returns the most recent cached node failure
-func (fm *Frontman) getCachedNodeFailure(node *Node) *Node {
+// returns the most recent cached node failure response
+func (fm *Frontman) getCachedNodeFailure(node *Node) []byte {
 	fm.failedNodeLock.Lock()
 	defer fm.failedNodeLock.Unlock()
 
 	if n, ok := fm.failedNodeCache[node.URL]; ok {
-		return &n
+		return n
 	}
 	return nil
 }
@@ -142,16 +142,16 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		resp, err := client.Do(req)
 		if err != nil {
 			logrus.Errorf("askNodes failed: %s", err.Error())
-			fm.markNodeFailure(&node)
+			fm.markNodeFailure(&node, nil)
 		} else {
 			defer resp.Body.Close()
 
+			body, _ := ioutil.ReadAll(resp.Body)
 			if resp.StatusCode == http.StatusOK {
-				body, _ := ioutil.ReadAll(resp.Body)
 				nodeResults = append(nodeResults, string(body))
 			} else {
 				logrus.Errorf("askNodes received HTTP %v from %s", resp.StatusCode, node.URL)
-				fm.markNodeFailure(&node)
+				fm.markNodeFailure(&node, body)
 			}
 		}
 	}

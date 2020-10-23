@@ -49,7 +49,7 @@ type Frontman struct {
 
 	failedNodeLock  sync.Mutex
 	failedNodes     map[string]time.Time
-	failedNodeCache map[string]Node
+	failedNodeCache map[string][]byte
 
 	forwardLog *os.File
 
@@ -79,7 +79,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		hostInfoSent:                false,
 		version:                     version,
 		failedNodes:                 make(map[string]time.Time),
-		failedNodeCache:             make(map[string]Node),
+		failedNodeCache:             make(map[string][]byte),
 		TerminateQueue:              sync.WaitGroup{},
 	}
 
