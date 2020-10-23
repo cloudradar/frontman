@@ -105,6 +105,8 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 
 	fm.configureLogger()
 
+	fm.initHubClient()
+
 	err := fm.configureAutomaticSelfUpdates()
 	if err != nil {
 		logrus.Error(err.Error())
