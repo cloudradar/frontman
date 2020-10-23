@@ -9,7 +9,6 @@ import (
 	"gopkg.in/toast.v1"
 )
 
-const urlScheme = "frontman"
 const toastErrorIcon = "resources\\error.png"
 const toastSuccessIcon = "resources\\success.png"
 const toastAppID = "cloudradar.frontman"
