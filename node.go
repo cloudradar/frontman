@@ -56,15 +56,14 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	msg := res.Message.(string)
 	// only forward if result message don't match ForwardExcept config
 	if len(fm.Config.Node.ForwardExcept) > 0 {
-		logrus.Infof("Matching local result message %v vs forward_except", msg)
 		for _, rexp := range fm.Config.Node.ForwardExcept {
 			// case insensitive match
 			irexp := "(?i)" + rexp
 			match, err := regexp.MatchString(irexp, msg)
 			if err != nil {
-				logrus.Error("forward_except regexp error", err)
+				logrus.Error("forward_except regexp error ", err)
 			} else if match {
-				logrus.Info("forward_except matched, won't forward", msg)
+				logrus.Info("forward_except matched, won't forward ", msg)
 				return
 			}
 		}
@@ -163,7 +162,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 		var selected []interface{}
 		if err := json.Unmarshal([]byte(resp), &selected); err != nil {
-			logrus.Error(err)
+			logrus.Errorf("unmarshal of node result '%v' failed: %v", resp, err)
 			continue
 		}
 
@@ -233,7 +232,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	var fastestResult []Result
 	if err := json.Unmarshal([]byte(nodeResults[resultID]), &fastestResult); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("unmarshal of fastest node result '%v' failed: %v", nodeResults[resultID], err)
 	}
 	if len(fastestResult) < 1 {
 		logrus.Warning("no results gathered from node")
