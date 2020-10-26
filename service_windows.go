@@ -10,6 +10,6 @@ func updateServiceConfig(fm *Frontman, username string) {
 	// nothing to do
 }
 
-func configureServiceEnabledState(s service.Service) {
+func (fm *Frontman) configureServiceEnabledState(s service.Service) {
 	// nothing to do
 }

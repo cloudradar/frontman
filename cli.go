@@ -140,8 +140,81 @@ func (fm *Frontman) HandleFlagServiceUpgrade(cfgPath string, serviceUpgradeFlag 
 	}
 
 	updateServiceConfig(fm, installUser)
-	tryUpgradeServiceUnit(systemService)
+	fm.tryUpgradeServiceUnit(systemService)
 
+	return 0
+}
+
+// returns exit code
+func (fm *Frontman) HandleFlagServiceUninstall() int {
+
+	systemService, err := getServiceFromFlags(fm, "", "")
+	if err != nil {
+		fmt.Println("Failed to get system service: %s", err.Error())
+		return 1
+	}
+
+	status, err := systemService.Status()
+	if err != nil {
+		fmt.Println("Failed to get service status: ", err.Error())
+	}
+
+	if status == service.StatusRunning {
+		err = systemService.Stop()
+		if err != nil {
+			// don't exit here, just write a warning and try to uninstall
+			fmt.Println("Failed to stop the running service: ", err.Error())
+		}
+	}
+
+	err = systemService.Uninstall()
+	if err != nil {
+		fmt.Println("Failed to uninstall the service: ", err.Error())
+		return 1
+	}
+
+	return 0
+}
+
+// returns exit code
+func (fm *Frontman) HandleFlagServiceInstall(systemManager service.System, username string, serviceInstallPtr *bool, cfgPath string, assumeYesPtr *bool) int {
+
+	s, err := getServiceFromFlags(fm, cfgPath, username)
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
+	}
+
+	updateServiceConfig(fm, username)
+	tryInstallService(s, assumeYesPtr)
+	tryStartService(s)
+
+	fmt.Printf("Log file located at: %s\n", fm.Config.LogFile)
+	fmt.Printf("Config file located at: %s\n", cfgPath)
+
+	if fm.Config.HubURL == "" {
+		fmt.Printf(`*** Attention: 'hub_url' config param is empty.\n
+*** You need to put the right credentials from your Cloudradar account into the config and then restart the service\n\n`)
+	}
+
+	fmt.Printf("Run this command to restart the service: %s\n\n", getSystemMangerCommand(systemManager.String(), fm.serviceConfig.Name, "restart"))
+	return 0
+}
+
+// returns exit code
+func (fm *Frontman) RunUnderOsServiceManager() int {
+	systemService, err := getServiceFromFlags(fm, "", "")
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+
+	// we are running under OS service manager
+	err = systemService.Run()
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
+	}
 	return 0
 }
 
@@ -169,7 +242,7 @@ func AskForConfirmation(s string) bool {
 func getServiceFromFlags(fm *Frontman, configPath, userName string) (service.Service, error) {
 	prg := &serviceWrapper{Frontman: fm}
 
-	svcConfig := &service.Config{
+	fm.serviceConfig = service.Config{
 		Name:        serviceName,
 		DisplayName: "CloudRadar Frontman",
 		Description: "A versatile open source monitoring agent developed by cloudradar.io. It monitors your local intranet.",
@@ -183,14 +256,14 @@ func getServiceFromFlags(fm *Frontman, configPath, userName string) (service.Ser
 				return nil, fmt.Errorf("failed to get absolute path to config at '%s': %s", configPath, err)
 			}
 		}
-		svcConfig.Arguments = []string{"-c", configPath}
+		fm.serviceConfig.Arguments = []string{"-c", configPath}
 	}
 
 	if userName != "" {
-		svcConfig.UserName = userName
+		fm.serviceConfig.UserName = userName
 	}
 
-	return service.New(prg, svcConfig)
+	return service.New(prg, &fm.serviceConfig)
 }
 
 func getSystemMangerCommand(manager string, service string, command string) string {

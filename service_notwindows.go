@@ -21,7 +21,7 @@ func updateServiceConfig(fm *Frontman, userName string) {
 			"user": userName,
 		}).WithError(err).Fatalln("Failed to find the user")
 	}
-	svcConfig.UserName = userName
+	fm.serviceConfig.UserName = userName
 	// we need to chown log file with user who will run service
 	// because installer can be run under root so the log file will be also created under root
 	err = chownFile(fm.Config.LogFile, u)
@@ -46,21 +46,21 @@ func chownFile(filePath string, u *user.User) error {
 	return os.Chown(filePath, uid, gid)
 }
 
-func configureServiceEnabledState(s service.Service) {
+func (fm *Frontman) configureServiceEnabledState(s service.Service) {
 	serviceMgrName := s.Platform()
 	isServiceAlreadyEnabled := true
 	if serviceMgrName == "linux-systemd" {
-		isServiceAlreadyEnabled = checkIfSystemdServiceEnabled(svcConfig.Name)
+		isServiceAlreadyEnabled = checkIfSystemdServiceEnabled(fm.serviceConfig.Name)
 	}
 	if serviceMgrName == "unix-systemv" {
-		isServiceAlreadyEnabled = checkIfSysvServiceEnabled(svcConfig.Name)
+		isServiceAlreadyEnabled = checkIfSysvServiceEnabled(fm.serviceConfig.Name)
 	}
 
-	if svcConfig.Option == nil {
-		svcConfig.Option = service.KeyValue{}
+	if fm.serviceConfig.Option == nil {
+		fm.serviceConfig.Option = service.KeyValue{}
 	}
 
-	svcConfig.Option["Enabled"] = isServiceAlreadyEnabled
+	fm.serviceConfig.Option["Enabled"] = isServiceAlreadyEnabled
 }
 
 func checkIfSystemdServiceEnabled(serviceName string) bool {

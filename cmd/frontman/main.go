@@ -129,7 +129,7 @@ func main() {
 	}
 
 	if !service.Interactive() {
-		runUnderOsServiceManager(fm)
+		os.Exit(fm.RunUnderOsServiceManager())
 	}
 
 	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
@@ -141,12 +141,17 @@ func main() {
 		}
 	}
 
-	if *serviceUpgradePtr != nil && *serviceUpgradePtr != "" {
+	if serviceUpgradePtr != nil && *serviceUpgradePtr {
 		os.Exit(fm.HandleFlagServiceUpgrade(*cfgPathPtr, serviceUpgradePtr, serviceInstallUserPtr))
 	}
 
-	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
-	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
+	if serviceUninstallPtr != nil && *serviceUninstallPtr {
+		os.Exit(fm.HandleFlagServiceUninstall())
+	}
+
+	if (serviceInstallUserPtr != nil && *serviceInstallUserPtr != "") || (serviceInstallPtr != nil && !*serviceInstallPtr) {
+		os.Exit(fm.HandleFlagServiceInstall(systemManager, *serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr))
+	}
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
 	// in case HUB server will hang on response we will need a buffer to continue perform checks
@@ -237,7 +242,7 @@ func handleFlagUpdate(update *bool, assumeYes *bool) {
 			os.Exit(0)
 		}
 
-		proceedInstallation := (assumeYes != nil && *assumeYes) || askForConfirmation("Proceed installation?")
+		proceedInstallation := (assumeYes != nil && *assumeYes) || frontman.AskForConfirmation("Proceed installation?")
 		if !proceedInstallation {
 			os.Exit(0)
 		}
@@ -398,90 +403,6 @@ func handleFlagDaemonizeMode(daemonizeMode bool) {
 
 		os.Exit(0)
 	}
-}
-
-func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
-	if !serviceUninstallPtr {
-		return
-	}
-
-	systemService, err := getServiceFromFlags(fm, "", "")
-	if err != nil {
-		log.Fatalf("Failed to get system service: %s", err.Error())
-	}
-
-	status, err := systemService.Status()
-	if err != nil {
-		fmt.Println("Failed to get service status: ", err.Error())
-	}
-
-	if status == service.StatusRunning {
-		err = systemService.Stop()
-		if err != nil {
-			// don't exit here, just write a warning and try to uninstall
-			fmt.Println("Failed to stop the running service: ", err.Error())
-		}
-	}
-
-	err = systemService.Uninstall()
-	if err != nil {
-		fmt.Println("Failed to uninstall the service: ", err.Error())
-		os.Exit(1)
-	}
-
-	os.Exit(0)
-}
-
-func handleFlagServiceInstall(fm *frontman.Frontman, systemManager service.System, serviceInstallUserPtr *string, serviceInstallPtr *bool, cfgPath string, assumeYesPtr *bool) {
-	// serviceInstallPtr is currently used on windows
-	// serviceInstallUserPtr is used on other systems
-	// if both of them are empty - just return
-	if (serviceInstallUserPtr == nil || *serviceInstallUserPtr == "") &&
-		(serviceInstallPtr == nil || !*serviceInstallPtr) {
-		return
-	}
-
-	username := ""
-	if serviceInstallUserPtr != nil {
-		username = *serviceInstallUserPtr
-	}
-
-	s, err := getServiceFromFlags(fm, cfgPath, username)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	updateServiceConfig(fm, username)
-	tryInstallService(s, assumeYesPtr)
-	tryStartService(s)
-
-	fmt.Printf("Log file located at: %s\n", fm.Config.LogFile)
-	fmt.Printf("Config file located at: %s\n", cfgPath)
-
-	if fm.Config.HubURL == "" {
-		fmt.Printf(`*** Attention: 'hub_url' config param is empty.\n
-*** You need to put the right credentials from your Cloudradar account into the config and then restart the service\n\n`)
-	}
-
-	fmt.Printf("Run this command to restart the service: %s\n\n", getSystemMangerCommand(systemManager.String(), svcConfig.Name, "restart"))
-
-	os.Exit(0)
-}
-
-func runUnderOsServiceManager(fm *frontman.Frontman) {
-	systemService, err := getServiceFromFlags(fm, "", "")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// we are running under OS service manager
-	err = systemService.Run()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	os.Exit(0)
 }
 
 func writePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
