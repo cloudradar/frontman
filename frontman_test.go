@@ -23,11 +23,12 @@ func TestFrontmanHubInput(t *testing.T) {
 
 	cfg.HubURL = hub.URL() + "/?serviceChecks=10&webChecks=10"
 	cfg.LogLevel = "debug"
-	cfg.Sleep = 1           // delay between each round of checks
+	cfg.Sleep = 10          // delay between each round of checks
 	cfg.SenderBatchSize = 2 // number of results to send to hub at once
-	cfg.SenderInterval = 1
+	cfg.SenderInterval = 0.5
 	cfg.ICMPTimeout = 0.1
 	cfg.HTTPCheckTimeout = 1.0
+	cfg.Nodes = make(map[string]Node)
 
 	fm := helperCreateFrontman(t, cfg)
 
@@ -37,9 +38,16 @@ func TestFrontmanHubInput(t *testing.T) {
 	go fm.Run("", nil, interruptChan, resultsChan)
 
 	// stop after some time
-	time.Sleep(5 * time.Second)
+	time.Sleep(200 * time.Millisecond)
 	close(interruptChan)
-	time.Sleep(1 * time.Second)
+
+	fm.statsLock.Lock()
+	assert.Equal(t, true, fm.stats.BytesSentToHubTotal > 0)
+	assert.Equal(t, true, fm.stats.BytesFetchedFromHubTotal > 0)
+	assert.Equal(t, true, fm.stats.ChecksPerformedTotal > 0)
+	assert.Equal(t, uint64(20), fm.stats.ChecksFetchedFromHub)
+	assert.Equal(t, true, fm.stats.CheckResultsSentToHub > 0)
+	fm.statsLock.Unlock()
 
 	assert.Equal(t, true, fm.ipc.len() > 0)
 }
