@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -12,7 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/cloudradar-monitoring/selfupdate"
@@ -21,13 +18,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cloudradar-monitoring/frontman"
+	"github.com/cloudradar-monitoring/frontman/pkg/winui"
 )
-
-var svcConfig = &service.Config{
-	Name:        "frontman",
-	DisplayName: "CloudRadar Frontman",
-	Description: "A versatile open source monitoring agent developed by cloudradar.io. It monitors your local intranet.",
-}
 
 func main() {
 	systemManager := service.ChosenSystem()
@@ -109,7 +101,9 @@ func main() {
 	handleFlagPrintConfig(*printConfigPtr, fm)
 	handleFlagSearchUpdates(searchUpdatesPtr)
 	handleFlagUpdate(updatePtr, assumeYesPtr)
-	handleFlagTest(*testConfigPtr, fm)
+	if *testConfigPtr {
+		os.Exit(fm.HandleFlagTest())
+	}
 	handleFlagSettings(settingsPtr, fm)
 
 	setDefaultLogFormatter()
@@ -122,7 +116,7 @@ func main() {
 	writePidFileIfNeeded(fm, oneRunOnlyModePtr)
 	defer removePidFileIfNeeded(fm, oneRunOnlyModePtr)
 
-	handleToastFeedback(fm, *cfgPathPtr)
+	winui.HandleFeedback(fm, *cfgPathPtr)
 
 	log.Info("frontman " + frontman.Version + " started")
 
@@ -141,10 +135,16 @@ func main() {
 	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
 		(serviceInstallUserPtr == nil || len(*serviceInstallUserPtr) == 0) &&
 		!*serviceUninstallPtr {
-		handleServiceCommand(fm, *serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
+
+		if *serviceStatusPtr || *serviceStartPtr || *serviceStopPtr || *serviceRestartPtr {
+			os.Exit(fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr))
+		}
 	}
 
-	handleFlagServiceUpgrade(fm, *cfgPathPtr, serviceUpgradePtr, serviceInstallUserPtr)
+	if *serviceUpgradePtr != nil && *serviceUpgradePtr != "" {
+		os.Exit(fm.HandleFlagServiceUpgrade(*cfgPathPtr, serviceUpgradePtr, serviceInstallUserPtr))
+	}
+
 	handleFlagServiceUninstall(fm, *serviceUninstallPtr)
 	handleFlagServiceInstall(fm, systemManager, serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
 	handleFlagDaemonizeMode(*daemonizeModePtr)
@@ -301,53 +301,9 @@ func handleFlagPrintStats(statsFlag bool, fm *frontman.Frontman) {
 
 func handleFlagSettings(settingsUI *bool, fm *frontman.Frontman) {
 	if settingsUI != nil && *settingsUI {
-		windowsShowSettingsUI(fm, false)
+		winui.WindowsShowSettingsUI(fm, false)
 		os.Exit(0)
 	}
-}
-
-func handleFlagTest(testConfig bool, fm *frontman.Frontman) {
-	if !testConfig {
-		return
-	}
-
-	ctx := context.Background()
-	err := fm.CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
-	if err != nil {
-		if runtime.GOOS == "windows" {
-			// ignore toast error to make the main error clear for user
-			// toast error probably means toast not supported on the system
-			_ = sendErrorNotification("Hub connection check failed", err.Error())
-		}
-		log.WithError(err).Errorln("Hub connection check failed")
-		systemService, err := getServiceFromFlags(fm, "", "")
-		if err != nil {
-			log.WithError(err).Fatalln("Failed to get system service")
-		}
-
-		status, err := systemService.Status()
-		if err != nil {
-			// service seems not installed
-			// no need to show the tip on how to restart it
-			os.Exit(1)
-		}
-
-		systemManager := service.ChosenSystem()
-		if status == service.StatusRunning || status == service.StatusStopped {
-			restartCmdSpec := getSystemMangerCommand(systemManager.String(), svcConfig.Name, "restart")
-			log.WithFields(log.Fields{
-				"restartCmd": restartCmdSpec,
-			}).Infoln("Fix the config and then restart the service")
-		}
-
-		os.Exit(1)
-	}
-
-	if runtime.GOOS == "windows" {
-		_ = sendSuccessNotification("Hub connection check is done", "")
-	}
-	log.Infoln("Hub connection check is done and credentials are correct!")
-	os.Exit(0)
 }
 
 func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
@@ -444,99 +400,6 @@ func handleFlagDaemonizeMode(daemonizeMode bool) {
 	}
 }
 
-func handleServiceCommand(ca *frontman.Frontman, check, start, stop, restart bool) {
-	if !check && !start && !stop && !restart {
-		return
-	}
-
-	svc, err := getServiceFromFlags(ca, "", "")
-	if err != nil {
-		log.WithError(err).Fatalln("can't find service")
-	}
-
-	var status service.Status
-	if status, err = svc.Status(); err != nil && err != service.ErrNotInstalled {
-		log.WithError(err).Fatalln("can't get service status")
-	}
-
-	if check {
-		switch status {
-		case service.StatusRunning:
-			fmt.Println("running")
-		case service.StatusStopped:
-			fmt.Println("stopped")
-		case service.StatusUnknown:
-			fmt.Println("unknown")
-		}
-
-		os.Exit(0)
-	}
-
-	if stop && (status == service.StatusRunning) {
-		if err = svc.Stop(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println("stopped")
-		os.Exit(0)
-	} else if stop {
-		fmt.Println("service is not running")
-		os.Exit(0)
-	}
-
-	if start {
-		if status == service.StatusRunning {
-			fmt.Println("already")
-			os.Exit(1)
-		}
-
-		if err = svc.Start(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println("started")
-		os.Exit(0)
-	}
-
-	if restart {
-		if err = svc.Restart(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println("restarted")
-		os.Exit(0)
-	}
-}
-
-func handleFlagServiceUpgrade(
-	ca *frontman.Frontman,
-	cfgPath string,
-	serviceUpgradeFlag *bool,
-	serviceInstallUserPtr *string,
-) {
-	if serviceUpgradeFlag == nil || !*serviceUpgradeFlag {
-		return
-	}
-
-	installUser := ""
-	if serviceInstallUserPtr != nil {
-		installUser = *serviceInstallUserPtr
-	}
-
-	systemService, err := getServiceFromFlags(ca, cfgPath, installUser)
-	if err != nil {
-		log.WithError(err).Fatalln("Failed to get system service")
-	}
-
-	updateServiceConfig(ca, installUser)
-	tryUpgradeServiceUnit(systemService)
-
-	os.Exit(0)
-}
-
 func handleFlagServiceUninstall(fm *frontman.Frontman, serviceUninstallPtr bool) {
 	if !serviceUninstallPtr {
 		return
@@ -621,55 +484,6 @@ func runUnderOsServiceManager(fm *frontman.Frontman) {
 	os.Exit(0)
 }
 
-// serviceWrapper is created to provide context and methods that satisfies service.Interface
-// in order to run Frontman under OS Service Manager
-type serviceWrapper struct {
-	Frontman      *frontman.Frontman
-	ResultsChan   chan frontman.Result
-	InterruptChan chan struct{}
-	DoneChan      chan struct{}
-}
-
-func (sw *serviceWrapper) Start(s service.Service) error {
-	sw.ResultsChan = make(chan frontman.Result, 100)
-	sw.InterruptChan = make(chan struct{})
-	sw.DoneChan = make(chan struct{})
-	go func() {
-		sw.Frontman.Run("", nil, sw.InterruptChan, sw.ResultsChan)
-		sw.DoneChan <- struct{}{}
-	}()
-
-	return nil
-}
-
-func (sw *serviceWrapper) Stop(s service.Service) error {
-	close(sw.InterruptChan)
-	log.Println("Finishing the batch and stop the service...")
-	<-sw.DoneChan
-	return nil
-}
-
-func getServiceFromFlags(fm *frontman.Frontman, configPath, userName string) (service.Service, error) {
-	prg := &serviceWrapper{Frontman: fm}
-
-	if configPath != "" {
-		if !filepath.IsAbs(configPath) {
-			var err error
-			configPath, err = filepath.Abs(configPath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get absolute path to config at '%s': %s", configPath, err)
-			}
-		}
-		svcConfig.Arguments = []string{"-c", configPath}
-	}
-
-	if userName != "" {
-		svcConfig.UserName = userName
-	}
-
-	return service.New(prg, svcConfig)
-}
-
 func writePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
 	if fm.Config.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
 		err := ioutil.WriteFile(fm.Config.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
@@ -708,27 +522,6 @@ func rerunDetached() error {
 	return cmd.Process.Release()
 }
 
-func askForConfirmation(s string) bool {
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		fmt.Printf("%s [y/n]: ", s)
-
-		response, err := reader.ReadString('\n')
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		response = strings.ToLower(strings.TrimSpace(response))
-
-		if response == "y" || response == "yes" {
-			return true
-		} else if response == "n" || response == "no" {
-			return false
-		}
-	}
-}
-
 func setDefaultLogFormatter() {
 	tfmt := log.TextFormatter{FullTimestamp: true}
 	if runtime.GOOS == "windows" {
@@ -736,29 +529,4 @@ func setDefaultLogFormatter() {
 	}
 
 	log.SetFormatter(&tfmt)
-}
-
-func getSystemMangerCommand(manager string, service string, command string) string {
-	switch manager {
-	case "unix-systemv":
-		return "sudo service " + service + " " + command
-	case "linux-upstart":
-		return "sudo initctl " + command + " " + service
-	case "linux-systemd":
-		return "sudo systemctl " + command + " " + service + ".service"
-	case "darwin-launchd":
-		switch command {
-		case "stop":
-			command = "unload"
-		case "start":
-			command = "load"
-		case "restart":
-			return "sudo launchctl unload " + service + " && sudo launchctl load " + service
-		}
-		return "sudo launchctl " + command + " " + service
-	case "windows-service":
-		return "sc " + command + " " + service
-	default:
-		return ""
-	}
 }

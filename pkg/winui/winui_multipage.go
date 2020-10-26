@@ -4,7 +4,7 @@
 
 // +build windows
 
-package main
+package winui
 
 import (
 	"github.com/lxn/walk"

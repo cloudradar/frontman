@@ -1,4 +1,4 @@
-package main
+package frontman
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ func tryInstallService(s service.Service, assumeYesPtr *bool) {
 			}
 
 			fmt.Printf("Frontman service(%s) already installed: %s\n", s.Platform(), err.Error())
-			if *assumeYesPtr || askForConfirmation("Do you want to overwrite it?"+osSpecificNote) {
+			if *assumeYesPtr || AskForConfirmation("Do you want to overwrite it?"+osSpecificNote) {
 				logrus.Info("Trying to override old service unit...")
 				err = s.Stop()
 				if err != nil {
