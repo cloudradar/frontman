@@ -180,6 +180,11 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 				lastSentToHub = time.Now()
 				go func(r []Result) {
 					err := fm.postResultsToHub(r)
+
+					fm.statsLock.Lock()
+					fm.stats.CheckResultsSentToHub += uint64(len(r))
+					fm.statsLock.Unlock()
+
 					if err != nil {
 						if err == ErrorHubGeneral {
 							// If the hub doesn't respond with 2XX, the results remain in the queue.

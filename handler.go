@@ -463,6 +463,10 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 				res, _ := fm.runCheck(check, local)
 				inProgress.remove(check.uniqueID())
+				fm.statsLock.Lock()
+				fm.stats.ChecksPerformedTotal++
+				fm.statsLock.Unlock()
+
 				*results <- *res
 			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
 		}
