@@ -94,6 +94,8 @@ func (se *setupErrors) Describe() string {
 	return buf.String()
 }
 
+const urlScheme = "frontman"
+
 func HandleFeedback(fm *frontman.Frontman, cfgPath string) {
 	// handle URL schema arguments on windows
 	if runtime.GOOS != "windows" {

@@ -10,3 +10,6 @@ import (
 func WindowsShowSettingsUI(_ *frontman.Frontman, _ bool) {
 
 }
+
+func HandleFeedback(fm *frontman.Frontman, cfgPath string) {
+}
