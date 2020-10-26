@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/2019-cloudradar-monitoring/frontman"
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
 
@@ -198,6 +199,30 @@ func (fm *Frontman) HandleFlagServiceInstall(systemManager service.System, usern
 	}
 
 	fmt.Printf("Run this command to restart the service: %s\n\n", getSystemMangerCommand(systemManager.String(), fm.serviceConfig.Name, "restart"))
+	return 0
+}
+
+// returns error code
+func (fm *Frontman) HandleFlagOneRunOnlyMode(inputFile string, output *os.File, interruptChan chan struct{}) int {
+
+	logrus.Debug("OneRunOnlyMode invoked (-r)")
+
+	if err := fm.HealthCheck(); err != nil {
+		fm.HealthCheckPassedPreviously = false
+		logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
+		return 1
+	}
+	if !fm.HealthCheckPassedPreviously {
+		fm.HealthCheckPassedPreviously = true
+		logrus.Infoln("All health checks are positive. Resuming normal operation.")
+	}
+
+	resultsChan := make(chan frontman.Result, 100)
+	err := fm.RunOnce(inputFile, output, interruptChan, &resultsChan)
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
 	return 0
 }
 

@@ -164,7 +164,9 @@ func main() {
 		defer output.Close()
 	}
 
-	handleFlagOneRunOnlyMode(fm, *oneRunOnlyModePtr, *inputFilePtr, output, interruptChan)
+	if *oneRunOnlyModePtr {
+		os.Exit(fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output, interruptChan))
+	}
 
 	// nothing resulted in os.Exit
 	// so lets use the default continuous run mode and wait for interrupt
@@ -366,31 +368,6 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 		}
 	}
 	return output
-}
-
-func handleFlagOneRunOnlyMode(fm *frontman.Frontman, oneRunOnlyMode bool, inputFile string, output *os.File, interruptChan chan struct{}) {
-	if !oneRunOnlyMode {
-		return
-	}
-	log.Debug("OneRunOnlyMode invoked (-r)")
-
-	if err := fm.HealthCheck(); err != nil {
-		fm.HealthCheckPassedPreviously = false
-		log.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
-		return
-	}
-	if !fm.HealthCheckPassedPreviously {
-		fm.HealthCheckPassedPreviously = true
-		log.Infoln("All health checks are positive. Resuming normal operation.")
-	}
-
-	resultsChan := make(chan frontman.Result, 100)
-	err := fm.RunOnce(inputFile, output, interruptChan, &resultsChan)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	os.Exit(0)
 }
 
 func handleFlagDaemonizeMode(daemonizeMode bool) {
