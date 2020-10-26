@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/2019-cloudradar-monitoring/frontman"
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
 
@@ -151,7 +150,7 @@ func (fm *Frontman) HandleFlagServiceUninstall() int {
 
 	systemService, err := getServiceFromFlags(fm, "", "")
 	if err != nil {
-		fmt.Println("Failed to get system service: %s", err.Error())
+		fmt.Println("Failed to get system service: ", err.Error())
 		return 1
 	}
 
@@ -217,7 +216,7 @@ func (fm *Frontman) HandleFlagOneRunOnlyMode(inputFile string, output *os.File, 
 		logrus.Infoln("All health checks are positive. Resuming normal operation.")
 	}
 
-	resultsChan := make(chan frontman.Result, 100)
+	resultsChan := make(chan Result, 100)
 	err := fm.RunOnce(inputFile, output, interruptChan, &resultsChan)
 	if err != nil {
 		fmt.Println(err)
