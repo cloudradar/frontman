@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"syscall"
 
@@ -48,6 +49,7 @@ func main() {
 	serviceStopPtr := flag.Bool("service_stop", false, "stop service")
 	serviceRestartPtr := flag.Bool("service_restart", false, "restart service")
 	serviceUpgradePtr := flag.Bool("service_upgrade", false, "upgrade service unit configuration")
+	cpuProfile := flag.String("cpuprofile", "", "write cpu profile to file")
 
 	// some OS specific flags
 	if runtime.GOOS == "windows" {
@@ -62,6 +64,16 @@ func main() {
 	flag.Parse()
 	// version should be handled first to ensure it will be accessible in case of fatal errors before
 	handleFlagVersion(*versionPtr)
+
+	if *cpuProfile != "" {
+		fmt.Println("Starting CPU profile")
+		f, err := os.Create(*cpuProfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	// check some incompatible flags
 	if serviceInstallUserPtr != nil && *serviceInstallUserPtr != "" ||
