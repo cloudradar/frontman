@@ -437,7 +437,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
 			waitWg.Wait()
 			return
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 		}
 
 		if time.Since(lastFetch) >= interval {
