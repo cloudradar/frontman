@@ -6,14 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"syscall"
 
-	"github.com/cloudradar-monitoring/selfupdate"
 	"github.com/kardianos/service"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cloudradar-monitoring/frontman"
@@ -137,12 +134,12 @@ func main() {
 	}
 
 	if searchUpdatesPtr != nil && *searchUpdatesPtr {
-		exitCode = handleFlagSearchUpdates()
+		exitCode = frontman.HandleFlagSearchUpdates()
 		return
 	}
 
 	if updatePtr != nil && *updatePtr {
-		exitCode = handleFlagUpdate(assumeYesPtr)
+		exitCode = frontman.HandleFlagUpdate(assumeYesPtr)
 		return
 	}
 
@@ -231,7 +228,7 @@ func main() {
 		return
 	}
 
-	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
+	output := frontman.HandleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
 	if output != nil {
 		defer output.Close()
 	}
@@ -290,110 +287,8 @@ func handleFlagVersion() {
 	fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", frontman.Version)
 }
 
-// returns exit code
-func handleFlagUpdate(assumeYes *bool) int {
-
-	updates, err := printAvailableUpdates()
-	if err != nil {
-		fmt.Println(err.Error())
-		return 1
-	}
-
-	if len(updates) == 0 {
-		return 0
-	}
-
-	proceedInstallation := (assumeYes != nil && *assumeYes) || frontman.AskForConfirmation("Proceed installation?")
-	if !proceedInstallation {
-		return 0
-	}
-
-	fmt.Println("Downloading...")
-
-	err = selfupdate.DownloadAndInstallUpdate(updates[len(updates)-1])
-	if err != nil {
-		fmt.Println(err.Error())
-		return 1
-	}
-	fmt.Println("Installer executed. Exiting.")
-	return 0
-}
-
-// returns exit code
-func handleFlagSearchUpdates() int {
-	_, err := printAvailableUpdates()
-	if err != nil {
-		fmt.Println(err.Error())
-		return 1
-	}
-	return 0
-}
-
-func printAvailableUpdates() ([]*selfupdate.UpdateInfo, error) {
-	fmt.Println("Searching updates...")
-
-	updates, err := selfupdate.ListAvailableUpdates()
-	if err != nil {
-		return nil, errors.Wrapf(err, "while listing updates")
-	}
-
-	if len(updates) == 0 {
-		fmt.Println("No updates available")
-	} else {
-		fmt.Println("Available updates:")
-		for _, u := range updates {
-			fmt.Printf("\t%s\n", u.Version.Original())
-		}
-	}
-	return updates, nil
-}
-
 func handleFlagSettings(fm *frontman.Frontman) {
 	winui.WindowsShowSettingsUI(fm, false)
-}
-
-func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) *os.File {
-
-	if inputFile == "" {
-		return nil
-	}
-
-	var output *os.File
-	var err error
-
-	// Set output to stdout
-	if outputFile == "-" {
-		log.SetOutput(ioutil.Discard)
-		output = os.Stdout
-		return output
-	}
-
-	// Try to create the output file directory if it does not exist
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		dir := filepath.Dir(outputFile)
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			err = os.MkdirAll(dir, 0644)
-			if err != nil {
-				log.WithError(err).Fatalf("Failed to create the output file directory: '%s'", dir)
-			}
-		}
-	}
-
-	mode := os.O_WRONLY | os.O_CREATE
-
-	if oneRunOnlyMode {
-		mode |= os.O_TRUNC
-	} else {
-		mode |= os.O_APPEND
-	}
-
-	if outputFile != "" {
-		output, err = os.OpenFile(outputFile, mode, 0644)
-		if err != nil {
-			log.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
-		}
-	}
-	return output
 }
 
 func setDefaultLogFormatter() {

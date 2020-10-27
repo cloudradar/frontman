@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,9 +13,11 @@ import (
 	"strings"
 
 	"github.com/kardianos/service"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/cloudradar-monitoring/frontman/pkg/notification"
+	"github.com/cloudradar-monitoring/selfupdate"
 )
 
 var (
@@ -333,7 +334,7 @@ func AskForConfirmation(s string) bool {
 
 		response, err := reader.ReadString('\n')
 		if err != nil {
-			log.Fatal(err)
+			logrus.Fatal(err)
 		}
 
 		response = strings.ToLower(strings.TrimSpace(response))
@@ -424,4 +425,106 @@ func (sw *serviceWrapper) Stop(s service.Service) error {
 	logrus.Println("Finishing the batch and stop the service...")
 	<-sw.DoneChan
 	return nil
+}
+
+// returns exit code
+func HandleFlagUpdate(assumeYes *bool) int {
+
+	updates, err := printAvailableUpdates()
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
+	}
+
+	if len(updates) == 0 {
+		return 0
+	}
+
+	proceedInstallation := (assumeYes != nil && *assumeYes) || AskForConfirmation("Proceed installation?")
+	if !proceedInstallation {
+		return 0
+	}
+
+	fmt.Println("Downloading...")
+
+	err = selfupdate.DownloadAndInstallUpdate(updates[len(updates)-1])
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
+	}
+	fmt.Println("Installer executed. Exiting.")
+	return 0
+}
+
+// returns exit code
+func HandleFlagSearchUpdates() int {
+	_, err := printAvailableUpdates()
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
+	}
+	return 0
+}
+
+func printAvailableUpdates() ([]*selfupdate.UpdateInfo, error) {
+	fmt.Println("Searching updates...")
+
+	updates, err := selfupdate.ListAvailableUpdates()
+	if err != nil {
+		return nil, errors.Wrapf(err, "while listing updates")
+	}
+
+	if len(updates) == 0 {
+		fmt.Println("No updates available")
+	} else {
+		fmt.Println("Available updates:")
+		for _, u := range updates {
+			fmt.Printf("\t%s\n", u.Version.Original())
+		}
+	}
+	return updates, nil
+}
+
+func HandleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) *os.File {
+
+	if inputFile == "" {
+		return nil
+	}
+
+	var output *os.File
+	var err error
+
+	// Set output to stdout
+	if outputFile == "-" {
+		logrus.SetOutput(ioutil.Discard)
+		output = os.Stdout
+		return output
+	}
+
+	// Try to create the output file directory if it does not exist
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		dir := filepath.Dir(outputFile)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			err = os.MkdirAll(dir, 0644)
+			if err != nil {
+				logrus.WithError(err).Fatalf("Failed to create the output file directory: '%s'", dir)
+			}
+		}
+	}
+
+	mode := os.O_WRONLY | os.O_CREATE
+
+	if oneRunOnlyMode {
+		mode |= os.O_TRUNC
+	} else {
+		mode |= os.O_APPEND
+	}
+
+	if outputFile != "" {
+		output, err = os.OpenFile(outputFile, mode, 0644)
+		if err != nil {
+			logrus.WithError(err).Fatalf("Failed to open the output file: '%s'", outputFile)
+		}
+	}
+	return output
 }
