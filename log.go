@@ -59,11 +59,9 @@ func addLogFileHook(file string, flag int, chmod os.FileMode) error {
 	return nil
 }
 
-func addErrorHook(stats *stats.FrontmanStats) {
+func (fm *Frontman) addErrorHook() {
 	hook := &LogrusErrorHook{
-		InternalErrorsTotal:        &stats.InternalErrorsTotal,
-		InternalLastErrorMessage:   &stats.InternalLastErrorMessage,
-		InternalLastErrorTimestamp: &stats.InternalLastErrorTimestamp,
+		fm: fm,
 	}
 
 	logrus.AddHook(hook)
@@ -149,17 +147,18 @@ func (fm *Frontman) SetLogLevel(lvl LogLevel) {
 }
 
 type LogrusErrorHook struct {
-	InternalErrorsTotal        *uint64
-	InternalLastErrorMessage   *string
-	InternalLastErrorTimestamp *uint64
+	fm *Frontman
 }
 
 func (h *LogrusErrorHook) Fire(entry *logrus.Entry) error {
 	now := uint64(time.Now().Unix())
 
-	*h.InternalErrorsTotal++
-	*h.InternalLastErrorMessage = entry.Message
-	*h.InternalLastErrorTimestamp = now
+	h.fm.statsLock.Lock()
+	defer h.fm.statsLock.Unlock()
+
+	h.fm.stats.InternalErrorsTotal++
+	h.fm.stats.InternalLastErrorMessage = entry.Message
+	h.fm.stats.InternalLastErrorTimestamp = now
 
 	return nil
 }
@@ -189,9 +188,17 @@ func (fm *Frontman) configureLogger() {
 		}
 	}
 
+	if fm.Config.Node.ForwardLog != "" {
+		var err error
+		fm.forwardLog, err = os.OpenFile(fm.Config.Node.ForwardLog, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			logrus.Error("Can't set up forward_log: ", err.Error())
+		}
+	}
+
 	// Add hook to logrus that updates our LastInternalError statistics
 	// whenever an error log is done
-	addErrorHook(fm.stats)
+	fm.addErrorHook()
 
 	// sets standard logging to /dev/null
 	devNull, err := os.OpenFile(os.DevNull, os.O_APPEND|os.O_WRONLY, os.ModeAppend)

@@ -47,8 +47,11 @@ type Frontman struct {
 	rootCAs *x509.CertPool
 	version string
 
+	failedNodeLock  sync.Mutex
 	failedNodes     map[string]time.Time
-	failedNodeCache map[string]Node
+	failedNodeCache map[string][]byte
+
+	forwardLog *os.File
 
 	// current checks queue
 	checks     []Check
@@ -76,6 +79,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		hostInfoSent:                false,
 		version:                     version,
 		failedNodes:                 make(map[string]time.Time),
+		failedNodeCache:             make(map[string][]byte),
 		TerminateQueue:              sync.WaitGroup{},
 	}
 
@@ -100,6 +104,8 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 	}
 
 	fm.configureLogger()
+
+	fm.initHubClient()
 
 	err := fm.configureAutomaticSelfUpdates()
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,6 +19,9 @@ import (
 // checks if given node recently failed
 func (fm *Frontman) nodeRecentlyFailed(node *Node) bool {
 	limit := time.Second * time.Duration(fm.Config.Node.NodeCacheErrors)
+
+	fm.failedNodeLock.Lock()
+	defer fm.failedNodeLock.Unlock()
 
 	if when, ok := fm.failedNodes[node.URL]; ok {
 		if time.Since(when) < limit {
@@ -30,15 +34,20 @@ func (fm *Frontman) nodeRecentlyFailed(node *Node) bool {
 }
 
 // marks a node as temporarily failing
-func (fm *Frontman) markNodeFailure(node *Node) {
+func (fm *Frontman) markNodeFailure(node *Node, data []byte) {
+	fm.failedNodeLock.Lock()
+	defer fm.failedNodeLock.Unlock()
 	fm.failedNodes[node.URL] = time.Now()
-	fm.failedNodeCache[node.URL] = *node
+	fm.failedNodeCache[node.URL] = data
 }
 
-// returns the most recent cached node failure
-func (fm *Frontman) getCachedNodeFailure(node *Node) *Node {
+// returns the most recent cached node failure response
+func (fm *Frontman) getCachedNodeFailure(node *Node) []byte {
+	fm.failedNodeLock.Lock()
+	defer fm.failedNodeLock.Unlock()
+
 	if n, ok := fm.failedNodeCache[node.URL]; ok {
-		return &n
+		return n
 	}
 	return nil
 }
@@ -52,19 +61,43 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		return
 	}
 
+	msg := res.Message.(string)
+	// only forward if result message don't match ForwardExcept config
+	if len(fm.Config.Node.ForwardExcept) > 0 {
+		for _, rexp := range fm.Config.Node.ForwardExcept {
+			// case insensitive match
+			irexp := "(?i)" + rexp
+			match, err := regexp.MatchString(irexp, msg)
+			if err != nil {
+				logrus.Error("forward_except regexp error ", err)
+			} else if match {
+				logrus.Info("forward_except matched, won't forward ", msg)
+				return
+			}
+		}
+	}
+
+	uuid := ""
+	checkType := ""
 	if c, ok := check.(ServiceCheck); ok {
 		if c.Check.Protocol == "ssl" {
 			// ssl checks are excluded from "ask node" feature
 			return
 		}
+		uuid = c.UUID
+		checkType = "serviceCheck"
 		req := &Input{ServiceChecks: []ServiceCheck{c}}
 		data, _ = json.Marshal(req)
 	}
 	if c, ok := check.(WebCheck); ok {
+		uuid = c.UUID
+		checkType = "webCheck"
 		req := &Input{WebChecks: []WebCheck{c}}
 		data, _ = json.Marshal(req)
 	}
 	if c, ok := check.(SNMPCheck); ok {
+		uuid = c.UUID
+		checkType = "snmpCheck"
 		req := &Input{SNMPChecks: []SNMPCheck{c}}
 		data, _ = json.Marshal(req)
 	}
@@ -101,22 +134,24 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			}
 		}
+
+		fm.logForward(fmt.Sprintf("Forwarding check %s, type %s, msg '%s' to %s", uuid, checkType, msg, node.URL))
 		req, _ := http.NewRequest("POST", url.String(), bytes.NewBuffer(data))
 		req.SetBasicAuth(node.Username, node.Password)
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
 			logrus.Errorf("askNodes failed: %s", err.Error())
-			fm.markNodeFailure(&node)
+			fm.markNodeFailure(&node, nil)
 		} else {
 			defer resp.Body.Close()
 
+			body, _ := ioutil.ReadAll(resp.Body)
 			if resp.StatusCode == http.StatusOK {
-				body, _ := ioutil.ReadAll(resp.Body)
 				nodeResults = append(nodeResults, string(body))
 			} else {
 				logrus.Errorf("askNodes received HTTP %v from %s", resp.StatusCode, node.URL)
-				fm.markNodeFailure(&node)
+				fm.markNodeFailure(&node, body)
 			}
 		}
 	}
@@ -135,7 +170,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 		var selected []interface{}
 		if err := json.Unmarshal([]byte(resp), &selected); err != nil {
-			logrus.Error(err)
+			logrus.Errorf("unmarshal of node result '%v' failed: %v", resp, err)
 			continue
 		}
 
@@ -205,7 +240,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	var fastestResult []Result
 	if err := json.Unmarshal([]byte(nodeResults[resultID]), &fastestResult); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("unmarshal of fastest node result '%v' failed: %v", nodeResults[resultID], err)
 	}
 	if len(fastestResult) < 1 {
 		logrus.Warning("no results gathered from node")
@@ -217,16 +252,21 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	// make the fastest node measurement the main result
 	*res = fastestResult[0]
 
-	// append all node messages to Message response
-	msg := fm.Config.NodeName + ": " + res.Message.(string) + "\n"
-	for _, v := range failedNodes {
-		msg += fmt.Sprintf("%s: %s\n", v, failedNodeMessage[v])
-	}
-	for _, v := range succeededNodes {
-		msg += fmt.Sprintf("%s: check succeeded\n", v)
+	fastestMsg := ""
+	if f, ok := res.Message.(string); ok {
+		fastestMsg = f
 	}
 
-	(*res).Message = msg
+	// append all node messages to Message response
+	nodeMsg := fm.Config.NodeName + ": " + fastestMsg + "\n"
+	for _, v := range failedNodes {
+		nodeMsg += fmt.Sprintf("%s: %s\n", v, failedNodeMessage[v])
+	}
+	for _, v := range succeededNodes {
+		nodeMsg += fmt.Sprintf("%s: check succeeded\n", v)
+	}
+
+	(*res).Message = nodeMsg
 
 	// combine the other measurments with the failing measurement
 	for idx := range nodeResults {
@@ -251,4 +291,13 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	json.Unmarshal(tmp, &locallMeasurementInterface)
 
 	(*res).NodeMeasurements = append((*res).NodeMeasurements, locallMeasurementInterface)
+}
+
+func (fm *Frontman) logForward(s string) {
+	if fm.forwardLog == nil {
+		return
+	}
+	t := time.Now()
+	s = t.Format(time.RFC3339) + " " + s + "\n"
+	fm.forwardLog.WriteString(s)
 }

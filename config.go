@@ -96,9 +96,12 @@ type Config struct {
 }
 
 type NodeConfig struct {
-	NodeTimeout     float64 `toml:"node_timeout" comment:"Set the maximum time in seconds frontman should spend trying to connect a node"`
-	NodeCacheErrors float64 `toml:"node_cache_errors" comment:"Cache errors for N seconds. If the connection to a node fails for whatever reason, this node is not asked again, until the error cache has expired"`
+	NodeTimeout     float64  `toml:"node_timeout" comment:"Set the maximum time in seconds frontman should spend trying to connect a node"`
+	NodeCacheErrors float64  `toml:"node_cache_errors" comment:"Cache errors for N seconds. If the connection to a node fails for whatever reason, this node is not asked again, until the error cache has expired"`
+	ForwardExcept   []string `toml:"forward_except" comment:"Do not forward failed checks to the foreign node(s) if the message contains one of the following regular expresions.\nMatching is case insensitive."`
+	ForwardLog      string   `toml:"forward_log" comment:"Log all checks forwarded to foreign node(s).\nThe log contains the check ID, the check type, and the message of the local check result."`
 }
+
 type Node struct {
 	URL       string `toml:"url" comment:"URL of frontman node"`
 	Username  string `toml:"username" comment:"Username"`

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -53,9 +52,6 @@ func (fm *Frontman) initHubClient() {
 		}
 	}
 	if fm.Config.HubProxy != "" {
-		if !strings.HasPrefix(fm.Config.HubProxy, "http://") {
-			fm.Config.HubProxy = "http://" + fm.Config.HubProxy
-		}
 		proxyURL, err := url.Parse(fm.Config.HubProxy)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
@@ -213,7 +209,6 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 // Run runs all checks continuously and sends result to hub or file
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
 
-	fm.initHubClient()
 	go fm.startWritingStats()
 
 	if fm.Config.Updates.Enabled {
@@ -286,7 +281,7 @@ func (fm *Frontman) updateInputChecks(inputFilePath string) {
 
 // RunOnce runs all checks once and send result to hub or file
 func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
-	fm.initHubClient()
+
 	fm.updateInputChecks(inputFilePath)
 
 	fm.checksLock.Lock()
