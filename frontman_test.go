@@ -38,7 +38,7 @@ func TestFrontmanHubInput(t *testing.T) {
 	go fm.Run("", nil, interruptChan, resultsChan)
 
 	// stop after some time
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(400 * time.Millisecond)
 	close(interruptChan)
 
 	fm.statsLock.Lock()
