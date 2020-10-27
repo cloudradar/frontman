@@ -29,6 +29,7 @@ func exit() {
 }
 
 func main() {
+	// exit will be called last (FILO defer order)
 	defer exit()
 
 	systemManager := service.ChosenSystem()
