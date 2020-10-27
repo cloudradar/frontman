@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"syscall"
 
 	"github.com/cloudradar-monitoring/selfupdate"
@@ -129,12 +127,12 @@ func main() {
 	}
 
 	if statsPtr != nil && *statsPtr {
-		exitCode = handleFlagPrintStats(fm)
+		exitCode = fm.HandleFlagPrintStats()
 		return
 	}
 
 	if printConfigPtr != nil && *printConfigPtr {
-		handleFlagPrintConfig(fm)
+		fm.HandleFlagPrintConfig()
 		return
 	}
 
@@ -161,12 +159,18 @@ func main() {
 	setDefaultLogFormatter()
 
 	// log level set in flag has a precedence. If specified we need to set it ASAP
-	handleFlagLogLevel(fm, *logLevelPtr)
+	if err := fm.HandleFlagLogLevel(*logLevelPtr); err != nil {
+		log.Warn(err)
+	}
 
 	printOSSpecificWarnings()
 
-	writePidFileIfNeeded(fm, oneRunOnlyModePtr)
-	defer removePidFileIfNeeded(fm, oneRunOnlyModePtr)
+	if oneRunOnlyModePtr != nil && !*oneRunOnlyModePtr {
+		if err := fm.WritePidFileIfNeeded(); err != nil {
+			log.Error(err)
+		}
+		defer fm.RemovePidFileIfNeeded()
+	}
 
 	winui.HandleFeedback(fm, *cfgPathPtr)
 
@@ -211,7 +215,7 @@ func main() {
 	}
 
 	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
-		exitCode = handleFlagDaemonizeMode()
+		exitCode = frontman.HandleFlagDaemonizeMode()
 		return
 	}
 
@@ -286,15 +290,6 @@ func handleFlagVersion() {
 	fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", frontman.Version)
 }
 
-func handleFlagPrintConfig(fm *frontman.Frontman) {
-	var configHeadline = "# Please refer to https://github.com/cloudradar-monitoring/frontman/blob/master/example.config.toml\n" +
-		"# for a fully documented configuration example\n" +
-		"#\n"
-
-	fmt.Println(configHeadline)
-	fmt.Println(fm.Config.DumpToml())
-}
-
 // returns exit code
 func handleFlagUpdate(assumeYes *bool) int {
 
@@ -353,30 +348,8 @@ func printAvailableUpdates() ([]*selfupdate.UpdateInfo, error) {
 	return updates, nil
 }
 
-// returns exit code
-func handleFlagPrintStats(fm *frontman.Frontman) int {
-
-	buff, err := ioutil.ReadFile(fm.Config.StatsFile)
-	if err != nil {
-		fmt.Printf("Could not read stats file: %s\n", fm.Config.StatsFile)
-		return 1
-	}
-
-	fmt.Printf("%s", buff)
-	return 0
-}
-
 func handleFlagSettings(fm *frontman.Frontman) {
 	winui.WindowsShowSettingsUI(fm, false)
-}
-
-func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
-	// Check loglevel and if needed warn user and set to default
-	if logLevel == string(frontman.LogLevelError) || logLevel == string(frontman.LogLevelInfo) || logLevel == string(frontman.LogLevelDebug) {
-		fm.SetLogLevel(frontman.LogLevel(logLevel))
-	} else if logLevel != "" {
-		log.Warnf("Invalid log level: \"%s\". Set to default: \"%s\"", logLevel, fm.Config.LogLevel)
-	}
 }
 
 func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) *os.File {
@@ -423,59 +396,10 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 	return output
 }
 
-// returns exit code
-func handleFlagDaemonizeMode() int {
-	err := rerunDetached()
-	if err != nil {
-		fmt.Println("Failed to fork process: ", err.Error())
-		return 1
-	}
-	return 0
-}
-
-func writePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
-	if fm.Config.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
-		err := ioutil.WriteFile(fm.Config.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
-		if err != nil {
-			log.Errorf("Failed to write pid file at: %s", fm.Config.PidFile)
-		}
-	}
-}
-
-func removePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
-	if fm.Config.PidFile != "" && !*oneRunOnlyModePtr && runtime.GOOS != "windows" {
-		err := os.Remove(fm.Config.PidFile)
-		if err != nil {
-			log.Errorf("Failed to remove pid file at: %s", fm.Config.PidFile)
-		}
-	}
-}
-
-func rerunDetached() error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command(os.Args[0], os.Args[1:]...)
-	cmd.Dir = cwd
-	cmd.Env = append(os.Environ(), "FRONTMAN_FORK=1")
-
-	err = cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Frontman will continue in background...\nPID %d", cmd.Process.Pid)
-
-	return cmd.Process.Release()
-}
-
 func setDefaultLogFormatter() {
 	tfmt := log.TextFormatter{FullTimestamp: true}
 	if runtime.GOOS == "windows" {
 		tfmt.DisableColors = true
 	}
-
 	log.SetFormatter(&tfmt)
 }

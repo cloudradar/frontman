@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/kardianos/service"
@@ -223,6 +226,86 @@ func (fm *Frontman) HandleFlagOneRunOnlyMode(inputFile string, output *os.File, 
 		return 1
 	}
 	return 0
+}
+
+// returns exit code
+func (fm *Frontman) HandleFlagPrintStats() int {
+
+	buff, err := ioutil.ReadFile(fm.Config.StatsFile)
+	if err != nil {
+		fmt.Printf("Could not read stats file: %s\n", fm.Config.StatsFile)
+		return 1
+	}
+
+	fmt.Printf("%s", buff)
+	return 0
+}
+
+func (fm *Frontman) HandleFlagPrintConfig() {
+	var configHeadline = "# Please refer to https://github.com/cloudradar-monitoring/frontman/blob/master/example.config.toml\n" +
+		"# for a fully documented configuration example\n" +
+		"#\n"
+
+	fmt.Println(configHeadline)
+	fmt.Println(fm.Config.DumpToml())
+}
+
+func (fm *Frontman) HandleFlagLogLevel(logLevel string) error {
+	if logLevel == string(LogLevelError) || logLevel == string(LogLevelInfo) || logLevel == string(LogLevelDebug) {
+		fm.SetLogLevel(LogLevel(logLevel))
+	} else if logLevel != "" {
+		return fmt.Errorf("Invalid log level: \"%s\". Set to default: \"%s\"", logLevel, fm.Config.LogLevel)
+	}
+	return nil
+}
+
+func (fm *Frontman) WritePidFileIfNeeded() error {
+	if fm.Config.PidFile != "" && runtime.GOOS != "windows" {
+		err := ioutil.WriteFile(fm.Config.PidFile, []byte(strconv.Itoa(os.Getpid())), 0664)
+		if err != nil {
+			return fmt.Errorf("Failed to write pid file at: %s", fm.Config.PidFile)
+		}
+	}
+	return nil
+}
+
+func (fm *Frontman) RemovePidFileIfNeeded() {
+	if fm.Config.PidFile != "" && runtime.GOOS != "windows" {
+		err := os.Remove(fm.Config.PidFile)
+		if err != nil {
+			logrus.Errorf("Failed to remove pid file at: %s", fm.Config.PidFile)
+		}
+	}
+}
+
+// returns exit code
+func HandleFlagDaemonizeMode() int {
+	err := rerunDetached()
+	if err != nil {
+		fmt.Println("Failed to fork process: ", err.Error())
+		return 1
+	}
+	return 0
+}
+
+func rerunDetached() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(os.Args[0], os.Args[1:]...)
+	cmd.Dir = cwd
+	cmd.Env = append(os.Environ(), "FRONTMAN_FORK=1")
+
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Frontman will continue in background...\nPID %d", cmd.Process.Pid)
+
+	return cmd.Process.Release()
 }
 
 // returns exit code
