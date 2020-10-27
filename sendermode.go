@@ -151,7 +151,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
-	writeQueueStatsInterval := time.Millisecond * 200
+	writeQueueStatsInterval := time.Millisecond * 5000
 
 	results := []Result{}
 	sendResults := []Result{}
