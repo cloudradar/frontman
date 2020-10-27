@@ -22,6 +22,7 @@ fi
 PROJECT_NAME=github.com/cloudradar-monitoring/frontman
 PROJECT_DIR=/go/src/${PROJECT_NAME}
 WORK_DIR=/home/ci/buffer/${CIRCLE_BUILD_NUM}
+SIGN_MSI=false
 
 # create build dir structure
 ssh_ci mkdir -p ${WORK_DIR}/deb
@@ -39,19 +40,22 @@ if [ ${RELEASE_MODE} = "stable" ]; then
   ssh_cr /home/cr/work/rpm/update_repo_frontman.sh ${WORK_DIR}/rpm ${CIRCLE_TAG}
 fi
 
-# trigger MSI build and sign
-ssh_cr /home/cr/work/msi/frontman_build_and_sign_msi.sh ${WORK_DIR}/msi ${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
+if [ ${SIGN_MSI} = true ]; then
 
-# copy signed MSI back
-scp -P 24480 -oStrictHostKeyChecking=no ci@repo.cloudradar.io:${WORK_DIR}/msi/frontman_64.msi ${PROJECT_DIR}/dist/frontman_64.msi
+  # trigger MSI build and sign
+  ssh_cr /home/cr/work/msi/frontman_build_and_sign_msi.sh ${WORK_DIR}/msi ${CIRCLE_BUILD_NUM} ${CIRCLE_TAG}
 
-# scan signed MSI
-go get github.com/cloudradar-monitoring/virustotal-scan
-virustotal-scan --verbose --ignore Cylance,Jiangmin,Ikarus,MaxSecure,Microsoft --apikey ${VIRUSTOTAL_TOKEN} --file ${PROJECT_DIR}/dist/frontman_64.msi
+  # copy signed MSI back
+  scp -P 24480 -oStrictHostKeyChecking=no ci@repo.cloudradar.io:${WORK_DIR}/msi/frontman_64.msi ${PROJECT_DIR}/dist/frontman_64.msi
+
+  # scan signed MSI
+  go get github.com/cloudradar-monitoring/virustotal-scan
+  virustotal-scan --verbose --ignore Cylance,Jiangmin,Ikarus,MaxSecure,Microsoft --apikey ${VIRUSTOTAL_TOKEN} --file ${PROJECT_DIR}/dist/frontman_64.msi
+
+  github_upload --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "${PROJECT_DIR}/dist/frontman_64.msi"
+fi
 
 # publish built files to Github
-github_upload --name "frontman_${CIRCLE_TAG}_Windows_x86_64.msi" --file "${PROJECT_DIR}/dist/frontman_64.msi"
-
 github_upload --name "frontman_${CIRCLE_TAG}_synology_amd64.spk" --file "${PROJECT_DIR}/synology-spk/frontman-amd64.spk"
 github_upload --name "frontman_${CIRCLE_TAG}_synology_armv7.spk" --file "${PROJECT_DIR}/synology-spk/frontman-armv7.spk"
 github_upload --name "frontman_${CIRCLE_TAG}_synology_armv8.spk" --file "${PROJECT_DIR}/synology-spk/frontman-armv8.spk"
