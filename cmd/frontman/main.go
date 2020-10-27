@@ -72,7 +72,10 @@ func main() {
 
 	flag.Parse()
 	// version should be handled first to ensure it will be accessible in case of fatal errors before
-	handleFlagVersion(*versionPtr)
+	if *versionPtr {
+		handleFlagVersion()
+		return
+	}
 
 	if *cpuProfile != "" {
 		fmt.Println("Starting CPU profile")
@@ -125,15 +128,35 @@ func main() {
 		log.Fatalf("Failed to initialize frontman: %s", err)
 	}
 
-	handleFlagPrintStats(*statsPtr, fm)
-	handleFlagPrintConfig(*printConfigPtr, fm)
-	handleFlagSearchUpdates(searchUpdatesPtr)
-	handleFlagUpdate(updatePtr, assumeYesPtr)
-	if *testConfigPtr {
+	if statsPtr != nil && *statsPtr {
+		exitCode = handleFlagPrintStats(fm)
+		return
+	}
+
+	if printConfigPtr != nil && *printConfigPtr {
+		handleFlagPrintConfig(fm)
+		return
+	}
+
+	if searchUpdatesPtr != nil && *searchUpdatesPtr {
+		exitCode = handleFlagSearchUpdates()
+		return
+	}
+
+	if updatePtr != nil && *updatePtr {
+		exitCode = handleFlagUpdate(assumeYesPtr)
+		return
+	}
+
+	if testConfigPtr != nil && *testConfigPtr {
 		exitCode = fm.HandleFlagTest()
 		return
 	}
-	handleFlagSettings(settingsPtr, fm)
+
+	if settingsPtr != nil && *settingsPtr {
+		handleFlagSettings(fm)
+		return
+	}
 
 	setDefaultLogFormatter()
 
@@ -186,13 +209,24 @@ func main() {
 		exitCode = fm.HandleFlagServiceInstall(systemManager, *serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
 		return
 	}
-	handleFlagDaemonizeMode(*daemonizeModePtr)
+
+	if *daemonizeModePtr && os.Getenv("FRONTMAN_FORK") != "1" {
+		exitCode = handleFlagDaemonizeMode()
+		return
+	}
 
 	// in case HUB server will hang on response we will need a buffer to continue perform checks
 	resultsChan := make(chan frontman.Result, 100)
 
 	// setup interrupt handler
 	interruptChan := make(chan struct{})
+
+	if *inputFilePtr != "" && *outputFilePtr == "" {
+		fmt.Println("Output(-o) flag can be only used together with input(-i)")
+		exitCode = 1
+		return
+	}
+
 	output := handleFlagInputOutput(*inputFilePtr, *outputFilePtr, *oneRunOnlyModePtr)
 	if output != nil {
 		defer output.Close()
@@ -248,63 +282,56 @@ func printOSSpecificWarnings() {
 	}
 }
 
-func handleFlagVersion(versionFlag bool) {
-	if versionFlag {
-		fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", frontman.Version)
-		os.Exit(0)
-	}
+func handleFlagVersion() {
+	fmt.Printf("frontman v%s released under MIT license. https://github.com/cloudradar-monitoring/frontman/\n", frontman.Version)
 }
 
-func handleFlagPrintConfig(printConfig bool, fm *frontman.Frontman) {
+func handleFlagPrintConfig(fm *frontman.Frontman) {
 	var configHeadline = "# Please refer to https://github.com/cloudradar-monitoring/frontman/blob/master/example.config.toml\n" +
 		"# for a fully documented configuration example\n" +
 		"#\n"
 
-	if printConfig {
-		fmt.Println(configHeadline)
-		fmt.Println(fm.Config.DumpToml())
-		os.Exit(0)
-	}
+	fmt.Println(configHeadline)
+	fmt.Println(fm.Config.DumpToml())
 }
 
-func handleFlagUpdate(update *bool, assumeYes *bool) {
-	if update != nil && *update {
-		updates, err := printAvailableUpdates()
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
+// returns exit code
+func handleFlagUpdate(assumeYes *bool) int {
 
-		if len(updates) == 0 {
-			os.Exit(0)
-		}
-
-		proceedInstallation := (assumeYes != nil && *assumeYes) || frontman.AskForConfirmation("Proceed installation?")
-		if !proceedInstallation {
-			os.Exit(0)
-		}
-
-		fmt.Println("Downloading...")
-
-		err = selfupdate.DownloadAndInstallUpdate(updates[len(updates)-1])
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		fmt.Println("Installer executed. Exiting.")
-		os.Exit(0)
+	updates, err := printAvailableUpdates()
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
 	}
+
+	if len(updates) == 0 {
+		return 0
+	}
+
+	proceedInstallation := (assumeYes != nil && *assumeYes) || frontman.AskForConfirmation("Proceed installation?")
+	if !proceedInstallation {
+		return 0
+	}
+
+	fmt.Println("Downloading...")
+
+	err = selfupdate.DownloadAndInstallUpdate(updates[len(updates)-1])
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
+	}
+	fmt.Println("Installer executed. Exiting.")
+	return 0
 }
 
-func handleFlagSearchUpdates(searchUpdates *bool) {
-	if searchUpdates != nil && *searchUpdates {
-		_, err := printAvailableUpdates()
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		os.Exit(0)
+// returns exit code
+func handleFlagSearchUpdates() int {
+	_, err := printAvailableUpdates()
+	if err != nil {
+		fmt.Println(err.Error())
+		return 1
 	}
+	return 0
 }
 
 func printAvailableUpdates() ([]*selfupdate.UpdateInfo, error) {
@@ -326,26 +353,21 @@ func printAvailableUpdates() ([]*selfupdate.UpdateInfo, error) {
 	return updates, nil
 }
 
-func handleFlagPrintStats(statsFlag bool, fm *frontman.Frontman) {
-	if !statsFlag {
-		return
-	}
+// returns exit code
+func handleFlagPrintStats(fm *frontman.Frontman) int {
 
 	buff, err := ioutil.ReadFile(fm.Config.StatsFile)
 	if err != nil {
 		fmt.Printf("Could not read stats file: %s\n", fm.Config.StatsFile)
-		os.Exit(1)
+		return 1
 	}
 
 	fmt.Printf("%s", buff)
-	os.Exit(0)
+	return 0
 }
 
-func handleFlagSettings(settingsUI *bool, fm *frontman.Frontman) {
-	if settingsUI != nil && *settingsUI {
-		winui.WindowsShowSettingsUI(fm, false)
-		os.Exit(0)
-	}
+func handleFlagSettings(fm *frontman.Frontman) {
+	winui.WindowsShowSettingsUI(fm, false)
 }
 
 func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
@@ -358,10 +380,6 @@ func handleFlagLogLevel(fm *frontman.Frontman, logLevel string) {
 }
 
 func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode bool) *os.File {
-	if outputFile != "" && inputFile == "" {
-		fmt.Println("Output(-o) flag can be only used together with input(-i)")
-		os.Exit(1)
-	}
 
 	if inputFile == "" {
 		return nil
@@ -405,16 +423,14 @@ func handleFlagInputOutput(inputFile string, outputFile string, oneRunOnlyMode b
 	return output
 }
 
-func handleFlagDaemonizeMode(daemonizeMode bool) {
-	if daemonizeMode && os.Getenv("FRONTMAN_FORK") != "1" {
-		err := rerunDetached()
-		if err != nil {
-			fmt.Println("Failed to fork process: ", err.Error())
-			os.Exit(1)
-		}
-
-		os.Exit(0)
+// returns exit code
+func handleFlagDaemonizeMode() int {
+	err := rerunDetached()
+	if err != nil {
+		fmt.Println("Failed to fork process: ", err.Error())
+		return 1
 	}
+	return 0
 }
 
 func writePidFileIfNeeded(fm *frontman.Frontman, oneRunOnlyModePtr *bool) {
