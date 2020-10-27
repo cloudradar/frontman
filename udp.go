@@ -27,7 +27,7 @@ func (fm *Frontman) runUDPCheck(hostname string, port int, service string) (Meas
 
 	prefix := fmt.Sprintf("net.udp.%s.%d.", service, port)
 
-	// Initialise MeasurementsMap
+	// Initialize MeasurementsMap
 	m := MeasurementsMap{
 		prefix + "success": 0,
 	}

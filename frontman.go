@@ -29,7 +29,9 @@ type Frontman struct {
 	Config         *Config
 	ConfigLocation string
 
-	Stats                       *stats.FrontmanStats
+	stats     *stats.FrontmanStats
+	statsLock sync.Mutex
+
 	HealthCheckPassedPreviously bool
 
 	selfUpdater *selfupdate.Updater
@@ -38,7 +40,9 @@ type Frontman struct {
 	hubClientOnce sync.Once
 	hostInfoSent  bool
 
+	// local cached results in case the hub is temporarily offline
 	offlineResultsBuffer []Result
+	offlineResultsLock   sync.Mutex
 
 	rootCAs *x509.CertPool
 	version string
@@ -47,13 +51,11 @@ type Frontman struct {
 	failedNodeCache map[string]Node
 
 	// current checks queue
-	checks []Check
+	checks     []Check
+	checksLock sync.Mutex
 
 	// in-progress checks
 	ipc inProgressChecks
-
-	// used to keep hub fetch of new checks in sync
-	updateChecksLock sync.Mutex
 
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
@@ -63,10 +65,13 @@ type Frontman struct {
 }
 
 func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
+	if version == "" {
+		version = "{undefined}"
+	}
 	fm := &Frontman{
 		Config:                      cfg,
 		ConfigLocation:              cfgPath,
-		Stats:                       &stats.FrontmanStats{},
+		stats:                       &stats.FrontmanStats{},
 		HealthCheckPassedPreviously: true,
 		hostInfoSent:                false,
 		version:                     version,
@@ -105,16 +110,16 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 	return fm, nil
 }
 
-func (ca *Frontman) configureAutomaticSelfUpdates() error {
-	if !ca.Config.Updates.Enabled {
+func (fm *Frontman) configureAutomaticSelfUpdates() error {
+	if !fm.Config.Updates.Enabled {
 		return nil
 	}
 	updatesConfig := selfupdate.DefaultConfig()
 	updatesConfig.AppName = "frontman"
 	updatesConfig.SigningCertificatedName = "cloudradar GmbH"
 	updatesConfig.CurrentVersion = Version
-	updatesConfig.CheckInterval = ca.Config.Updates.GetCheckInterval()
-	updatesConfig.UpdatesFeedURL = ca.Config.Updates.URL
+	updatesConfig.CheckInterval = fm.Config.Updates.GetCheckInterval()
+	updatesConfig.UpdatesFeedURL = fm.Config.Updates.URL
 	logrus.Debugf("using %s as self-updates feed URL", updatesConfig.UpdatesFeedURL)
 
 	err := selfupdate.Configure(updatesConfig)
@@ -127,11 +132,8 @@ func (ca *Frontman) configureAutomaticSelfUpdates() error {
 	return nil
 }
 
+// returns an user agent string
 func (fm *Frontman) userAgent() string {
-	if fm.version == "" {
-		fm.version = "{undefined}"
-	}
 	parts := strings.Split(fm.version, "-")
-
 	return fmt.Sprintf("Frontman v%s %s %s", parts[0], runtime.GOOS, runtime.GOARCH)
 }

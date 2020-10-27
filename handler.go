@@ -84,7 +84,6 @@ func (fm *Frontman) initHubClient() {
 // * for TOML: CheckHubCredentials(ctx, "hub_url", "hub_user", "hub_password")
 // * for WinUI: CheckHubCredentials(ctx, "URL", "User", "Password")
 func (fm *Frontman) CheckHubCredentials(ctx context.Context, fieldHubURL, fieldHubUser, fieldHubPassword string) error {
-	fm.initHubClient()
 
 	if fm.Config.HubURL == "" {
 		return newEmptyFieldError(fieldHubURL)
@@ -142,8 +141,6 @@ func (fm *Frontman) checkClientError(resp *http.Response, err error, fieldHubUse
 }
 
 func (fm *Frontman) inputFromHub() (*Input, error) {
-	fm.initHubClient()
-
 	if fm.Config.HubURL == "" {
 		return nil, newEmptyFieldError("hub_url")
 	} else if u, err := url.Parse(fm.Config.HubURL); err != nil {
@@ -173,9 +170,11 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 			err = errors.Wrap(err, netErr.Error())
 		}
 
-		fm.Stats.HubLastErrorMessage = err.Error()
-		fm.Stats.HubLastErrorTimestamp = uint64(time.Now().Second())
-		fm.Stats.HubErrorsTotal++
+		fm.statsLock.Lock()
+		fm.stats.HubLastErrorMessage = err.Error()
+		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Second())
+		fm.stats.HubErrorsTotal++
+		fm.statsLock.Unlock()
 		return nil, err
 	}
 
@@ -203,8 +202,10 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	}
 
 	// Update frontman statistics
-	fm.Stats.BytesFetchedFromHubTotal += uint64(len(body))
-	fm.Stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
+	fm.statsLock.Lock()
+	fm.stats.BytesFetchedFromHubTotal += uint64(len(body))
+	fm.stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
+	fm.statsLock.Unlock()
 
 	return &i, nil
 }
@@ -212,9 +213,8 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 // Run runs all checks continuously and sends result to hub or file
 func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
 
-	fm.Stats.StartedAt = time.Now()
-	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
-	fm.StartWritingStats()
+	fm.initHubClient()
+	go fm.startWritingStats()
 
 	if fm.Config.Updates.Enabled {
 		fm.selfUpdater = selfupdate.StartChecking()
@@ -248,6 +248,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 
 	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
+	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
 
 	for {
 		if err := fm.HealthCheck(); err != nil {
@@ -264,10 +265,6 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 			logrus.Infoln("All health checks are positive. Resuming normal operation.")
 		}
 
-		if err := fm.sendResultsChanToHubQueue(&resultsChan); err != nil {
-			logrus.Error(err)
-		}
-
 		select {
 		case <-interrupt:
 			return
@@ -279,8 +276,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 
 // updates list of checks to execute from the hub
 func (fm *Frontman) updateInputChecks(inputFilePath string) {
-	fm.updateChecksLock.Lock()
-	defer fm.updateChecksLock.Unlock()
+	fm.checksLock.Lock()
+	defer fm.checksLock.Unlock()
 
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
@@ -289,9 +286,12 @@ func (fm *Frontman) updateInputChecks(inputFilePath string) {
 
 // RunOnce runs all checks once and send result to hub or file
 func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
-
+	fm.initHubClient()
 	fm.updateInputChecks(inputFilePath)
+
+	fm.checksLock.Lock()
 	fm.processInput(fm.checks, true, resultsChan)
+	fm.checksLock.Unlock()
 
 	logrus.Debugf("RunOnce")
 	close(*resultsChan)
@@ -412,6 +412,9 @@ func hasCheck(s []Check, uuid string) bool {
 
 // takes the oldest check from queue that is not in progress
 func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
+	fm.checksLock.Lock()
+	defer fm.checksLock.Unlock()
+
 	if len(fm.checks) == 0 {
 		return nil, false
 	}
@@ -431,28 +434,41 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
 
+	waitWg := sync.WaitGroup{}
+
+	logrus.Infof("STARTING processInputContinuous")
+
 	for {
+		select {
+		case <-interrupt:
+			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
+			waitWg.Wait()
+			//close(*resultsChan)
+			return
+		default:
+		}
+
 		if time.Since(lastFetch) >= interval {
+			logrus.Infof("processInputContinuous running updateInputChecks")
 			lastFetch = time.Now()
 			go fm.updateInputChecks(inputFilePath)
 		}
 
-		if len(fm.checks) > 0 {
-			if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
-				fm.ipc.add(currentCheck.uniqueID())
+		if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
+			fm.ipc.add(currentCheck.uniqueID())
 
-				go func(check Check, results *chan Result, inProgress *inProgressChecks) {
-					res, _ := fm.runCheck(check, local)
-					inProgress.remove(check.uniqueID())
-					*results <- *res
-				}(currentCheck, resultsChan, &fm.ipc)
-			}
-		}
-		select {
-		case <-interrupt:
-			close(*resultsChan)
-			return
-		default:
+			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
+				wg.Add(1)
+				defer wg.Done()
+
+				res, _ := fm.runCheck(check, local)
+				inProgress.remove(check.uniqueID())
+				fm.statsLock.Lock()
+				fm.stats.ChecksPerformedTotal++
+				fm.statsLock.Unlock()
+
+				*results <- *res
+			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
 		}
 	}
 }
@@ -461,11 +477,13 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 // local is false if check originated from a remote node
 func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan Result) {
 	startedAt := time.Now()
-
 	succeed := fm.runChecks(checks, resultsChan, local)
-
 	totChecks := len(checks)
-	fm.Stats.ChecksPerformedTotal += uint64(totChecks)
+
+	fm.statsLock.Lock()
+	fm.stats.ChecksPerformedTotal += uint64(totChecks)
+	fm.statsLock.Unlock()
+
 	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
 }
 

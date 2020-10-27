@@ -33,13 +33,12 @@ func (fm *Frontman) runPing(addr string) (m map[string]interface{}, err error) {
 	m = make(map[string]interface{})
 
 	pinger, err := NewPinger(addr)
+	if err != nil {
+		return
+	}
 
 	if CheckIfRawICMPAvailable() || runtime.GOOS == "windows" {
 		pinger.SetPrivileged(true)
-	}
-
-	if err != nil {
-		return
 	}
 
 	pinger.Timeout = secToDuration(fm.Config.ICMPTimeout)

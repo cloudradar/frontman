@@ -95,10 +95,18 @@ func (hook *logrusFileHook) Levels() []logrus.Level {
 	}
 }
 
-// StartWritingStats writes fm.Stats every minute to Config.StatsFile
+// startWritingStats writes fm.Stats every minute to Config.StatsFile
 // This method should only be called once
-func (fm *Frontman) StartWritingStats() {
-	var stats stats.FrontmanStats
+func (fm *Frontman) startWritingStats() {
+
+	// Only start writing out stats if there is a StatsFile configued
+	if fm.Config.StatsFile == "" {
+		return
+	}
+
+	fm.stats.StartedAt = time.Now()
+	logrus.Debugf("Start writing stats file: %s", fm.Config.StatsFile)
+
 	var buff bytes.Buffer
 	var err error
 
@@ -106,29 +114,32 @@ func (fm *Frontman) StartWritingStats() {
 	encoder := json.NewEncoder(&buff)
 	encoder.SetIndent("", "    ")
 
-	// Only start writing out stats if there is a StatsFile configued
-	if fm.Config.StatsFile != "" {
-		go func() {
-			for {
-				buff.Reset()
-				time.Sleep(time.Minute * 1)
-				stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
-				// Get snapshot from current stats
-				stats = *fm.Stats
-				err = encoder.Encode(stats)
-				if err != nil {
-					logrus.Errorf("Could not encode stats file: %s", err)
-					continue
-				}
+	for {
+		buff.Reset()
+		time.Sleep(time.Minute * 1)
 
-				err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
-				if err != nil {
-					logrus.Errorf("Could not write stats file: %s", err)
-					return
-				}
-			}
-		}()
+		stats := fm.statsSnapshot()
+		stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
+
+		err = encoder.Encode(stats)
+		if err != nil {
+			logrus.Errorf("Could not encode stats file: %s", err)
+			continue
+		}
+
+		err = ioutil.WriteFile(fm.Config.StatsFile, buff.Bytes(), 0755)
+		if err != nil {
+			logrus.Errorf("Could not write stats file: %s", err)
+			return
+		}
 	}
+}
+
+// Get snapshot from current stats
+func (fm *Frontman) statsSnapshot() stats.FrontmanStats {
+	fm.statsLock.Lock()
+	defer fm.statsLock.Unlock()
+	return *fm.stats
 }
 
 // SetLogLevel sets Log level and corresponding logrus level
@@ -180,7 +191,7 @@ func (fm *Frontman) configureLogger() {
 
 	// Add hook to logrus that updates our LastInternalError statistics
 	// whenever an error log is done
-	addErrorHook(fm.Stats)
+	addErrorHook(fm.stats)
 
 	// sets standard logging to /dev/null
 	devNull, err := os.OpenFile(os.DevNull, os.O_APPEND|os.O_WRONLY, os.ModeAppend)

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,13 +15,14 @@ import (
 )
 
 func (fm *Frontman) postResultsToHub(results []Result) error {
-	fm.initHubClient()
+	fm.offlineResultsLock.Lock()
+	defer fm.offlineResultsLock.Unlock()
 
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
+
 	b, err := json.Marshal(Results{
 		Results: fm.offlineResultsBuffer,
 	})
-
 	if err != nil {
 		return err
 	}
@@ -33,8 +33,10 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 			fm.Config.HubMaxOfflineBufferBytes,
 			len(results))
 
-		fm.offlineResultsBuffer = []Result{}
-		b, err = json.Marshal(Results{Results: results})
+		fm.offlineResultsBuffer = results
+		b, err = json.Marshal(Results{
+			Results: fm.offlineResultsBuffer,
+		})
 		if err != nil {
 			return err
 		}
@@ -88,18 +90,20 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	logrus.Infof("Sent %d results to Hub.. Status %d", len(results), resp.StatusCode)
+	logrus.Infof("Sent %d results to Hub.. Status %d", len(fm.offlineResultsBuffer), resp.StatusCode)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
 		return ErrorHubGeneral
 	}
 
-	// in case of successful POST reset the offline buffer
+	// in case of successful POST, we reset the offline buffer
 	fm.offlineResultsBuffer = []Result{}
 
 	// Update frontman statistics
-	fm.Stats.BytesSentToHubTotal += uint64(bodyLength)
+	fm.statsLock.Lock()
+	fm.stats.BytesSentToHubTotal += uint64(bodyLength)
+	fm.statsLock.Unlock()
 
 	return nil
 }
@@ -128,38 +132,37 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 		return fmt.Errorf("postResultsToHub: %s", err.Error())
 	}
 
-	fm.Stats.CheckResultsSentToHub += uint64(len(results))
+	fm.statsLock.Lock()
+	fm.stats.CheckResultsSentToHub += uint64(len(results))
+	fm.statsLock.Unlock()
 
+	fm.offlineResultsLock.Lock()
+	defer fm.offlineResultsLock.Unlock()
 	fm.offlineResultsBuffer = []Result{}
+
 	return nil
 }
 
 // sends results to hub continuously
-func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
+func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
 	writeQueueStatsInterval := time.Millisecond * 200
 
 	results := []Result{}
 	sendResults := []Result{}
-	shouldReturn := false
 
 	lastSentToHub := time.Unix(0, 0)
 	lastQueueStatsWrite := time.Unix(0, 0)
 
 	fm.TerminateQueue.Add(1)
+	defer fm.TerminateQueue.Done()
 
 	for {
 		select {
 		case res, ok := <-*resultsChan:
-			if !ok {
-				// chan was closed, no more results left
-				shouldReturn = true
-			} else {
+			if ok {
 				results = append(results, res)
-				if len(results) < fm.Config.SenderBatchSize && len(*resultsChan) > 0 {
-					continue
-				}
 			}
 		}
 
@@ -173,9 +176,15 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 			}
 
 			if len(sendResults) > 0 {
+				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
 				lastSentToHub = time.Now()
 				go func(r []Result) {
 					err := fm.postResultsToHub(r)
+
+					fm.statsLock.Lock()
+					fm.stats.CheckResultsSentToHub += uint64(len(r))
+					fm.statsLock.Unlock()
+
 					if err != nil {
 						if err == ErrorHubGeneral {
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
@@ -183,44 +192,57 @@ func (fm *Frontman) sendResultsChanToHubQueue(resultsChan *chan Result) error {
 						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
 					}
-
-					var m runtime.MemStats
-					runtime.ReadMemStats(&m)
-					logrus.Debugf("Sender queue: Alloc = %v, TotalAlloc = %v, Sys = %v, NumGC = %v", m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
 				}(sendResults)
 			} else {
-				logrus.Debugf("Sender queue: nothing to do. outgoing queue empty.")
+				logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
 			}
 		}
 
 		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
 			lastQueueStatsWrite = time.Now()
-
-			data, err := json.Marshal(map[string]int{
-				"checks_queue":       len(fm.checks),
-				"checks_in_progress": fm.ipc.len(),
-				"results_queue":      len(results)})
-			if err != nil {
-				logrus.Error(err)
-			} else if fm.Config.QueueStatsFile != "" {
-				go func(b []byte) {
-					f, err := os.Create(fm.Config.QueueStatsFile)
-					if err != nil {
-						logrus.Error(err)
-						return
-					}
-					defer f.Close()
-					_, err = f.Write(b)
-					if err != nil {
-						logrus.Error(err)
-					}
-				}(data)
-			}
+			fm.writeQueueStats(len(results))
 		}
 
-		if shouldReturn && len(results) == 0 {
-			fm.TerminateQueue.Done()
-			return nil
+		select {
+		case <-interrupt:
+			logrus.Infof("sendResultsChanToHubQueue interrupt caught, should return. results %v", len(results))
+			if err := fm.postResultsToHub(results); err != nil {
+				logrus.Error(err)
+			}
+			fm.writeQueueStats(0)
+			return
+		default:
 		}
 	}
+}
+
+func (fm *Frontman) writeQueueStats(resultsLen int) {
+	if fm.Config.QueueStatsFile == "" {
+		return
+	}
+
+	fm.checksLock.Lock()
+	data, err := json.Marshal(map[string]int{
+		"checks_queue":       len(fm.checks),
+		"checks_in_progress": fm.ipc.len(),
+		"results_queue":      resultsLen})
+	fm.checksLock.Unlock()
+
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	go func(b []byte) {
+		f, err := os.Create(fm.Config.QueueStatsFile)
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+		defer f.Close()
+		_, err = f.Write(b)
+		if err != nil {
+			logrus.Error(err)
+		}
+	}(data)
 }

@@ -6,7 +6,7 @@ orbs:
 
 docker_job_setup: &docker_job
   docker:
-    - image: cloudradario/go-build:0.0.18
+    - image: cloudradario/go-build:0.0.19
   working_directory: /go/src/github.com/cloudradar-monitoring/frontman
 
 attach_workspace: &workspace
@@ -34,7 +34,7 @@ jobs:
     <<: *docker_job
     steps:
       - <<: *workspace
-      - run: make test-short
+      - run: go test -v -short -race ./...
 
   test-goreleaser:
     <<: *docker_job
