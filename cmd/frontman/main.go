@@ -22,7 +22,15 @@ import (
 	"github.com/cloudradar-monitoring/frontman/pkg/winui"
 )
 
+var exitCode = 0
+
+func exit() {
+	os.Exit(exitCode)
+}
+
 func main() {
+	defer exit()
+
 	systemManager := service.ChosenSystem()
 
 	var serviceInstallUserPtr *string
@@ -72,7 +80,10 @@ func main() {
 			log.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+		defer func() {
+			fmt.Println("Ending CPU profile")
+			pprof.StopCPUProfile()
+		}()
 	}
 
 	// check some incompatible flags
@@ -80,22 +91,26 @@ func main() {
 		serviceInstallPtr != nil && *serviceInstallPtr {
 		if *inputFilePtr != "" {
 			fmt.Println("Input file(-i) flag can't be used together with service install(-s) flag")
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 
 		if *outputFilePtr != "" {
 			fmt.Println("Output file(-o) flag can't be used together with service install(-s) flag")
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 
 		if *serviceUninstallPtr {
 			fmt.Println("Service uninstall(-u) flag can't be used together with service install(-s) flag")
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 
 		if *serviceStartPtr || *serviceRestartPtr || *serviceStopPtr || *serviceStatusPtr {
 			fmt.Println("Service management flags can't be used together with service install(-s) flag")
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 	}
 
@@ -114,7 +129,8 @@ func main() {
 	handleFlagSearchUpdates(searchUpdatesPtr)
 	handleFlagUpdate(updatePtr, assumeYesPtr)
 	if *testConfigPtr {
-		os.Exit(fm.HandleFlagTest())
+		exitCode = fm.HandleFlagTest()
+		return
 	}
 	handleFlagSettings(settingsPtr, fm)
 
@@ -141,7 +157,8 @@ func main() {
 	}
 
 	if !service.Interactive() {
-		os.Exit(fm.RunUnderOsServiceManager())
+		exitCode = fm.RunUnderOsServiceManager()
+		return
 	}
 
 	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
@@ -149,20 +166,24 @@ func main() {
 		!*serviceUninstallPtr {
 
 		if *serviceStatusPtr || *serviceStartPtr || *serviceStopPtr || *serviceRestartPtr {
-			os.Exit(fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr))
+			exitCode = fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
+			return
 		}
 	}
 
 	if serviceUpgradePtr != nil && *serviceUpgradePtr {
-		os.Exit(fm.HandleFlagServiceUpgrade(*cfgPathPtr, serviceUpgradePtr, serviceInstallUserPtr))
+		exitCode = fm.HandleFlagServiceUpgrade(*cfgPathPtr, serviceUpgradePtr, serviceInstallUserPtr)
+		return
 	}
 
 	if serviceUninstallPtr != nil && *serviceUninstallPtr {
-		os.Exit(fm.HandleFlagServiceUninstall())
+		exitCode = fm.HandleFlagServiceUninstall()
+		return
 	}
 
 	if (serviceInstallUserPtr != nil && *serviceInstallUserPtr != "") || (serviceInstallPtr != nil && !*serviceInstallPtr) {
-		os.Exit(fm.HandleFlagServiceInstall(systemManager, *serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr))
+		exitCode = fm.HandleFlagServiceInstall(systemManager, *serviceInstallUserPtr, serviceInstallPtr, *cfgPathPtr, assumeYesPtr)
+		return
 	}
 	handleFlagDaemonizeMode(*daemonizeModePtr)
 
@@ -177,7 +198,8 @@ func main() {
 	}
 
 	if *oneRunOnlyModePtr {
-		os.Exit(fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output, interruptChan))
+		exitCode = fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output, interruptChan)
+		return
 	}
 
 	// nothing resulted in os.Exit
@@ -199,9 +221,9 @@ func main() {
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
 		close(interruptChan)
 		fm.TerminateQueue.Wait()
-		os.Exit(0)
+		return
 	case <-doneChan:
-		os.Exit(0)
+		return
 	}
 }
 
