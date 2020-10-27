@@ -15,6 +15,10 @@ import (
 )
 
 func (fm *Frontman) postResultsToHub(results []Result) error {
+	if len(results) == 0 {
+		return nil
+	}
+
 	fm.offlineResultsLock.Lock()
 	defer fm.offlineResultsLock.Unlock()
 
