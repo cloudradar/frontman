@@ -18,6 +18,7 @@ import (
 	decl "github.com/lxn/walk/declarative"
 	"github.com/lxn/win"
 	"github.com/pkg/errors"
+	"github.com/shirou/w32"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cloudradar-monitoring/frontman"
