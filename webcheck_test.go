@@ -11,6 +11,7 @@ import (
 
 func TestWebCheck(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.HTTPCheckTimeout = 10.0
 	cfg.Sleep = 10
 	fm := helperCreateFrontman(t, cfg)
 	input := &Input{
@@ -41,6 +42,7 @@ func TestWebCheckHeaders(t *testing.T) {
 	defer ts.Close()
 
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.HTTPCheckTimeout = 10.0
 	cfg.Sleep = 10
 	fm := helperCreateFrontman(t, cfg)
 	input := &Input{
@@ -84,6 +86,7 @@ func TestNormalizeURLPort(t *testing.T) {
 
 func TestWebCheckPresentTextSuccess(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.HTTPCheckTimeout = 10.0
 	cfg.Sleep = 10
 	fm := helperCreateFrontman(t, cfg)
 	input := &Input{
@@ -109,6 +112,7 @@ func TestWebCheckPresentTextSuccess(t *testing.T) {
 
 func TestWebCheckPresentTextFail(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.HTTPCheckTimeout = 10.0
 	cfg.Sleep = 10
 	fm := helperCreateFrontman(t, cfg)
 	input := &Input{
@@ -133,6 +137,7 @@ func TestWebCheckPresentTextFail(t *testing.T) {
 
 func TestWebCheckAbsentTextSuccess(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.HTTPCheckTimeout = 10.0
 	cfg.Sleep = 10
 	fm := helperCreateFrontman(t, cfg)
 	input := &Input{
@@ -158,6 +163,7 @@ func TestWebCheckAbsentTextSuccess(t *testing.T) {
 
 func TestWebCheckAbsentTextFail(t *testing.T) {
 	cfg, _ := HandleAllConfigSetup(DefaultCfgPath)
+	cfg.HTTPCheckTimeout = 10.0
 	cfg.Sleep = 10
 	fm := helperCreateFrontman(t, cfg)
 	input := &Input{
