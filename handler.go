@@ -262,7 +262,8 @@ func (fm *Frontman) updateInputChecks(inputFilePath string) {
 
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
-	fm.checks = addUniqueChecks(fm.checks, checks)
+
+	fm.addUniqueChecks(checks)
 }
 
 // RunOnce runs all checks once and send result to hub or file
@@ -369,21 +370,26 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 }
 
 // appends new checks with unique UUID to input Check queue
-func addUniqueChecks(input []Check, new []Check) []Check {
-	filtered := input
+func (fm *Frontman) addUniqueChecks(new []Check) {
+	oldLen := len(fm.checks)
 	for _, c := range new {
-		if !hasCheck(input, c.uniqueID()) {
-			filtered = append(filtered, c)
-		} else {
-			logrus.Infof("Skipping request for check %v. Check is in queue.", c.uniqueID())
+		uuid := c.uniqueID()
+		if fm.hasCheckInQueue(uuid) {
+			logrus.Infof("Skipping request for check %v. Check is in queue.", uuid)
+			continue
 		}
+		if fm.ipc.isInProgress(uuid) {
+			logrus.Infof("Skipping request for check %v. Check still in progress.", uuid)
+			continue
+		}
+		fm.checks = append(fm.checks, c)
 	}
-	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", len(input), len(new), len(filtered))
-	return filtered
+	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", oldLen, len(new), len(fm.checks))
 }
 
-func hasCheck(s []Check, uuid string) bool {
-	for _, v := range s {
+// returns true if uuid is currently in the check queue
+func (fm *Frontman) hasCheckInQueue(uuid string) bool {
+	for _, v := range fm.checks {
 		if v.uniqueID() == uuid {
 			return true
 		}
@@ -470,7 +476,6 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			waitWg.Wait()
 			return
 		case <-time.After(sleepDuration):
-			logrus.Infof("Slept for %v", sleepDuration)
 			continue
 		}
 	}
