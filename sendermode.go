@@ -19,6 +19,7 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 		return nil
 	}
 
+	logrus.Error("fm.offlineResultsLock.Lock postResultsToHub")
 	fm.offlineResultsLock.Lock()
 	defer fm.offlineResultsLock.Unlock()
 
@@ -105,6 +106,7 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	fm.offlineResultsBuffer = []Result{}
 
 	// Update frontman statistics
+	logrus.Error("fm.statsLock.Lock postResultsToHub")
 	fm.statsLock.Lock()
 	fm.stats.BytesSentToHubTotal += uint64(bodyLength)
 	fm.statsLock.Unlock()
@@ -136,6 +138,7 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 		return fmt.Errorf("postResultsToHub: %s", err.Error())
 	}
 
+	logrus.Error("fm.statsLock.Lock sendResultsChanToHub")
 	fm.statsLock.Lock()
 	fm.stats.CheckResultsSentToHub += uint64(len(results))
 	fm.statsLock.Unlock()
@@ -181,6 +184,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 				go func(r []Result) {
 					err := fm.postResultsToHub(r)
 
+					logrus.Error("fm.statsLock.Lock sendResultsChanToHubQueue")
 					fm.statsLock.Lock()
 					fm.stats.CheckResultsSentToHub += uint64(len(r))
 					fm.statsLock.Unlock()
@@ -221,16 +225,16 @@ func (fm *Frontman) writeQueueStats(resultsLen int) {
 		return
 	}
 
-	logrus.Errorf("writeQueueStats 1")
+	logrus.Error("fm.ipc.mutex.Lock writeQueueStats", mutexLocked(&fm.ipc.mutex))
 	fm.ipc.mutex.Lock()
+	logrus.Error("fm.ipc.mutex.Lock writeQueueStats AQUIRED")
 	ipcLen := len(fm.ipc.uuids)
 	fm.ipc.mutex.Unlock()
 
+	logrus.Error("fm.checksLock.Lock writeQueueStats")
 	fm.checksLock.Lock()
 	checksLen := len(fm.checks)
 	fm.checksLock.Unlock()
-
-	logrus.Errorf("writeQueueStats 2")
 
 	data, err := json.Marshal(map[string]int{
 		"checks_queue":       checksLen,

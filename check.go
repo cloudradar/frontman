@@ -2,6 +2,7 @@ package frontman
 
 import (
 	"encoding/json"
+	"reflect"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -79,6 +80,12 @@ type SNMPCheckData struct {
 	Unit      string `json:"unit,omitempty"`
 }
 
+func mutexLocked(m *sync.Mutex) bool {
+	const locked = 1
+	state := reflect.ValueOf(m).Elem().FieldByName("state")
+	return state.Int()&locked == locked
+}
+
 // used to keep track of in-progress checks being run
 type inProgressChecks struct {
 	mutex sync.Mutex
@@ -86,12 +93,14 @@ type inProgressChecks struct {
 }
 
 func (ipc *inProgressChecks) add(uuid string) {
+	logrus.Error("fm.ipc.mutex.Lock add")
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
 	ipc.uuids = append(ipc.uuids, uuid)
 }
 
 func (ipc *inProgressChecks) remove(uuid string) {
+	logrus.Error("fm.ipc.mutex.Lock remove")
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
 	for i, v := range ipc.uuids {
@@ -104,6 +113,7 @@ func (ipc *inProgressChecks) remove(uuid string) {
 }
 
 func (ipc *inProgressChecks) isInProgress(uuid string) bool {
+	logrus.Error("fm.ipc.mutex.Lock isInProgress")
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
 	for _, v := range ipc.uuids {

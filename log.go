@@ -135,6 +135,7 @@ func (fm *Frontman) startWritingStats() {
 
 // Get snapshot from current stats
 func (fm *Frontman) statsSnapshot() stats.FrontmanStats {
+	logrus.Error("fm.statsLock.Lock statsSnapshot")
 	fm.statsLock.Lock()
 	defer fm.statsLock.Unlock()
 	return *fm.stats
@@ -151,13 +152,15 @@ type LogrusErrorHook struct {
 }
 
 func (h *LogrusErrorHook) Fire(entry *logrus.Entry) error {
-	now := uint64(time.Now().Unix())
-
-	h.fm.statsLock.Lock()
-	h.fm.stats.InternalErrorsTotal++
-	h.fm.stats.InternalLastErrorMessage = entry.Message
-	h.fm.stats.InternalLastErrorTimestamp = now
-	h.fm.statsLock.Unlock()
+	logrus.Error("fm.statsLock.Lock error Fire")
+	/*
+		now := uint64(time.Now().Unix())
+		h.fm.statsLock.Lock()
+		h.fm.stats.InternalErrorsTotal++
+		h.fm.stats.InternalLastErrorMessage = entry.Message
+		h.fm.stats.InternalLastErrorTimestamp = now
+		h.fm.statsLock.Unlock()
+	*/
 
 	return nil
 }

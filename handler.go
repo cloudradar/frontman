@@ -166,6 +166,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 			err = errors.Wrap(err, netErr.Error())
 		}
 
+		logrus.Error("fm.statsLock.Lock inputFromHub 1")
 		fm.statsLock.Lock()
 		fm.stats.HubLastErrorMessage = err.Error()
 		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Second())
@@ -198,6 +199,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	}
 
 	// Update frontman statistics
+	logrus.Error("fm.statsLock.Lock inputFromHub 2")
 	fm.statsLock.Lock()
 	fm.stats.BytesFetchedFromHubTotal += uint64(len(body))
 	fm.stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
@@ -268,6 +270,7 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 
 	fm.updateInputChecks(inputFilePath)
 
+	logrus.Error("fm.checksLock.Lock RunOnce")
 	fm.checksLock.Lock()
 	fm.processInput(fm.checks, true, resultsChan)
 	fm.checksLock.Unlock()
@@ -368,6 +371,7 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 
 // appends new checks with unique UUID to input Check queue
 func (fm *Frontman) addUniqueChecks(new []Check) {
+	logrus.Error("fm.checksLock.Lock addUniqueChecks")
 	fm.checksLock.Lock()
 	defer fm.checksLock.Unlock()
 
@@ -399,7 +403,9 @@ func (fm *Frontman) hasCheckInQueue(uuid string) bool {
 
 // takes the oldest check from queue that is not in progress
 func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
+	logrus.Error("fm.checksLock.Lock takeNextCheckNotInProgress ", mutexLocked(&fm.checksLock))
 	fm.checksLock.Lock()
+	logrus.Error("fm.checksLock.Lock takeNextCheckNotInProgress AQUIRED")
 	defer fm.checksLock.Unlock()
 
 	if len(fm.checks) == 0 {
@@ -452,7 +458,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())
 
-			go func(check Check, results *chan Result, wg *sync.WaitGroup) {
+			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
 				wg.Add(1)
 				defer wg.Done()
 
@@ -461,11 +467,12 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 				fm.ipc.remove(check.uniqueID())
 
+				logrus.Error("fm.statsLock.Lock processInputContinuous")
 				fm.statsLock.Lock()
 				fm.stats.ChecksPerformedTotal++
 				fm.statsLock.Unlock()
 
-			}(currentCheck, resultsChan, &waitWg)
+			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
 		} else {
 			// queue is empty
 			sleepDuration = sleepDurationForEmptyQueue
@@ -489,6 +496,7 @@ func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan R
 	succeed := fm.runChecks(checks, resultsChan, local)
 	totChecks := len(checks)
 
+	logrus.Error("fm.statsLock.Lock processInput")
 	fm.statsLock.Lock()
 	fm.stats.ChecksPerformedTotal += uint64(totChecks)
 	fm.statsLock.Unlock()
