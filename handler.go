@@ -446,8 +446,8 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())
 
+			fm.TerminateQueue.Add(1)
 			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
-				fm.TerminateQueue.Add(1)
 				defer fm.TerminateQueue.Done()
 
 				res, _ := fm.runCheck(check, local)
@@ -496,8 +496,8 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 
 	succeed := int32(0)
 	for _, check := range checkList {
+		fm.TerminateQueue.Add(1)
 		go func(check Check, resultsChan *chan Result) {
-			fm.TerminateQueue.Add(1)
 			defer fm.TerminateQueue.Done()
 
 			res, err := fm.runCheck(check, local)

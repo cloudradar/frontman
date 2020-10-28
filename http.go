@@ -32,11 +32,16 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	var inputConfig Input
 	err := decoder.Decode(&inputConfig)
+
+	logrus.Errorf("xxxx processing %v", inputConfig)
+
 	if err != nil {
 		logrus.Errorf("json decode error: '%s'", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	logrus.Error("xxxx2")
 
 	// perform the checks, collect result and pass it back as json
 	resultsChan := make(chan Result, 100)
@@ -47,6 +52,8 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 	for elem := range resultsChan {
 		res = append(res, elem)
 	}
+
+	logrus.Errorf("xxxx res len %v", len(res))
 
 	enc, _ := json.Marshal(res)
 	_, _ = w.Write(enc)

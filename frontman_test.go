@@ -11,6 +11,7 @@ func helperCreateFrontman(t *testing.T, cfg *Config) *Frontman {
 	t.Helper()
 	fm, err := New(cfg, DefaultCfgPath, "1.2.3")
 	assert.Nil(t, err)
+	fm.ipc = newIPC()
 	return fm
 }
 
