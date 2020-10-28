@@ -82,7 +82,7 @@ type Config struct {
 
 	SenderInterval float64 `toml:"sender_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
 
-	SleepDurationAfterCheck float64 `toml:"sleep_duration_after_check" comment:"Time in seconds to sleep between each check being executed"`
+	SleepDurationAfterCheck float64 `toml:"sleep_duration_after_check" comment:"Time in seconds to sleep between each check being dispatched for execution"`
 	SleepDurationEmptyQueue float64 `toml:"sleep_duration_empty_queue" comment:"Time in seconds to sleep when the check queue is empty"`
 
 	HealthChecks HealthCheckConfig `toml:"health_checks" comment:"Frontman can verify a reliable internet uplink by pinging some reference hosts before each check round starts.\nPing all hosts of the list.\nOnly if frontman gets a positive answer form all of them, frontman continues.\nOtherwise, the entire check round is skipped. No data is sent back.\nFailed health checks are recorded to the log.\nOnly 0% packet loss is considered as a positive check result. Pings are performed in parallel.\nDisabled by default. Enable by declaring reference_ping_hosts targets\n"`
