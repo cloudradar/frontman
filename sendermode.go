@@ -164,13 +164,11 @@ func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
 func (fm *Frontman) pollResultsChan(interrupt chan struct{}, resultsChan *chan Result) {
 
 	for {
-		select {
-		case res, ok := <-*resultsChan:
-			if ok {
-				fm.resultsLock.Lock()
-				fm.results = append(fm.results, res)
-				fm.resultsLock.Unlock()
-			}
+		// chan polling is blocking until closed
+		for res := range *resultsChan {
+			fm.resultsLock.Lock()
+			fm.results = append(fm.results, res)
+			fm.resultsLock.Unlock()
 		}
 
 		select {
