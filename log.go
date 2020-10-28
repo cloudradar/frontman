@@ -151,14 +151,12 @@ type LogrusErrorHook struct {
 }
 
 func (h *LogrusErrorHook) Fire(entry *logrus.Entry) error {
-	/*
-		now := uint64(time.Now().Unix())
-		h.fm.statsLock.Lock()
-		h.fm.stats.InternalErrorsTotal++
-		h.fm.stats.InternalLastErrorMessage = entry.Message
-		h.fm.stats.InternalLastErrorTimestamp = now
-		h.fm.statsLock.Unlock()
-	*/
+	now := uint64(time.Now().Unix())
+	h.fm.statsLock.Lock()
+	h.fm.stats.InternalErrorsTotal++
+	h.fm.stats.InternalLastErrorMessage = entry.Message
+	h.fm.stats.InternalLastErrorTimestamp = now
+	h.fm.statsLock.Unlock()
 	return nil
 }
 
