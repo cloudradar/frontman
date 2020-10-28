@@ -241,6 +241,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		fm.hostInfoSent = true
 	}
 
+	go fm.pollResultsChan(interrupt, &resultsChan)
 	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
 	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
 	go fm.writeQueueStatsContinuous(interrupt)
@@ -268,7 +269,6 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 
 	fm.updateInputChecks(inputFilePath)
 
-	logrus.Error("fm.checksLock.Lock RunOnce")
 	fm.checksLock.Lock()
 	fm.processInput(fm.checks, true, resultsChan)
 	fm.checksLock.Unlock()
@@ -369,7 +369,6 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 
 // appends new checks with unique UUID to input Check queue
 func (fm *Frontman) addUniqueChecks(new []Check) {
-	logrus.Error("fm.checksLock.Lock addUniqueChecks")
 	fm.checksLock.Lock()
 	defer fm.checksLock.Unlock()
 

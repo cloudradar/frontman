@@ -19,7 +19,6 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 		return nil
 	}
 
-	logrus.Error("fm.offlineResultsLock.Lock postResultsToHub")
 	fm.offlineResultsLock.Lock()
 	defer fm.offlineResultsLock.Unlock()
 	fm.offlineResultsBuffer = append(fm.offlineResultsBuffer, results...)
@@ -162,17 +161,7 @@ func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
 	}
 }
 
-// sends results to hub continuously
-func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
-
-	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
-
-	sendResults := []Result{}
-
-	lastSentToHub := time.Unix(0, 0)
-
-	fm.TerminateQueue.Add(1)
-	defer fm.TerminateQueue.Done()
+func (fm *Frontman) pollResultsChan(interrupt chan struct{}, resultsChan *chan Result) {
 
 	for {
 		select {
@@ -184,6 +173,27 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 			}
 		}
 
+		select {
+		case <-interrupt:
+			logrus.Infof("pollResultsChan interrupt caught, returning")
+			return
+		case <-time.After(1 * time.Millisecond):
+			continue
+		}
+	}
+}
+
+// sends results to hub continuously
+func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
+
+	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
+	sendResults := []Result{}
+	lastSentToHub := time.Unix(0, 0)
+
+	fm.TerminateQueue.Add(1)
+	defer fm.TerminateQueue.Done()
+
+	for {
 		if time.Since(lastSentToHub) >= sendInterval {
 			lastSentToHub = time.Now()
 			fm.resultsLock.Lock()
@@ -229,7 +239,8 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 			}
 			fm.resultsLock.RUnlock()
 			return
-		default:
+		case <-time.After(50 * time.Millisecond):
+			continue
 		}
 	}
 }
