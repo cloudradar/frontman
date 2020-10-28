@@ -51,5 +51,7 @@ func TestFrontmanHubInput(t *testing.T) {
 	assert.Equal(t, true, fm.stats.CheckResultsSentToHub > 0)
 	fm.statsLock.Unlock()
 
-	assert.Equal(t, true, fm.ipc.len() > 0)
+	fm.ipc.mutex.Lock()
+	assert.Equal(t, true, len(fm.ipc.uuids) > 0)
+	fm.ipc.mutex.Unlock()
 }

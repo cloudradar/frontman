@@ -257,9 +257,6 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 
 // updates list of checks to execute from the hub
 func (fm *Frontman) updateInputChecks(inputFilePath string) {
-	fm.checksLock.Lock()
-	defer fm.checksLock.Unlock()
-
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
 
@@ -371,6 +368,9 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 
 // appends new checks with unique UUID to input Check queue
 func (fm *Frontman) addUniqueChecks(new []Check) {
+	fm.checksLock.Lock()
+	defer fm.checksLock.Unlock()
+
 	oldLen := len(fm.checks)
 	for _, c := range new {
 		uuid := c.uniqueID()
@@ -452,19 +452,20 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())
 
-			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
+			go func(check Check, results *chan Result, wg *sync.WaitGroup) {
 				wg.Add(1)
 				defer wg.Done()
 
 				res, _ := fm.runCheck(check, local)
-				inProgress.remove(check.uniqueID())
 				*results <- *res
+
+				fm.ipc.remove(check.uniqueID())
 
 				fm.statsLock.Lock()
 				fm.stats.ChecksPerformedTotal++
 				fm.statsLock.Unlock()
 
-			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
+			}(currentCheck, resultsChan, &waitWg)
 		} else {
 			// queue is empty
 			sleepDuration = sleepDurationForEmptyQueue

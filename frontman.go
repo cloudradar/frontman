@@ -37,9 +37,8 @@ type Frontman struct {
 
 	selfUpdater *selfupdate.Updater
 
-	hubClient     *http.Client
-	hubClientOnce sync.Once
-	hostInfoSent  bool
+	hubClient    *http.Client
+	hostInfoSent bool
 
 	// local cached results in case the hub is temporarily offline
 	offlineResultsBuffer []Result

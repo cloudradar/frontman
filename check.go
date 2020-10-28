@@ -85,12 +85,6 @@ type inProgressChecks struct {
 	uuids []string
 }
 
-func (ipc *inProgressChecks) len() int {
-	ipc.mutex.Lock()
-	defer ipc.mutex.Unlock()
-	return len(ipc.uuids)
-}
-
 func (ipc *inProgressChecks) add(uuid string) {
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()

@@ -122,7 +122,7 @@ func (fm *Frontman) sendResultsChanToFile(resultsChan *chan Result, outputFile *
 	return jsonEncoder.Encode(results)
 }
 
-// posts results to hub
+// posts results to hub, used by RunOnce
 func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	var results []Result
 	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(*resultsChan))
@@ -139,10 +139,6 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	fm.statsLock.Lock()
 	fm.stats.CheckResultsSentToHub += uint64(len(results))
 	fm.statsLock.Unlock()
-
-	fm.offlineResultsLock.Lock()
-	defer fm.offlineResultsLock.Unlock()
-	fm.offlineResultsBuffer = []Result{}
 
 	return nil
 }
@@ -225,12 +221,21 @@ func (fm *Frontman) writeQueueStats(resultsLen int) {
 		return
 	}
 
+	logrus.Errorf("writeQueueStats 1")
+	fm.ipc.mutex.Lock()
+	ipcLen := len(fm.ipc.uuids)
+	fm.ipc.mutex.Unlock()
+
 	fm.checksLock.Lock()
-	data, err := json.Marshal(map[string]int{
-		"checks_queue":       len(fm.checks),
-		"checks_in_progress": fm.ipc.len(),
-		"results_queue":      resultsLen})
+	checksLen := len(fm.checks)
 	fm.checksLock.Unlock()
+
+	logrus.Errorf("writeQueueStats 2")
+
+	data, err := json.Marshal(map[string]int{
+		"checks_queue":       checksLen,
+		"checks_in_progress": ipcLen,
+		"results_queue":      resultsLen})
 
 	if err != nil {
 		logrus.Error(err)
