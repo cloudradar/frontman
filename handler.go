@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -166,7 +165,6 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 			err = errors.Wrap(err, netErr.Error())
 		}
 
-		logrus.Error("fm.statsLock.Lock inputFromHub 1")
 		fm.statsLock.Lock()
 		fm.stats.HubLastErrorMessage = err.Error()
 		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Second())
@@ -199,7 +197,6 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	}
 
 	// Update frontman statistics
-	logrus.Error("fm.statsLock.Lock inputFromHub 2")
 	fm.statsLock.Lock()
 	fm.stats.BytesFetchedFromHubTotal += uint64(len(body))
 	fm.stats.ChecksFetchedFromHub += uint64(len(i.ServiceChecks)) + uint64(len(i.WebChecks)) + uint64(len(i.SNMPChecks))
@@ -403,19 +400,12 @@ func (fm *Frontman) hasCheckInQueue(uuid string) bool {
 
 // takes the oldest check from queue that is not in progress
 func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
-	logrus.Error("fm.checksLock.Lock takeNextCheckNotInProgress ", mutexLocked(&fm.checksLock))
-	fm.checksLock.Lock()
-	logrus.Error("fm.checksLock.Lock takeNextCheckNotInProgress AQUIRED")
-	defer fm.checksLock.Unlock()
-
-	if len(fm.checks) == 0 {
-		return nil, false
-	}
-
-	idx, ok := fm.ipc.getIndexOfFirstNotInProgress(fm.checks)
-	if ok {
+	if idx, ok := fm.getIndexOfFirstCheckNotInProgress(); ok {
+		fm.checksLock.Lock()
 		currentCheck := fm.checks[idx]
 		fm.checks = append(fm.checks[:idx], fm.checks[idx+1:]...)
+		fm.checksLock.Unlock()
+
 		return currentCheck, true
 	}
 	return nil, false
@@ -426,8 +416,6 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
-
-	waitWg := sync.WaitGroup{}
 
 	sleepDurationAfterEachCheck := time.Duration(fm.Config.SleepDurationAfterCheck * 1000000000)
 	sleepDurationForEmptyQueue := time.Duration(fm.Config.SleepDurationEmptyQueue * 1000000000)
@@ -458,30 +446,30 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())
 
-			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
-				wg.Add(1)
-				defer wg.Done()
+			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
+				fm.TerminateQueue.Add(1)
+				defer fm.TerminateQueue.Done()
 
 				res, _ := fm.runCheck(check, local)
 				*results <- *res
 
 				fm.ipc.remove(check.uniqueID())
 
-				logrus.Error("fm.statsLock.Lock processInputContinuous")
 				fm.statsLock.Lock()
 				fm.stats.ChecksPerformedTotal++
 				fm.statsLock.Unlock()
 
-			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
+			}(currentCheck, resultsChan, &fm.ipc)
 		} else {
 			// queue is empty
+			logrus.Info("processInputContinuous: check queue is empty")
 			sleepDuration = sleepDurationForEmptyQueue
 		}
 
 		select {
 		case <-interrupt:
 			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
-			waitWg.Wait()
+			fm.TerminateQueue.Wait()
 			return
 		case <-time.After(sleepDuration):
 			continue
@@ -496,7 +484,6 @@ func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan R
 	succeed := fm.runChecks(checks, resultsChan, local)
 	totChecks := len(checks)
 
-	logrus.Error("fm.statsLock.Lock processInput")
 	fm.statsLock.Lock()
 	fm.stats.ChecksPerformedTotal += uint64(totChecks)
 	fm.statsLock.Unlock()
@@ -506,13 +493,12 @@ func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan R
 
 // runs all checks in checkList and sends results to resultsChan
 func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local bool) int {
-	wg := &sync.WaitGroup{}
 
 	succeed := int32(0)
 	for _, check := range checkList {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, check Check, resultsChan *chan Result) {
-			defer wg.Done()
+		go func(check Check, resultsChan *chan Result) {
+			fm.TerminateQueue.Add(1)
+			defer fm.TerminateQueue.Done()
 
 			res, err := fm.runCheck(check, local)
 			if err == nil {
@@ -520,10 +506,10 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 			}
 
 			*resultsChan <- *res
-		}(wg, check, resultsChan)
+		}(check, resultsChan)
 	}
 
-	wg.Wait()
+	fm.TerminateQueue.Wait()
 
 	return int(succeed)
 }

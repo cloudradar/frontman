@@ -57,7 +57,7 @@ type Frontman struct {
 
 	// current checks queue
 	checks     []Check
-	checksLock sync.Mutex
+	checksLock sync.RWMutex
 
 	// in-progress checks
 	ipc inProgressChecks
@@ -83,6 +83,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		failedNodes:                 make(map[string]time.Time),
 		failedNodeCache:             make(map[string][]byte),
 		TerminateQueue:              sync.WaitGroup{},
+		ipc:                         newIPC(),
 	}
 
 	if rootCertsPath != "" {

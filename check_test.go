@@ -8,7 +8,7 @@ import (
 
 func TestInProgressChecks(t *testing.T) {
 
-	var ipc inProgressChecks
+	ipc := newIPC()
 
 	ipc.add("one")
 	ipc.add("two")

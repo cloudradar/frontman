@@ -2,7 +2,6 @@ package frontman
 
 import (
 	"encoding/json"
-	"reflect"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -80,54 +79,47 @@ type SNMPCheckData struct {
 	Unit      string `json:"unit,omitempty"`
 }
 
-func mutexLocked(m *sync.Mutex) bool {
-	const locked = 1
-	state := reflect.ValueOf(m).Elem().FieldByName("state")
-	return state.Int()&locked == locked
-}
-
 // used to keep track of in-progress checks being run
 type inProgressChecks struct {
-	mutex sync.Mutex
-	uuids []string
+	mutex sync.RWMutex
+	uuids map[string]bool
+}
+
+func newIPC() inProgressChecks {
+	return inProgressChecks{
+		uuids: make(map[string]bool),
+	}
 }
 
 func (ipc *inProgressChecks) add(uuid string) {
-	logrus.Error("fm.ipc.mutex.Lock add")
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
-	ipc.uuids = append(ipc.uuids, uuid)
+	ipc.uuids[uuid] = true
 }
 
 func (ipc *inProgressChecks) remove(uuid string) {
-	logrus.Error("fm.ipc.mutex.Lock remove")
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
-	for i, v := range ipc.uuids {
-		if v == uuid {
-			ipc.uuids = append(ipc.uuids[:i], ipc.uuids[i+1:]...)
-			return
-		}
-	}
-	logrus.Errorf("inProgressChecks.remove: %v not found. len is %v", uuid, len(ipc.uuids))
+	delete(ipc.uuids, uuid)
 }
 
 func (ipc *inProgressChecks) isInProgress(uuid string) bool {
-	logrus.Error("fm.ipc.mutex.Lock isInProgress")
-	ipc.mutex.Lock()
-	defer ipc.mutex.Unlock()
-	for _, v := range ipc.uuids {
-		if v == uuid {
-			return true
-		}
+	ipc.mutex.RLock()
+	defer ipc.mutex.RUnlock()
+
+	if b, ok := ipc.uuids[uuid]; ok && b {
+		return true
 	}
 	return false
 }
 
 // returns the slice index for the first check in `checks` that is not already in progress, false if none found
-func (ipc *inProgressChecks) getIndexOfFirstNotInProgress(checks []Check) (int, bool) {
-	for idx, c := range checks {
-		if !ipc.isInProgress(c.uniqueID()) {
+func (fm *Frontman) getIndexOfFirstCheckNotInProgress() (int, bool) {
+	fm.checksLock.RLock()
+	defer fm.checksLock.RUnlock()
+
+	for idx, c := range fm.checks {
+		if !fm.ipc.isInProgress(c.uniqueID()) {
 			return idx, true
 		}
 		logrus.Infof("Skipping request for check %v. Check still in progress.", c.uniqueID())
