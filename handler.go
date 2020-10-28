@@ -243,6 +243,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 
 	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
 	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
+	go fm.writeQueueStatsContinuous(interrupt)
 
 	for {
 		select {
@@ -462,7 +463,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			}(currentCheck, resultsChan, &fm.ipc)
 		} else {
 			// queue is empty
-			logrus.Info("processInputContinuous: check queue is empty")
+			logrus.Debug("processInputContinuous: check queue is empty")
 			sleepDuration = sleepDurationForEmptyQueue
 		}
 

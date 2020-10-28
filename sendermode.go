@@ -143,39 +143,58 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	return nil
 }
 
+func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
+	lastQueueStatsWrite := time.Unix(0, 0)
+	writeQueueStatsInterval := time.Millisecond * 200
+
+	for {
+		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
+			lastQueueStatsWrite = time.Now()
+			fm.writeQueueStats()
+		}
+
+		select {
+		case <-interrupt:
+			logrus.Infof("writeQueueStatsContinuous interrupt caught, returning")
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
 // sends results to hub continuously
 func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
-	writeQueueStatsInterval := time.Millisecond * 200
 
-	results := []Result{}
 	sendResults := []Result{}
 
 	lastSentToHub := time.Unix(0, 0)
-	lastQueueStatsWrite := time.Unix(0, 0)
 
 	fm.TerminateQueue.Add(1)
 	defer fm.TerminateQueue.Done()
 
 	for {
-		// XXX blocks on empty results!!!
 		select {
 		case res, ok := <-*resultsChan:
 			if ok {
-				results = append(results, res)
+				fm.resultsLock.Lock()
+				fm.results = append(fm.results, res)
+				fm.resultsLock.Unlock()
 			}
 		}
 
 		if time.Since(lastSentToHub) >= sendInterval {
 			lastSentToHub = time.Now()
-			if len(results) >= fm.Config.SenderBatchSize {
-				sendResults = results[0:fm.Config.SenderBatchSize]
-				results = results[fm.Config.SenderBatchSize:]
+			fm.resultsLock.Lock()
+			if len(fm.results) >= fm.Config.SenderBatchSize {
+				sendResults = fm.results[0:fm.Config.SenderBatchSize]
+				fm.results = fm.results[fm.Config.SenderBatchSize:]
 			} else {
-				sendResults = results
-				results = nil
+				sendResults = fm.results
+				fm.results = nil
 			}
+			fm.resultsLock.Unlock()
 
 			if len(sendResults) > 0 {
 				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
@@ -189,7 +208,9 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 					if err != nil {
 						if err == ErrorHubGeneral {
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
-							results = append(results, sendResults...)
+							fm.resultsLock.Lock()
+							fm.results = append(fm.results, sendResults...)
+							fm.resultsLock.Unlock()
 						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
 					}
@@ -199,30 +220,25 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 			}
 		}
 
-		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
-			lastQueueStatsWrite = time.Now()
-			fm.writeQueueStats(len(results))
-		}
-
 		select {
 		case <-interrupt:
-			logrus.Infof("sendResultsChanToHubQueue interrupt caught, should return. results %v", len(results))
-			if err := fm.postResultsToHub(results); err != nil {
+			fm.resultsLock.RLock()
+			logrus.Infof("sendResultsChanToHubQueue interrupt caught, should return. results %v", len(fm.results))
+			if err := fm.postResultsToHub(fm.results); err != nil {
 				logrus.Error(err)
 			}
-			fm.writeQueueStats(0)
+			fm.resultsLock.RUnlock()
 			return
 		default:
 		}
 	}
 }
 
-func (fm *Frontman) writeQueueStats(resultsLen int) {
+func (fm *Frontman) writeQueueStats() {
 	if fm.Config.QueueStatsFile == "" {
 		return
 	}
 
-	logrus.Error("writeQueueStats STARTED")
 	fm.ipc.mutex.RLock()
 	ipcLen := len(fm.ipc.uuids)
 	fm.ipc.mutex.RUnlock()
@@ -230,6 +246,10 @@ func (fm *Frontman) writeQueueStats(resultsLen int) {
 	fm.checksLock.RLock()
 	checksLen := len(fm.checks)
 	fm.checksLock.RUnlock()
+
+	fm.resultsLock.RLock()
+	resultsLen := len(fm.results)
+	fm.resultsLock.RUnlock()
 
 	data, err := json.Marshal(map[string]int{
 		"checks_queue":       checksLen,

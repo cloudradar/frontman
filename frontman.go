@@ -62,6 +62,10 @@ type Frontman struct {
 	// in-progress checks
 	ipc inProgressChecks
 
+	// completed check results to be sent to hub
+	results     []Result
+	resultsLock sync.RWMutex
+
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
 	previousSNMPPorterrorsMeasure []snmpPorterrorsMeasure
