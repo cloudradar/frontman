@@ -417,8 +417,8 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
 
-	sleepDurationAfterEachCheck := time.Duration(fm.Config.SleepDurationAfterCheck * 1000000000)
-	sleepDurationForEmptyQueue := time.Duration(fm.Config.SleepDurationEmptyQueue * 1000000000)
+	sleepDurationAfterEachCheck := secToDuration(fm.Config.SleepDurationAfterCheck)
+	sleepDurationForEmptyQueue := secToDuration(fm.Config.SleepDurationEmptyQueue)
 	sleepDuration := sleepDurationAfterEachCheck
 
 	for {

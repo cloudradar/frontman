@@ -222,7 +222,7 @@ func NewMinimumConfig() *MinValuableConfig {
 }
 
 func secToDuration(secs float64) time.Duration {
-	return time.Duration(int64(float64(time.Second) * secs))
+	return time.Duration(secs * 1000000000)
 }
 
 func (mvc *MinValuableConfig) applyEnv(force bool) {
