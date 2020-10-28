@@ -143,42 +143,29 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 }
 
 func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
-	lastQueueStatsWrite := time.Unix(0, 0)
 	writeQueueStatsInterval := time.Millisecond * 200
 
 	for {
-		if time.Since(lastQueueStatsWrite) >= writeQueueStatsInterval {
-			lastQueueStatsWrite = time.Now()
-			fm.writeQueueStats()
-		}
-
 		select {
 		case <-interrupt:
 			logrus.Infof("writeQueueStatsContinuous interrupt caught, returning")
 			return
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(writeQueueStatsInterval):
+			fm.writeQueueStats()
 		}
 	}
 }
 
 func (fm *Frontman) pollResultsChan(interrupt chan struct{}, resultsChan *chan Result) {
 
-	for {
-		// chan polling is blocking until closed
-		for res := range *resultsChan {
-			fm.resultsLock.Lock()
-			fm.results = append(fm.results, res)
-			fm.resultsLock.Unlock()
-		}
-
-		select {
-		case <-interrupt:
-			logrus.Infof("pollResultsChan interrupt caught, returning")
-			return
-		case <-time.After(1 * time.Millisecond):
-			continue
-		}
+	// chan polling is blocking until closed
+	for res := range *resultsChan {
+		fm.resultsLock.Lock()
+		fm.results = append(fm.results, res)
+		fm.resultsLock.Unlock()
 	}
+
+	logrus.Debugf("pollResultsChan resultsChan closed, returning")
 }
 
 // sends results to hub continuously
@@ -237,7 +224,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 			}
 			fm.resultsLock.RUnlock()
 			return
-		case <-time.After(50 * time.Millisecond):
+		case <-time.After(250 * time.Millisecond):
 			continue
 		}
 	}
