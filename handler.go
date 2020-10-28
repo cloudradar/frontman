@@ -417,6 +417,10 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 
 	waitWg := sync.WaitGroup{}
 
+	sleepDurationAfterEachCheck := time.Duration(fm.Config.SleepDurationAfterCheck * 1000000000)
+	sleepDurationForEmptyQueue := time.Duration(fm.Config.SleepDurationEmptyQueue * 1000000000)
+	sleepDuration := sleepDurationAfterEachCheck
+
 	for {
 		if err := fm.HealthCheck(); err != nil {
 			fm.HealthCheckPassedPreviously = false
@@ -439,6 +443,7 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 		}
 
 		if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
+			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())
 
 			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
@@ -454,6 +459,9 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 				fm.statsLock.Unlock()
 
 			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
+		} else {
+			// queue is empty
+			sleepDuration = sleepDurationForEmptyQueue
 		}
 
 		select {
@@ -461,7 +469,8 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
 			waitWg.Wait()
 			return
-		case <-time.After(40 * time.Millisecond):
+		case <-time.After(sleepDuration):
+			logrus.Infof("Slept for %v", sleepDuration)
 			continue
 		}
 	}
