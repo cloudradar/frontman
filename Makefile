@@ -39,9 +39,6 @@ clean:
 run:
 	$(GORUN) -v ./cmd/frontman/...
 
-vendor-install:
-	dep ensure -vendor-only
-
 goimports:
 	goimports -l $$(find . -type f -name '*.go' -not -path "./vendor/*")
 
