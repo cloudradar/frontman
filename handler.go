@@ -256,7 +256,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-// updates list of checks to execute from the hub
+// updates list of checks to execute from input file or the hub
 func (fm *Frontman) updateInputChecks(inputFilePath string) {
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
