@@ -272,7 +272,7 @@ func printOSSpecificWarnings() {
 	}
 	if runtime.GOOS == "linux" && !frontman.CheckIfRootlessICMPAvailable() && !frontman.CheckIfRawICMPAvailable() {
 		osNotice = `⚠️ In order to perform rootless ICMP Ping on Linux you need to run this command first:
-			sudo sysctl -w net.ipv4.ping_group_range="0   2147483647"`
+			sudo setcap cap_net_raw=+ep /usr/bin/frontman"`
 	}
 	if osNotice != "" {
 		// print to console without log formatting
