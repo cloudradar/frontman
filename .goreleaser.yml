@@ -112,10 +112,14 @@ nfpms:
         recommends:
         - ca-certificates
         - procps-ng
+        dependencies:
+        - libcap
         scripts:
           postinstall: "pkg-scripts/postinstall-rpm.sh"
           preremove: "pkg-scripts/preremove-rpm.sh"
-
+      deb:
+        dependencies:
+        - libcap2-bin
 release:
   github:
     owner: cloudradar-monitoring

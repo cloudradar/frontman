@@ -3,6 +3,10 @@
 CONFIG_PATH=/etc/frontman/frontman.conf
 
 if [ "$1" = configure ]; then
+
+    # give frontman icmp ping rights
+    setcap cap_net_raw=+ep /usr/bin/frontman
+
     # $2 contains previous version number
     if [ -z "$2" ]; then # fresh install
         /usr/bin/frontman -y -s frontman -c ${CONFIG_PATH}
