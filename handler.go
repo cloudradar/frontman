@@ -167,7 +167,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 
 		fm.statsLock.Lock()
 		fm.stats.HubLastErrorMessage = err.Error()
-		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Second())
+		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Unix())
 		fm.stats.HubErrorsTotal++
 		fm.statsLock.Unlock()
 		return nil, err

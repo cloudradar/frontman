@@ -56,5 +56,11 @@ func (fm *Frontman) HealthCheck() error {
 	if len(failedHosts) > 0 {
 		return fmt.Errorf("host(s) failed to respond to ICMP ping: %s", strings.Join(failedHosts, ", "))
 	}
+
+	fm.statsLock.Lock()
+	fm.stats.HealthChecksPerformed++
+	fm.stats.HealthChecksLastTimestamp = uint64(time.Now().Unix())
+	fm.statsLock.Unlock()
+
 	return nil
 }
