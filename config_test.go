@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/cloudradar-monitoring/toml"
 	"github.com/stretchr/testify/assert"
@@ -109,4 +110,8 @@ ignore_ssl_errors = true
 			t.Errorf("expected %+v, got %+v", *mvc, *loadedMVC)
 		}
 	})
+}
+
+func TestSecToDuration(t *testing.T) {
+	assert.Equal(t, 150*time.Millisecond, secToDuration(0.15))
 }

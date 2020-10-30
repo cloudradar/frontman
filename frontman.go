@@ -37,9 +37,8 @@ type Frontman struct {
 
 	selfUpdater *selfupdate.Updater
 
-	hubClient     *http.Client
-	hubClientOnce sync.Once
-	hostInfoSent  bool
+	hubClient    *http.Client
+	hostInfoSent bool
 
 	// local cached results in case the hub is temporarily offline
 	offlineResultsBuffer []Result
@@ -58,10 +57,14 @@ type Frontman struct {
 
 	// current checks queue
 	checks     []Check
-	checksLock sync.Mutex
+	checksLock sync.RWMutex
 
 	// in-progress checks
 	ipc inProgressChecks
+
+	// completed check results to be sent to hub
+	results     []Result
+	resultsLock sync.RWMutex
 
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
 	previousSNMPOidDeltaMeasure   []snmpOidDeltaMeasure
@@ -84,6 +87,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		failedNodes:                 make(map[string]time.Time),
 		failedNodeCache:             make(map[string][]byte),
 		TerminateQueue:              sync.WaitGroup{},
+		ipc:                         newIPC(),
 	}
 
 	if rootCertsPath != "" {

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -242,8 +241,10 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		fm.hostInfoSent = true
 	}
 
+	go fm.pollResultsChan(interrupt, &resultsChan)
 	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
 	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
+	go fm.writeQueueStatsContinuous(interrupt)
 
 	for {
 		select {
@@ -255,14 +256,12 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 }
 
-// updates list of checks to execute from the hub
+// updates list of checks to execute from input file or the hub
 func (fm *Frontman) updateInputChecks(inputFilePath string) {
-	fm.checksLock.Lock()
-	defer fm.checksLock.Unlock()
-
 	checks, err := fm.fetchInputChecks(inputFilePath)
 	fm.handleHubError(err)
-	fm.checks = addUniqueChecks(fm.checks, checks)
+
+	fm.addUniqueChecks(checks)
 }
 
 // RunOnce runs all checks once and send result to hub or file
@@ -369,21 +368,29 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 }
 
 // appends new checks with unique UUID to input Check queue
-func addUniqueChecks(input []Check, new []Check) []Check {
-	filtered := input
+func (fm *Frontman) addUniqueChecks(new []Check) {
+	fm.checksLock.Lock()
+	defer fm.checksLock.Unlock()
+
+	oldLen := len(fm.checks)
 	for _, c := range new {
-		if !hasCheck(input, c.uniqueID()) {
-			filtered = append(filtered, c)
-		} else {
-			logrus.Infof("Skipping request for check %v. Check is in queue.", c.uniqueID())
+		uuid := c.uniqueID()
+		if fm.hasCheckInQueue(uuid) {
+			logrus.Infof("Skipping request for check %v. Check is in queue.", uuid)
+			continue
 		}
+		if fm.ipc.isInProgress(uuid) {
+			logrus.Infof("Skipping request for check %v. Check still in progress.", uuid)
+			continue
+		}
+		fm.checks = append(fm.checks, c)
 	}
-	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", len(input), len(new), len(filtered))
-	return filtered
+	logrus.Debugf("addUniqueChecks: queue size %v, new %v, new queue size %v", oldLen, len(new), len(fm.checks))
 }
 
-func hasCheck(s []Check, uuid string) bool {
-	for _, v := range s {
+// returns true if uuid is currently in the check queue
+func (fm *Frontman) hasCheckInQueue(uuid string) bool {
+	for _, v := range fm.checks {
 		if v.uniqueID() == uuid {
 			return true
 		}
@@ -393,17 +400,12 @@ func hasCheck(s []Check, uuid string) bool {
 
 // takes the oldest check from queue that is not in progress
 func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
-	fm.checksLock.Lock()
-	defer fm.checksLock.Unlock()
-
-	if len(fm.checks) == 0 {
-		return nil, false
-	}
-
-	idx, ok := fm.ipc.getIndexOfFirstNotInProgress(fm.checks)
-	if ok {
+	if idx, ok := fm.getIndexOfFirstCheckNotInProgress(); ok {
+		fm.checksLock.Lock()
 		currentCheck := fm.checks[idx]
 		fm.checks = append(fm.checks[:idx], fm.checks[idx+1:]...)
+		fm.checksLock.Unlock()
+
 		return currentCheck, true
 	}
 	return nil, false
@@ -415,7 +417,9 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 	lastFetch := time.Unix(0, 0)
 	interval := secToDuration(fm.Config.Sleep)
 
-	waitWg := sync.WaitGroup{}
+	sleepDurationAfterEachCheck := secToDuration(fm.Config.SleepDurationAfterCheck)
+	sleepDurationForEmptyQueue := secToDuration(fm.Config.SleepDurationEmptyQueue)
+	sleepDuration := sleepDurationAfterEachCheck
 
 	for {
 		if err := fm.HealthCheck(); err != nil {
@@ -439,29 +443,35 @@ func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, int
 		}
 
 		if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
+			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())
 
-			go func(check Check, results *chan Result, inProgress *inProgressChecks, wg *sync.WaitGroup) {
-				wg.Add(1)
-				defer wg.Done()
+			fm.TerminateQueue.Add(1)
+			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
+				defer fm.TerminateQueue.Done()
 
 				res, _ := fm.runCheck(check, local)
-				inProgress.remove(check.uniqueID())
 				*results <- *res
+
+				fm.ipc.remove(check.uniqueID())
 
 				fm.statsLock.Lock()
 				fm.stats.ChecksPerformedTotal++
 				fm.statsLock.Unlock()
 
-			}(currentCheck, resultsChan, &fm.ipc, &waitWg)
+			}(currentCheck, resultsChan, &fm.ipc)
+		} else {
+			// queue is empty
+			logrus.Debug("processInputContinuous: check queue is empty")
+			sleepDuration = sleepDurationForEmptyQueue
 		}
 
 		select {
 		case <-interrupt:
 			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
-			waitWg.Wait()
+			fm.TerminateQueue.Wait()
 			return
-		case <-time.After(40 * time.Millisecond):
+		case <-time.After(sleepDuration):
 			continue
 		}
 	}
@@ -483,13 +493,12 @@ func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan R
 
 // runs all checks in checkList and sends results to resultsChan
 func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local bool) int {
-	wg := &sync.WaitGroup{}
 
 	succeed := int32(0)
 	for _, check := range checkList {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, check Check, resultsChan *chan Result) {
-			defer wg.Done()
+		fm.TerminateQueue.Add(1)
+		go func(check Check, resultsChan *chan Result) {
+			defer fm.TerminateQueue.Done()
 
 			res, err := fm.runCheck(check, local)
 			if err == nil {
@@ -497,10 +506,10 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 			}
 
 			*resultsChan <- *res
-		}(wg, check, resultsChan)
+		}(check, resultsChan)
 	}
 
-	wg.Wait()
+	fm.TerminateQueue.Wait()
 
 	return int(succeed)
 }

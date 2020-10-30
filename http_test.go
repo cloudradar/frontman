@@ -2,7 +2,6 @@ package frontman
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -46,10 +45,12 @@ func TestHttpCheckHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	data := rr.Body.Bytes()
+	assert.Equal(t, true, len(data) > 2)
+
 	var f interface{}
 	err = json.Unmarshal(data, &f)
 	assert.Equal(t, nil, err)
-	log.Println("data ", string(data))
+
 	dec1 := f.([]interface{})
 	dec := dec1[0].(map[string]interface{})
 	measurements := dec["measurements"].(map[string]interface{})

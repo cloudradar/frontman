@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -257,6 +258,7 @@ func main() {
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
 		close(interruptChan)
 		fm.TerminateQueue.Wait()
+		log.Infof("Stopped")
 		return
 	case <-doneChan:
 		return

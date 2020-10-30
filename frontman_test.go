@@ -11,6 +11,7 @@ func helperCreateFrontman(t *testing.T, cfg *Config) *Frontman {
 	t.Helper()
 	fm, err := New(cfg, DefaultCfgPath, "1.2.3")
 	assert.Nil(t, err)
+	fm.ipc = newIPC()
 	return fm
 }
 
@@ -25,9 +26,11 @@ func TestFrontmanHubInput(t *testing.T) {
 	cfg.LogLevel = "debug"
 	cfg.Sleep = 10          // delay between each round of checks
 	cfg.SenderBatchSize = 2 // number of results to send to hub at once
-	cfg.SenderInterval = 0.5
+	cfg.SenderInterval = 0
 	cfg.ICMPTimeout = 0.1
-	cfg.HTTPCheckTimeout = 1.0
+	cfg.HTTPCheckTimeout = 0.1
+	cfg.SleepDurationAfterCheck = 0
+	cfg.SleepDurationEmptyQueue = 0
 	cfg.Nodes = make(map[string]Node)
 
 	fm := helperCreateFrontman(t, cfg)
@@ -38,7 +41,7 @@ func TestFrontmanHubInput(t *testing.T) {
 	go fm.Run("", nil, interruptChan, resultsChan)
 
 	// stop after some time
-	time.Sleep(400 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	close(interruptChan)
 
 	fm.statsLock.Lock()
@@ -49,5 +52,7 @@ func TestFrontmanHubInput(t *testing.T) {
 	assert.Equal(t, true, fm.stats.CheckResultsSentToHub > 0)
 	fm.statsLock.Unlock()
 
-	assert.Equal(t, true, fm.ipc.len() > 0)
+	fm.ipc.mutex.RLock()
+	assert.Equal(t, true, len(fm.ipc.uuids) > 0)
+	fm.ipc.mutex.RUnlock()
 }
