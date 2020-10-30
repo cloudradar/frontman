@@ -114,7 +114,7 @@ func (fm *Frontman) startWritingStats() {
 
 	for {
 		buff.Reset()
-		time.Sleep(time.Minute * 1)
+		time.Sleep(time.Second * 30)
 
 		stats := fm.statsSnapshot()
 		stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
