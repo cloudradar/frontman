@@ -7,6 +7,7 @@ require (
 	github.com/cloudradar-monitoring/selfupdate v0.0.0-20200615195818-3bc6d247a637
 	github.com/cloudradar-monitoring/toml v0.4.3-0.20190904091934-b07890c4335d
 	github.com/go-ole/go-ole v1.2.4 // indirect
+	github.com/go-ping/ping v0.0.0-20201022122018-3977ed72668a
 	github.com/golang/mock v1.4.4 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/kardianos/service v1.0.1-0.20190514155156-fffe6c52ed0f

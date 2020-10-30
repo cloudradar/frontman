@@ -4,6 +4,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/go-ping/ping"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/icmp"
 )
@@ -32,7 +34,7 @@ func (fm *Frontman) runPing(addr string) (m map[string]interface{}, err error) {
 	prefix := "net.icmp.ping."
 	m = make(map[string]interface{})
 
-	pinger, err := NewPinger(addr)
+	pinger, err := ping.NewPinger(addr)
 	if err != nil {
 		return
 	}
@@ -47,15 +49,17 @@ func (fm *Frontman) runPing(addr string) (m map[string]interface{}, err error) {
 	pinger.Run()
 
 	var total time.Duration
-	for _, rtt := range pinger.rtts {
+
+	stats := pinger.Statistics()
+	for _, rtt := range stats.Rtts {
 		total += rtt
 	}
 
 	if pinger.PacketsSent > 0 {
 		m[prefix+"packetLoss_percent"] = float64(pinger.PacketsSent-pinger.PacketsRecv) / float64(pinger.PacketsSent) * 100
 	}
-	if (len(pinger.rtts)) > 0 {
-		m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(pinger.rtts))
+	if (len(stats.Rtts)) > 0 {
+		m[prefix+"roundTripTime_s"] = total.Seconds() / float64(len(stats.Rtts))
 	}
 	success := 0
 	if pinger.PacketsRecv > 0 {
