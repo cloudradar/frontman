@@ -100,12 +100,10 @@ func TestHttpCheckInvalidHost(t *testing.T) {
 	dec1 := f.([]interface{})
 	dec := dec1[0].(map[string]interface{})
 
-	// XXX crashes because val is nil
 	assert.NotEqual(t, nil, dec["measurements"])
 	measurements := dec["measurements"].(map[string]interface{})
 
-	assert.Equal(t, `Get "http://notfound.site.com/": dial tcp: lookup notfound.site.com: no such host`, dec["message"])
 	assert.Equal(t, "webCheck", dec["checkType"])
 	assert.Equal(t, "webcheck_broken", dec["checkUuid"])
-	assert.Equal(t, 0., measurements["http.head.success"])
+	assert.Equal(t, 0., measurements["http.get.success"])
 }

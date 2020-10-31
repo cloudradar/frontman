@@ -115,11 +115,12 @@ func (check WebCheck) uniqueID() string {
 func (check WebCheck) run(fm *Frontman) (*Result, error) {
 
 	res := &Result{
-		Node:      fm.Config.NodeName,
-		CheckType: "webCheck",
-		CheckUUID: check.UUID,
-		Check:     check.Check,
-		Timestamp: time.Now().Unix(),
+		Node:         fm.Config.NodeName,
+		CheckType:    "webCheck",
+		CheckUUID:    check.UUID,
+		Check:        check.Check,
+		Timestamp:    time.Now().Unix(),
+		Measurements: make(map[string]interface{}),
 	}
 
 	if check.UUID == "" {
@@ -133,8 +134,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	}
 
 	prefix := fmt.Sprintf("http.%s.", check.Check.Method)
-	m := make(map[string]interface{})
-	m[prefix+"success"] = 0
+	res.Measurements[prefix+"success"] = 0
 
 	// In case the webcheck disables redirect following we set maxRedirects to 0
 	maxRedirects := 0
@@ -168,7 +168,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 
 	startedConnectionAt := time.Now()
 	defer func() {
-		m[prefix+"totalTimeSpent_s"] = time.Since(startedConnectionAt).Seconds()
+		res.Measurements[prefix+"totalTimeSpent_s"] = time.Since(startedConnectionAt).Seconds()
 	}()
 
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -197,7 +197,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	var wroteRequestAt time.Time
 	trace := &httptrace.ClientTrace{
 		GotFirstResponseByte: func() {
-			m[prefix+"timeToFirstByte_s"] = time.Since(wroteRequestAt).Seconds()
+			res.Measurements[prefix+"timeToFirstByte_s"] = time.Since(wroteRequestAt).Seconds()
 		},
 	}
 
@@ -212,7 +212,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	defer resp.Body.Close()
 
 	// Set the httpStatusCode in case we got a response
-	m[prefix+"httpStatusCode"] = resp.StatusCode
+	res.Measurements[prefix+"httpStatusCode"] = resp.StatusCode
 
 	if check.Check.ExpectedHTTPStatus > 0 && resp.StatusCode != check.Check.ExpectedHTTPStatus {
 		return res, fmt.Errorf("bad status code. Expected %d, got %d", check.Check.ExpectedHTTPStatus, resp.StatusCode)
@@ -236,12 +236,12 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	}
 
 	bytesReceived := bodyReaderWithCounter.Count()
-	m[prefix+"bytesReceived"] = bytesReceived
+	res.Measurements[prefix+"bytesReceived"] = bytesReceived
 
 	secondsSinceRequestWasSent := time.Since(wroteRequestAt).Seconds()
 	if secondsSinceRequestWasSent > 0 {
 		// Measure download speed since the request sent
-		m[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / secondsSinceRequestWasSent)
+		res.Measurements[prefix+"downloadPerformance_bps"] = int64(float64(bytesReceived) / secondsSinceRequestWasSent)
 	}
 
 	if err != nil {
@@ -251,8 +251,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 		return res, err
 	}
 
-	m[prefix+"success"] = 1
-	res.Measurements = m
+	res.Measurements[prefix+"success"] = 1
 	return res, nil
 }
 
