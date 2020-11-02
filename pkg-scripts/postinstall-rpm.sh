@@ -28,7 +28,7 @@ else # package update
             /usr/bin/frontman -y -s frontman -c ${CONFIG_PATH}
             ;;
 
-        running|stopped)
+        *)
             # try to upgrade service unit config
 
             if [ "$serviceStatus" = running ]; then
@@ -44,11 +44,6 @@ else # package update
                 echo "starting service... "
                 /usr/bin/frontman -y -service_start -c ${CONFIG_PATH}
             fi
-            ;;
-
-        *)
-            echo "unknown service status. Exiting..."
-            exit 1
             ;;
     esac
 fi
