@@ -40,8 +40,7 @@ if [ "$1" = configure ]; then
                 ;;
 
             *)
-                echo "unknown service status. Exiting..."
-                exit 1
+                echo "service not running."
                 ;;
         esac
     fi

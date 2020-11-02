@@ -47,8 +47,7 @@ else # package update
             ;;
 
         *)
-            echo "unknown service status. Exiting..."
-            exit 1
+            echo "service not running."
             ;;
     esac
 fi
