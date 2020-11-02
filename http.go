@@ -40,6 +40,7 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// perform the checks, collect result and pass it back as json
+	logrus.Debugf("node checks recieved: %v", inputConfig)
 	resultsChan := make(chan Result, 100)
 	fm.processInput(inputConfig.asChecks(), false, &resultsChan)
 	close(resultsChan)
