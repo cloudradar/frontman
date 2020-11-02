@@ -167,7 +167,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 
 		fm.statsLock.Lock()
 		fm.stats.HubLastErrorMessage = err.Error()
-		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Second())
+		fm.stats.HubLastErrorTimestamp = uint64(time.Now().Unix())
 		fm.stats.HubErrorsTotal++
 		fm.statsLock.Unlock()
 		return nil, err
@@ -242,7 +242,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	}
 
 	go fm.pollResultsChan(interrupt, &resultsChan)
-	go fm.processInputContinuous(inputFilePath, true, interrupt, &resultsChan)
+	go fm.updateInputChecksContinuous(inputFilePath, interrupt)
+	go fm.processInputContinuous(true, interrupt, &resultsChan)
 	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
 	go fm.writeQueueStatsContinuous(interrupt)
 
@@ -411,37 +412,47 @@ func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
 	return nil, false
 }
 
-// local is false if check originated from a remote node
-func (fm *Frontman) processInputContinuous(inputFilePath string, local bool, interrupt chan struct{}, resultsChan *chan Result) {
+func (fm *Frontman) updateInputChecksContinuous(inputFilePath string, interrupt chan struct{}) {
+	sleepTime := secToDuration(fm.Config.Sleep)
+	interval := time.Duration(0)
 
-	lastFetch := time.Unix(0, 0)
-	interval := secToDuration(fm.Config.Sleep)
+	for {
+		select {
+		case <-interrupt:
+			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
+			fm.TerminateQueue.Wait()
+			return
+
+		case <-time.After(interval):
+			interval = sleepTime
+			if err := fm.HealthCheck(); err != nil {
+				fm.HealthCheckPassedPreviously = false
+				logrus.WithError(err).Errorln("⚠️ Health checks are not passed. Skipping other checks. ⚠️")
+				select {
+				case <-interrupt:
+					return
+				case <-time.After(secToDuration(fm.Config.Sleep)):
+					continue
+				}
+			} else if !fm.HealthCheckPassedPreviously {
+				fm.HealthCheckPassedPreviously = true
+				logrus.Infoln("All health checks are positive. Resuming normal operation.")
+			}
+
+			logrus.Infof("updateInputChecksContinuous running updateInputChecks")
+			fm.updateInputChecks(inputFilePath)
+		}
+	}
+}
+
+// local is false if check originated from a remote node
+func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, resultsChan *chan Result) {
 
 	sleepDurationAfterEachCheck := secToDuration(fm.Config.SleepDurationAfterCheck)
 	sleepDurationForEmptyQueue := secToDuration(fm.Config.SleepDurationEmptyQueue)
 	sleepDuration := sleepDurationAfterEachCheck
 
 	for {
-		if err := fm.HealthCheck(); err != nil {
-			fm.HealthCheckPassedPreviously = false
-			logrus.WithError(err).Errorln("Health checks are not passed. Skipping other checks.")
-			select {
-			case <-interrupt:
-				return
-			case <-time.After(secToDuration(fm.Config.Sleep)):
-				continue
-			}
-		} else if !fm.HealthCheckPassedPreviously {
-			fm.HealthCheckPassedPreviously = true
-			logrus.Infoln("All health checks are positive. Resuming normal operation.")
-		}
-
-		if time.Since(lastFetch) >= interval {
-			logrus.Infof("processInputContinuous running updateInputChecks")
-			lastFetch = time.Now()
-			go fm.updateInputChecks(inputFilePath)
-		}
-
 		if currentCheck, ok := fm.takeNextCheckNotInProgress(); ok {
 			sleepDuration = sleepDurationAfterEachCheck
 			fm.ipc.add(currentCheck.uniqueID())

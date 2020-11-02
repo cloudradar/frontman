@@ -114,7 +114,7 @@ func (fm *Frontman) startWritingStats() {
 
 	for {
 		buff.Reset()
-		time.Sleep(time.Minute * 1)
+		time.Sleep(time.Second * 30)
 
 		stats := fm.statsSnapshot()
 		stats.Uptime = uint64(time.Since(stats.StartedAt).Seconds())
@@ -151,11 +151,10 @@ type LogrusErrorHook struct {
 }
 
 func (h *LogrusErrorHook) Fire(entry *logrus.Entry) error {
-	now := uint64(time.Now().Unix())
 	h.fm.statsLock.Lock()
 	h.fm.stats.InternalErrorsTotal++
 	h.fm.stats.InternalLastErrorMessage = entry.Message
-	h.fm.stats.InternalLastErrorTimestamp = now
+	h.fm.stats.InternalLastErrorTimestamp = uint64(time.Now().Unix())
 	h.fm.statsLock.Unlock()
 	return nil
 }

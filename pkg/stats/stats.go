@@ -19,6 +19,9 @@ type FrontmanStats struct {
 	InternalLastErrorMessage   string
 	InternalLastErrorTimestamp uint64
 
+	HealthChecksPerformed     uint64
+	HealthChecksLastTimestamp uint64
+
 	Uptime    uint64
 	StartedAt time.Time `json:"-"` // Used to calculate Uptime
 }
