@@ -227,9 +227,10 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 				return res, nil
 			}
 		}
+
 		contentType := resp.Header.Get("Content-Type")
-		ct := strings.Split(contentType, "/")
-		if len(ct) >= 2 && ct[0] != "text" {
+		switch contentType {
+		case "application/octet-stream", "application/ogg", "application/pdf", "application/x-shockwave-flash", "application/zip":
 			res.Message = fmt.Sprintf("Content-Type is not readable as text (%s)", contentType)
 			return res, nil
 		}

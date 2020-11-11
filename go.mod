@@ -6,7 +6,6 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/cloudradar-monitoring/selfupdate v0.0.0-20200615195818-3bc6d247a637
 	github.com/cloudradar-monitoring/toml v0.4.3-0.20190904091934-b07890c4335d
-	github.com/davecgh/go-spew v1.1.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-ping/ping v0.0.0-20201022122018-3977ed72668a
 	github.com/golang/mock v1.4.4 // indirect
