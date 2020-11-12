@@ -22,7 +22,7 @@ fi
 PROJECT_NAME=github.com/cloudradar-monitoring/frontman
 PROJECT_DIR=/go/src/${PROJECT_NAME}
 WORK_DIR=/home/ci/buffer/${CIRCLE_BUILD_NUM}
-SIGN_MSI=false
+SIGN_MSI=true
 
 # create build dir structure
 ssh_ci mkdir -p ${WORK_DIR}/deb
