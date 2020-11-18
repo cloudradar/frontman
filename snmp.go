@@ -86,7 +86,7 @@ func (check SNMPCheck) run(fm *Frontman) (*Result, error) {
 		res.Measurements = m
 		return res, err
 	case <-time.After(serviceCheckEmergencyTimeout):
-		logrus.Errorf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
+		logrus.Debugf("snmpCheck: %s got unexpected timeout after %.0fs", check.UUID, serviceCheckEmergencyTimeout.Seconds())
 		return res, fmt.Errorf("got unexpected timeout")
 	}
 }
