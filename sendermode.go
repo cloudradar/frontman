@@ -97,7 +97,7 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
-		return ErrorHubGeneral
+		return ErrorHubGeneral{resp.StatusCode, resp.Status}
 	}
 
 	// in case of successful POST, we reset the offline buffer
@@ -201,7 +201,8 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 					fm.statsLock.Unlock()
 
 					if err != nil {
-						if err == ErrorHubGeneral {
+						switch err.(type) {
+						case ErrorHubGeneral:
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
 							fm.resultsLock.Lock()
 							fm.results = append(fm.results, sendResults...)
