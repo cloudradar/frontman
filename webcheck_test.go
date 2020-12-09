@@ -35,7 +35,9 @@ func TestWebCheck(t *testing.T) {
 func TestWebCheckHeaders(t *testing.T) {
 	// verifies that extra headers are being set in http requests
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
+
 		assert.Equal(t, "Basic dXNlcm5hbWU6cGFzc3dvcmQ=", r.Header.Get("Authorization"))
 		assert.Equal(t, "no-cache", r.Header.Get("Cache-Control"))
 	}))

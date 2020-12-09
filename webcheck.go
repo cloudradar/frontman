@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -216,6 +217,34 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 
 	if check.Check.ExpectedHTTPStatus > 0 && resp.StatusCode != check.Check.ExpectedHTTPStatus {
 		return res, fmt.Errorf("bad status code. Expected %d, got %d", check.Check.ExpectedHTTPStatus, resp.StatusCode)
+	}
+
+	if check.Check.Method != "HEAD" {
+		if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
+			length, err := strconv.ParseInt(contentLength, 10, 64)
+			if err == nil && length > 1_000_000 {
+				res.Message = fmt.Sprintf("Content-Length too large for checking (%d)", length)
+				return res, nil
+			}
+		}
+
+		contentType := resp.Header.Get("Content-Type")
+
+		ct := strings.Split(contentType, "/")
+		if len(ct) >= 2 && ct[0] != "text" {
+
+			switch ct[0] {
+			case "audio", "video", "image", "font":
+				res.Message = fmt.Sprintf("Content-Type is not readable as text (%s)", contentType)
+				return res, nil
+			}
+
+			switch contentType {
+			case "application/octet-stream", "application/ogg", "application/pdf", "application/x-shockwave-flash", "application/zip":
+				res.Message = fmt.Sprintf("Content-Type is not readable as text (%s)", contentType)
+				return res, nil
+			}
+		}
 	}
 
 	// wrap body reader with the ReadCloserCounter
