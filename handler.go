@@ -18,11 +18,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	ErrorMissingHubOrInput  = errors.New("Missing input file flag (-i) or hub_url param in config")
-	ErrorHubGeneral         = errors.New("Hub replied with a general error code")
-	ErrorHubTooManyRequests = errors.New("Hub replied with a 429 error code")
-)
+type ErrorHubTooManyRequests struct{}
+
+func (e ErrorHubTooManyRequests) Error() string {
+	return "Hub replied with a 429 error code"
+}
+
+type ErrorMissingHubOrInput struct{}
+
+func (e ErrorMissingHubOrInput) Error() string {
+	return "Missing input file flag (-i) or hub_url param in config"
+}
+
+type ErrorHubGeneral struct {
+	err  int
+	text string
+}
+
+func (e ErrorHubGeneral) Error() string {
+	return fmt.Sprintf("Hub replied with error %s", e.text)
+}
 
 // serviceCheckEmergencyTimeout used to protect from unhandled timeouts
 const serviceCheckEmergencyTimeout = time.Second * 30
@@ -178,10 +193,10 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("inputFromHub failed: hub replied with error %s", resp.Status)
 		if resp.StatusCode == http.StatusTooManyRequests {
-			return nil, ErrorHubTooManyRequests
+			return nil, ErrorHubTooManyRequests{}
 		}
 		if resp.StatusCode >= 400 {
-			return nil, ErrorHubGeneral
+			return nil, ErrorHubGeneral{resp.StatusCode, resp.Status}
 		}
 		return nil, errors.New(resp.Status)
 	}
@@ -289,26 +304,27 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 }
 
 func (fm *Frontman) handleHubError(err error) {
-	switch {
-	case err != nil && err == ErrorMissingHubOrInput:
+	switch err.(type) {
+	case ErrorMissingHubOrInput:
 		logrus.Warnln(err)
 		// This is necessary because MSI does not respect if service quits with status 0 but quickly.
 		// In other cases this delay doesn't matter, but also can be useful for polling config changes in a loop.
 		time.Sleep(10 * time.Second)
 		os.Exit(0)
-	case err != nil && err == ErrorHubGeneral:
+	case ErrorHubGeneral:
 		logrus.Warnln("ErrorHubGeneral", err)
 		// sleep until the next data submission is due
 		delay := secToDuration(fm.Config.Sleep)
 		logrus.Debugf("handleHubError sleeping for %v", delay)
 		time.Sleep(delay)
-	case err != nil && err == ErrorHubTooManyRequests:
+	case ErrorHubTooManyRequests:
 		logrus.Warnln(err)
 		// for error code 429, wait 10 seconds and try again
 		time.Sleep(10 * time.Second)
-	case err != nil:
-		logrus.Error(err)
+	case nil:
+		return
 	default:
+		logrus.Error(err)
 	}
 }
 
@@ -340,13 +356,14 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 	}
 
 	if fm.Config.HubURL == "" {
-		return nil, ErrorMissingHubOrInput
+		return nil, ErrorMissingHubOrInput{}
 	}
 
 	// in case input file not specified this means we should request HUB instead
 	input, err = fm.inputFromHub()
 	if err != nil {
-		if err == ErrorHubGeneral || err == ErrorHubTooManyRequests {
+		switch err.(type) {
+		case ErrorHubGeneral, ErrorHubTooManyRequests:
 			return nil, err
 		}
 		if fm.Config.HubUser != "" {
