@@ -373,11 +373,18 @@ func (fm *Frontman) addUniqueChecks(new []Check) {
 	fm.checksLock.Lock()
 	defer fm.checksLock.Unlock()
 
+	fm.resultsLock.RLock()
+	defer fm.resultsLock.RUnlock()
+
 	oldLen := len(fm.checks)
 	for _, c := range new {
 		uuid := c.uniqueID()
 		if fm.hasCheckInQueue(uuid) {
 			logrus.Infof("Skipping request for check %v. Check is in queue.", uuid)
+			continue
+		}
+		if fm.hasCheckInResultsQueue(uuid) {
+			logrus.Infof("Skipping request for check %v. Check is in results queue.", uuid)
 			continue
 		}
 		if fm.ipc.isInProgress(uuid) {
@@ -393,6 +400,16 @@ func (fm *Frontman) addUniqueChecks(new []Check) {
 func (fm *Frontman) hasCheckInQueue(uuid string) bool {
 	for _, v := range fm.checks {
 		if v.uniqueID() == uuid {
+			return true
+		}
+	}
+	return false
+}
+
+// returns true if uuid is currently in the results queue
+func (fm *Frontman) hasCheckInResultsQueue(uuid string) bool {
+	for _, v := range fm.results {
+		if v.CheckUUID == uuid {
 			return true
 		}
 	}
