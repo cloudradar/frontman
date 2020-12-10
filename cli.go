@@ -84,10 +84,10 @@ func (fm *Frontman) HandleServiceCommand(check, start, stop, restart bool) int {
 			fmt.Println("running")
 		case service.StatusStopped:
 			fmt.Println("stopped")
-		case service.StatusUnknown:
+		default:
+			// unknown, failed
 			fmt.Println("unknown")
 		}
-		return 0
 	}
 
 	if stop && (status == service.StatusRunning) {

@@ -10,7 +10,7 @@ require (
 	github.com/go-ping/ping v0.0.0-20201022122018-3977ed72668a
 	github.com/golang/mock v1.4.4 // indirect
 	github.com/gorilla/handlers v1.5.1
-	github.com/kardianos/service v1.0.1-0.20190514155156-fffe6c52ed0f
+	github.com/kardianos/service v1.2.0
 	github.com/lxn/walk v0.0.0-20190515104301-6cf0bf1359a5
 	github.com/lxn/win v0.0.0-20190514122436-6f00d814e89c
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
@@ -21,7 +21,7 @@ require (
 	github.com/soniah/gosnmp v1.21.1-0.20190510081145-1b12be15031c
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/net v0.0.0-20201029055024-942e2f445f3c
-	golang.org/x/sys v0.0.0-20201029080932-201ba4db2418
+	golang.org/x/sys v0.0.0-20201214095126-aec9a390925b
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ldap.v3 v3.0.3
