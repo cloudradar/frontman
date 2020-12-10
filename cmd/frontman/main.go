@@ -187,14 +187,12 @@ func main() {
 		return
 	}
 
-	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
-		(serviceInstallUserPtr == nil || len(*serviceInstallUserPtr) == 0) &&
-		!*serviceUninstallPtr {
-
-		if *serviceStatusPtr || *serviceStartPtr || *serviceStopPtr || *serviceRestartPtr {
-			exitCode = fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
-			return
-		}
+	if (serviceStatusPtr != nil && *serviceStatusPtr) ||
+		(serviceStartPtr != nil && *serviceStartPtr) ||
+		(serviceStopPtr != nil && *serviceStopPtr) ||
+		(serviceRestartPtr != nil && *serviceRestartPtr) {
+		exitCode = fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
+		return
 	}
 
 	if serviceUpgradePtr != nil && *serviceUpgradePtr {
