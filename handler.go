@@ -261,8 +261,6 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	for {
 		select {
 		case <-interrupt:
-			fm.TerminateQueue.Wait()
-			close(resultsChan)
 			return
 		case <-time.After(1000 * time.Millisecond):
 			continue
@@ -288,6 +286,8 @@ func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt
 	fm.checksLock.Unlock()
 
 	logrus.Debugf("RunOnce")
+
+	// close it so we can iterate it in sendResultsChanToFile and sendResultsChanToHub
 	close(*resultsChan)
 
 	var err error
@@ -452,6 +452,7 @@ func (fm *Frontman) updateInputChecksContinuous(inputFilePath string, interrupt 
 		select {
 		case <-interrupt:
 			logrus.Infof("updateInputChecksContinuous got interrupt, stopping")
+			fm.TerminateQueue.Wait()
 			return
 
 		case <-time.After(interval):

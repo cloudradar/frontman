@@ -405,24 +405,27 @@ type serviceWrapper struct {
 	Frontman      *Frontman
 	ResultsChan   chan Result
 	InterruptChan chan struct{}
-	DoneChan      chan struct{}
+	DoneChan      chan bool
 }
 
 func (sw *serviceWrapper) Start(s service.Service) error {
 	sw.ResultsChan = make(chan Result, 100)
 	sw.InterruptChan = make(chan struct{})
-	sw.DoneChan = make(chan struct{})
+	sw.DoneChan = make(chan bool)
 	go func() {
 		sw.Frontman.Run("", nil, sw.InterruptChan, sw.ResultsChan)
-		sw.DoneChan <- struct{}{}
+		sw.DoneChan <- true
 	}()
 
 	return nil
 }
 
 func (sw *serviceWrapper) Stop(s service.Service) error {
-	sw.InterruptChan <- struct{}{}
+
 	logrus.Println("Finishing the batch and stop the service...")
+	close(sw.InterruptChan)
+	sw.Frontman.TerminateQueue.Wait()
+
 	<-sw.DoneChan
 	return nil
 }
