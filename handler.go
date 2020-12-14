@@ -227,12 +227,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 
 	if fm.Config.Updates.Enabled {
 		fm.selfUpdater = selfupdate.StartChecking()
+		defer fm.selfUpdater.Shutdown()
 	}
-	defer func() {
-		if fm.selfUpdater != nil {
-			fm.selfUpdater.Shutdown()
-		}
-	}()
 
 	if !fm.hostInfoSent {
 		var err error

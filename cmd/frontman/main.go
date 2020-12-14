@@ -242,8 +242,8 @@ func main() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc,
 		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM)
+		syscall.SIGINT,  // ctrl-C
+		syscall.SIGTERM) // kill <pid>
 	doneChan := make(chan bool)
 	go func() {
 		fm.Run(*inputFilePtr, output, interruptChan, resultsChan)
