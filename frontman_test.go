@@ -22,7 +22,7 @@ func TestFrontmanHubInput(t *testing.T) {
 	cfg, err := HandleAllConfigSetup(DefaultCfgPath)
 	assert.Nil(t, err)
 
-	cfg.HubURL = hub.URL() + "/?serviceChecks=10&webChecks=10"
+	cfg.HubURL = hub.URL() + "/?serviceChecks=1&webChecks=1"
 	cfg.LogLevel = "debug"
 	cfg.Sleep = 10          // delay between each round of checks
 	cfg.SenderBatchSize = 2 // number of results to send to hub at once
@@ -48,7 +48,7 @@ func TestFrontmanHubInput(t *testing.T) {
 	assert.Equal(t, true, fm.stats.BytesSentToHubTotal > 0)
 	assert.Equal(t, true, fm.stats.BytesFetchedFromHubTotal > 0)
 	assert.Equal(t, true, fm.stats.ChecksPerformedTotal > 0)
-	assert.Equal(t, uint64(20), fm.stats.ChecksFetchedFromHub)
+	assert.Equal(t, uint64(2), fm.stats.ChecksFetchedFromHub)
 	assert.Equal(t, true, fm.stats.CheckResultsSentToHub > 0)
 	fm.statsLock.Unlock()
 

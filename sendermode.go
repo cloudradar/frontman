@@ -156,7 +156,7 @@ func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
 	}
 }
 
-func (fm *Frontman) pollResultsChan(interrupt chan struct{}, resultsChan *chan Result) {
+func (fm *Frontman) pollResultsChan(resultsChan *chan Result) {
 
 	// chan polling is blocking until closed
 	for res := range *resultsChan {
@@ -219,7 +219,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 		select {
 		case <-interrupt:
 			fm.resultsLock.RLock()
-			logrus.Infof("sendResultsChanToHubQueue interrupt caught, should return. results %v", len(fm.results))
+			logrus.Infof("sendResultsChanToHubQueue interrupt caught, posting last %d results", len(fm.results))
 			if err := fm.postResultsToHub(fm.results); err != nil {
 				logrus.Error(err)
 			}

@@ -252,7 +252,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		fm.hostInfoSent = true
 	}
 
-	go fm.pollResultsChan(interrupt, &resultsChan)
+	go fm.pollResultsChan(&resultsChan)
 	go fm.updateInputChecksContinuous(inputFilePath, interrupt)
 	go fm.processInputContinuous(true, interrupt, &resultsChan)
 	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
@@ -261,6 +261,8 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 	for {
 		select {
 		case <-interrupt:
+			fm.TerminateQueue.Wait()
+			close(resultsChan)
 			return
 		case <-time.After(1000 * time.Millisecond):
 			continue
@@ -449,8 +451,7 @@ func (fm *Frontman) updateInputChecksContinuous(inputFilePath string, interrupt 
 	for {
 		select {
 		case <-interrupt:
-			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
-			fm.TerminateQueue.Wait()
+			logrus.Infof("updateInputChecksContinuous got interrupt, stopping")
 			return
 
 		case <-time.After(interval):
@@ -509,8 +510,7 @@ func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, 
 
 		select {
 		case <-interrupt:
-			logrus.Infof("processInputContinuous got interrupt,waiting & stopping")
-			fm.TerminateQueue.Wait()
+			logrus.Infof("processInputContinuous got interrupt, stopping")
 			return
 		case <-time.After(sleepDuration):
 			continue
