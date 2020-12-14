@@ -127,6 +127,11 @@ func (fm *Frontman) configureAutomaticSelfUpdates() error {
 	if !fm.Config.Updates.Enabled {
 		return nil
 	}
+	if Version == "" {
+		logrus.Warn("skipping configureAutomaticSelfUpdates, Version is not set")
+		return nil
+	}
+
 	updatesConfig := selfupdate.DefaultConfig()
 	updatesConfig.AppName = "frontman"
 	updatesConfig.SigningCertificatedName = "cloudradar GmbH"
