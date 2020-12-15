@@ -239,8 +239,8 @@ func main() {
 
 	// nothing resulted in os.Exit
 	// so lets use the default continuous run mode and wait for interrupt
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan,
 		syscall.SIGHUP,
 		syscall.SIGINT,  // ctrl-C
 		syscall.SIGTERM) // kill <pid>
@@ -252,7 +252,7 @@ func main() {
 
 	//  Handle interrupts
 	select {
-	case sig := <-sigc:
+	case sig := <-signalChan:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
 		close(interruptChan)
 		fm.TerminateQueue.Wait()
@@ -292,9 +292,9 @@ func handleFlagSettings(fm *frontman.Frontman) {
 }
 
 func setDefaultLogFormatter() {
-	tfmt := log.TextFormatter{FullTimestamp: true}
+	textFormat := log.TextFormatter{FullTimestamp: true}
 	if runtime.GOOS == "windows" {
-		tfmt.DisableColors = true
+		textFormat.DisableColors = true
 	}
-	log.SetFormatter(&tfmt)
+	log.SetFormatter(&textFormat)
 }
