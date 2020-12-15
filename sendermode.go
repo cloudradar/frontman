@@ -111,10 +111,10 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	return nil
 }
 
-func (fm *Frontman) sendResultsChanToFile(resultsChan *chan Result, outputFile *os.File) error {
+func (fm *Frontman) sendResultsChanToFile(outputFile *os.File) error {
 	var results []Result
 	var jsonEncoder = json.NewEncoder(outputFile)
-	for res := range *resultsChan {
+	for res := range fm.resultsChan {
 		results = append(results, res)
 	}
 
@@ -122,11 +122,11 @@ func (fm *Frontman) sendResultsChanToFile(resultsChan *chan Result, outputFile *
 }
 
 // posts results to hub, used by RunOnce
-func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
+func (fm *Frontman) sendResultsChanToHub() error {
 	var results []Result
-	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(*resultsChan))
+	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(fm.resultsChan))
 
-	for res := range *resultsChan {
+	for res := range fm.resultsChan {
 		results = append(results, res)
 	}
 	logrus.Infof("sendResultsChanToHub posting. len %v", len(results))
@@ -142,12 +142,12 @@ func (fm *Frontman) sendResultsChanToHub(resultsChan *chan Result) error {
 	return nil
 }
 
-func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
+func (fm *Frontman) writeQueueStatsContinuous() {
 	writeQueueStatsInterval := time.Millisecond * 200
 
 	for {
 		select {
-		case <-interrupt:
+		case <-fm.InterruptChan:
 			logrus.Infof("writeQueueStatsContinuous interrupt caught, returning")
 			return
 		case <-time.After(writeQueueStatsInterval):
@@ -156,10 +156,10 @@ func (fm *Frontman) writeQueueStatsContinuous(interrupt chan struct{}) {
 	}
 }
 
-func (fm *Frontman) pollResultsChan(resultsChan *chan Result) {
+func (fm *Frontman) pollResultsChan() {
 
 	// chan polling is blocking until closed
-	for res := range *resultsChan {
+	for res := range fm.resultsChan {
 		fm.resultsLock.Lock()
 		fm.results = append(fm.results, res)
 		fm.resultsLock.Unlock()
@@ -169,7 +169,7 @@ func (fm *Frontman) pollResultsChan(resultsChan *chan Result) {
 }
 
 // sends results to hub continuously
-func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsChan *chan Result) {
+func (fm *Frontman) sendResultsChanToHubQueue() {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
 	sendResults := []Result{}
@@ -217,7 +217,7 @@ func (fm *Frontman) sendResultsChanToHubQueue(interrupt chan struct{}, resultsCh
 		}
 
 		select {
-		case <-interrupt:
+		case <-fm.InterruptChan:
 			fm.resultsLock.RLock()
 			logrus.Infof("sendResultsChanToHubQueue interrupt caught, posting last %d results", len(fm.results))
 			if err := fm.postResultsToHub(fm.results); err != nil {

@@ -221,7 +221,7 @@ func (fm *Frontman) inputFromHub() (*Input, error) {
 }
 
 // Run runs all checks continuously and sends result to hub or file
-func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan chan Result) {
+func (fm *Frontman) Run(inputFilePath string, outputFile *os.File) {
 
 	go fm.startWritingStats()
 
@@ -244,7 +244,7 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		}
 
 		// Send hostInfo as first result
-		resultsChan <- Result{
+		fm.resultsChan <- Result{
 			Measurements: hostInfo,
 			CheckType:    "hostInfo",
 			Timestamp:    time.Now().Unix(),
@@ -252,15 +252,15 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File, interrupt cha
 		fm.hostInfoSent = true
 	}
 
-	go fm.pollResultsChan(&resultsChan)
-	go fm.updateInputChecksContinuous(inputFilePath, interrupt)
-	go fm.processInputContinuous(true, interrupt, &resultsChan)
-	go fm.sendResultsChanToHubQueue(interrupt, &resultsChan)
-	go fm.writeQueueStatsContinuous(interrupt)
+	go fm.pollResultsChan()
+	go fm.updateInputChecksContinuous(inputFilePath)
+	go fm.processInputContinuous(true)
+	go fm.sendResultsChanToHubQueue()
+	go fm.writeQueueStatsContinuous()
 
 	for {
 		select {
-		case <-interrupt:
+		case <-fm.InterruptChan:
 			return
 		case <-time.After(1000 * time.Millisecond):
 			continue
@@ -277,25 +277,25 @@ func (fm *Frontman) updateInputChecks(inputFilePath string) {
 }
 
 // RunOnce runs all checks once and send result to hub or file
-func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File, interrupt chan struct{}, resultsChan *chan Result) error {
+func (fm *Frontman) RunOnce(inputFilePath string, outputFile *os.File) error {
 
 	fm.updateInputChecks(inputFilePath)
 
 	fm.checksLock.Lock()
-	fm.processInput(fm.checks, true, resultsChan)
+	fm.processInput(fm.checks, true)
 	fm.checksLock.Unlock()
 
 	logrus.Debugf("RunOnce")
 
 	// close it so we can iterate it in sendResultsChanToFile and sendResultsChanToHub
-	close(*resultsChan)
+	close(fm.resultsChan)
 
 	var err error
 	if outputFile != nil {
 		logrus.Debugf("sendResultsChanToFile")
-		err = fm.sendResultsChanToFile(resultsChan, outputFile)
+		err = fm.sendResultsChanToFile(outputFile)
 	} else {
-		err = fm.sendResultsChanToHub(resultsChan)
+		err = fm.sendResultsChanToHub()
 	}
 
 	return err
@@ -444,13 +444,13 @@ func (fm *Frontman) takeNextCheckNotInProgress() (Check, bool) {
 	return nil, false
 }
 
-func (fm *Frontman) updateInputChecksContinuous(inputFilePath string, interrupt chan struct{}) {
+func (fm *Frontman) updateInputChecksContinuous(inputFilePath string) {
 	sleepTime := secToDuration(fm.Config.Sleep)
 	interval := time.Duration(0)
 
 	for {
 		select {
-		case <-interrupt:
+		case <-fm.InterruptChan:
 			logrus.Infof("updateInputChecksContinuous got interrupt, stopping")
 			fm.TerminateQueue.Wait()
 			return
@@ -461,7 +461,7 @@ func (fm *Frontman) updateInputChecksContinuous(inputFilePath string, interrupt 
 				fm.HealthCheckPassedPreviously = false
 				logrus.WithError(err).Errorln("⚠️ Health checks are not passed. Skipping other checks. ⚠️")
 				select {
-				case <-interrupt:
+				case <-fm.InterruptChan:
 					return
 				case <-time.After(secToDuration(fm.Config.Sleep)):
 					continue
@@ -478,7 +478,7 @@ func (fm *Frontman) updateInputChecksContinuous(inputFilePath string, interrupt 
 }
 
 // local is false if check originated from a remote node
-func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, resultsChan *chan Result) {
+func (fm *Frontman) processInputContinuous(local bool) {
 
 	sleepDurationAfterEachCheck := secToDuration(fm.Config.SleepDurationAfterCheck)
 	sleepDurationForEmptyQueue := secToDuration(fm.Config.SleepDurationEmptyQueue)
@@ -490,11 +490,11 @@ func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, 
 			fm.ipc.add(currentCheck.uniqueID())
 
 			fm.TerminateQueue.Add(1)
-			go func(check Check, results *chan Result, inProgress *inProgressChecks) {
+			go func(check Check, inProgress *inProgressChecks) {
 				defer fm.TerminateQueue.Done()
 
 				res, _ := fm.runCheck(check, local)
-				*results <- *res
+				fm.resultsChan <- *res
 
 				fm.ipc.remove(check.uniqueID())
 
@@ -502,7 +502,7 @@ func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, 
 				fm.stats.ChecksPerformedTotal++
 				fm.statsLock.Unlock()
 
-			}(currentCheck, resultsChan, &fm.ipc)
+			}(currentCheck, &fm.ipc)
 		} else {
 			// queue is empty
 			logrus.Debug("processInputContinuous: check queue is empty")
@@ -510,7 +510,7 @@ func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, 
 		}
 
 		select {
-		case <-interrupt:
+		case <-fm.InterruptChan:
 			logrus.Infof("processInputContinuous got interrupt, stopping")
 			return
 		case <-time.After(sleepDuration):
@@ -521,9 +521,9 @@ func (fm *Frontman) processInputContinuous(local bool, interrupt chan struct{}, 
 
 // processInput processes the whole list of checks in input
 // local is false if check originated from a remote node
-func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan Result) {
+func (fm *Frontman) processInput(checks []Check, local bool) {
 	startedAt := time.Now()
-	succeed := fm.runChecks(checks, resultsChan, local)
+	succeed := fm.runChecks(checks, local)
 	totChecks := len(checks)
 
 	fm.statsLock.Lock()
@@ -534,12 +534,12 @@ func (fm *Frontman) processInput(checks []Check, local bool, resultsChan *chan R
 }
 
 // runs all checks in checkList and sends results to resultsChan
-func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local bool) int {
+func (fm *Frontman) runChecks(checkList []Check, local bool) int {
 
 	succeed := int32(0)
 	for _, check := range checkList {
 		fm.TerminateQueue.Add(1)
-		go func(check Check, resultsChan *chan Result) {
+		go func(check Check) {
 			defer fm.TerminateQueue.Done()
 
 			res, err := fm.runCheck(check, local)
@@ -547,8 +547,8 @@ func (fm *Frontman) runChecks(checkList []Check, resultsChan *chan Result, local
 				atomic.AddInt32(&succeed, 1)
 			}
 
-			*resultsChan <- *res
-		}(check, resultsChan)
+			fm.resultsChan <- *res
+		}(check)
 	}
 
 	fm.TerminateQueue.Wait()

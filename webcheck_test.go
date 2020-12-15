@@ -25,9 +25,8 @@ func TestWebCheck(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["http.get.success"])
 }
@@ -62,9 +61,8 @@ func TestWebCheckHeaders(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["http.get.success"])
 }
@@ -105,9 +103,8 @@ func TestWebCheckPresentTextSuccess(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["http.get.success"])
 }
@@ -131,9 +128,8 @@ func TestWebCheckPresentTextFail(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, "pattern expected to be present 'yahoo rules' not found in the extracted text", res.Message)
 }
 
@@ -156,9 +152,8 @@ func TestWebCheckAbsentTextSuccess(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["http.get.success"])
 }
@@ -182,8 +177,7 @@ func TestWebCheckAbsentTextFail(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, "pattern expected to be absent 'Google' found in the extracted text", res.Message)
 }

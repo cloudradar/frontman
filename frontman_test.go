@@ -35,14 +35,11 @@ func TestFrontmanHubInput(t *testing.T) {
 
 	fm := helperCreateFrontman(t, cfg)
 
-	resultsChan := make(chan Result, 100)
-	interruptChan := make(chan struct{})
-
-	go fm.Run("", nil, interruptChan, resultsChan)
+	go fm.Run("", nil)
 
 	// stop after some time
 	time.Sleep(200 * time.Millisecond)
-	close(interruptChan)
+	close(fm.InterruptChan)
 
 	fm.statsLock.Lock()
 	assert.Equal(t, true, fm.stats.BytesSentToHubTotal > 0)

@@ -215,12 +215,6 @@ func main() {
 		return
 	}
 
-	// in case HUB server will hang on response we will need a buffer to continue perform checks
-	resultsChan := make(chan frontman.Result, 100)
-
-	// setup interrupt handler
-	interruptChan := make(chan struct{})
-
 	if *inputFilePtr != "" && *outputFilePtr == "" {
 		fmt.Println("Output(-o) flag can be only used together with input(-i)")
 		exitCode = 1
@@ -233,7 +227,7 @@ func main() {
 	}
 
 	if *oneRunOnlyModePtr {
-		exitCode = fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output, interruptChan)
+		exitCode = fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output)
 		return
 	}
 
@@ -246,7 +240,7 @@ func main() {
 		syscall.SIGTERM) // kill <pid>
 	doneChan := make(chan bool)
 	go func() {
-		fm.Run(*inputFilePtr, output, interruptChan, resultsChan)
+		fm.Run(*inputFilePtr, output)
 		doneChan <- true
 	}()
 
@@ -254,7 +248,7 @@ func main() {
 	select {
 	case sig := <-signalChan:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
-		close(interruptChan)
+		close(fm.InterruptChan)
 		fm.TerminateQueue.Wait()
 		log.Infof("Stopped")
 		return
