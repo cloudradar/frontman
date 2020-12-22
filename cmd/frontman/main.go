@@ -238,10 +238,10 @@ func main() {
 		syscall.SIGHUP,
 		syscall.SIGINT,  // ctrl-C
 		syscall.SIGTERM) // kill <pid>
-	doneChan := make(chan bool)
+
 	go func() {
 		fm.Run(*inputFilePtr, output)
-		doneChan <- true
+		fm.DoneChan <- true
 	}()
 
 	//  Handle interrupts
@@ -252,7 +252,7 @@ func main() {
 		fm.TerminateQueue.Wait()
 		log.Infof("Stopped")
 		return
-	case <-doneChan:
+	case <-fm.DoneChan:
 		return
 	}
 }

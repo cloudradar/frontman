@@ -402,14 +402,12 @@ func getSystemMangerCommand(manager string, service string, command string) stri
 // in order to run Frontman under OS Service Manager
 type serviceWrapper struct {
 	Frontman *Frontman
-	DoneChan chan bool
 }
 
 func (sw *serviceWrapper) Start(s service.Service) error {
-	sw.DoneChan = make(chan bool)
 	go func() {
 		sw.Frontman.Run("", nil)
-		sw.DoneChan <- true
+		sw.Frontman.DoneChan <- true
 	}()
 
 	return nil
@@ -421,7 +419,7 @@ func (sw *serviceWrapper) Stop(s service.Service) error {
 	close(sw.Frontman.InterruptChan)
 	sw.Frontman.TerminateQueue.Wait()
 
-	<-sw.DoneChan
+	<-sw.Frontman.DoneChan
 	return nil
 }
 

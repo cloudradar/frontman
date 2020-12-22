@@ -78,6 +78,9 @@ type Frontman struct {
 
 	// interrupt handler, close it to shut down frontman
 	InterruptChan chan struct{}
+
+	// send true to signal completion
+	DoneChan chan bool
 }
 
 func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
@@ -97,6 +100,7 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		ipc:                         newIPC(),
 		resultsChan:                 make(chan Result, 100),
 		InterruptChan:               make(chan struct{}),
+		DoneChan:                    make(chan bool),
 	}
 
 	if rootCertsPath != "" {
