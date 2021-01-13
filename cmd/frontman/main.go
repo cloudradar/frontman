@@ -187,14 +187,12 @@ func main() {
 		return
 	}
 
-	if (serviceInstallPtr == nil || !*serviceInstallPtr) &&
-		(serviceInstallUserPtr == nil || len(*serviceInstallUserPtr) == 0) &&
-		!*serviceUninstallPtr {
-
-		if *serviceStatusPtr || *serviceStartPtr || *serviceStopPtr || *serviceRestartPtr {
-			exitCode = fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
-			return
-		}
+	if (serviceStatusPtr != nil && *serviceStatusPtr) ||
+		(serviceStartPtr != nil && *serviceStartPtr) ||
+		(serviceStopPtr != nil && *serviceStopPtr) ||
+		(serviceRestartPtr != nil && *serviceRestartPtr) {
+		exitCode = fm.HandleServiceCommand(*serviceStatusPtr, *serviceStartPtr, *serviceStopPtr, *serviceRestartPtr)
+		return
 	}
 
 	if serviceUpgradePtr != nil && *serviceUpgradePtr {
@@ -217,12 +215,6 @@ func main() {
 		return
 	}
 
-	// in case HUB server will hang on response we will need a buffer to continue perform checks
-	resultsChan := make(chan frontman.Result, 100)
-
-	// setup interrupt handler
-	interruptChan := make(chan struct{})
-
 	if *inputFilePtr != "" && *outputFilePtr == "" {
 		fmt.Println("Output(-o) flag can be only used together with input(-i)")
 		exitCode = 1
@@ -235,32 +227,32 @@ func main() {
 	}
 
 	if *oneRunOnlyModePtr {
-		exitCode = fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output, interruptChan)
+		exitCode = fm.HandleFlagOneRunOnlyMode(*inputFilePtr, output)
 		return
 	}
 
 	// nothing resulted in os.Exit
 	// so lets use the default continuous run mode and wait for interrupt
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan,
 		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM)
-	doneChan := make(chan bool)
+		syscall.SIGINT,  // ctrl-C
+		syscall.SIGTERM) // kill <pid>
+
 	go func() {
-		fm.Run(*inputFilePtr, output, interruptChan, resultsChan)
-		doneChan <- true
+		fm.Run(*inputFilePtr, output)
+		fm.DoneChan <- true
 	}()
 
 	//  Handle interrupts
 	select {
-	case sig := <-sigc:
+	case sig := <-signalChan:
 		log.Infof("Got %s signal. Finishing the batch and exit...", sig.String())
-		close(interruptChan)
+		close(fm.InterruptChan)
 		fm.TerminateQueue.Wait()
 		log.Infof("Stopped")
 		return
-	case <-doneChan:
+	case <-fm.DoneChan:
 		return
 	}
 }
@@ -294,9 +286,9 @@ func handleFlagSettings(fm *frontman.Frontman) {
 }
 
 func setDefaultLogFormatter() {
-	tfmt := log.TextFormatter{FullTimestamp: true}
+	textFormat := log.TextFormatter{FullTimestamp: true}
 	if runtime.GOOS == "windows" {
-		tfmt.DisableColors = true
+		textFormat.DisableColors = true
 	}
-	log.SetFormatter(&tfmt)
+	log.SetFormatter(&textFormat)
 }

@@ -21,9 +21,8 @@ func TestDNSUDPCheck(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["net.udp.dns.53.success"])
 }
@@ -43,9 +42,8 @@ func TestDNSTCPCheck(t *testing.T) {
 			},
 		}},
 	}
-	resultsChan := make(chan Result, 100)
-	fm.processInput(input.asChecks(), true, &resultsChan)
-	res := <-resultsChan
+	fm.processInput(input.asChecks(), true)
+	res := <-fm.resultsChan
 	require.Equal(t, nil, res.Message)
 	require.Equal(t, 1, res.Measurements["net.tcp.dns.53.success"])
 }

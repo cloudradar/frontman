@@ -63,7 +63,11 @@ type Frontman struct {
 	ipc inProgressChecks
 
 	// completed check results to be sent to hub
-	results     []Result
+	results []Result
+
+	// in case HUB server will hang on response we will need a buffer to continue perform checks
+	resultsChan chan Result
+
 	resultsLock sync.RWMutex
 
 	previousSNMPBandwidthMeasure  []snmpBandwidthMeasure
@@ -71,6 +75,12 @@ type Frontman struct {
 	previousSNMPPorterrorsMeasure []snmpPorterrorsMeasure
 
 	TerminateQueue sync.WaitGroup
+
+	// interrupt handler, close it to shut down frontman
+	InterruptChan chan struct{}
+
+	// send true to signal completion
+	DoneChan chan bool
 }
 
 func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
@@ -88,6 +98,9 @@ func New(cfg *Config, cfgPath, version string) (*Frontman, error) {
 		failedNodeCache:             make(map[string][]byte),
 		TerminateQueue:              sync.WaitGroup{},
 		ipc:                         newIPC(),
+		resultsChan:                 make(chan Result, 100),
+		InterruptChan:               make(chan struct{}),
+		DoneChan:                    make(chan bool),
 	}
 
 	if rootCertsPath != "" {

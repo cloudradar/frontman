@@ -84,10 +84,10 @@ func (fm *Frontman) HandleServiceCommand(check, start, stop, restart bool) int {
 			fmt.Println("running")
 		case service.StatusStopped:
 			fmt.Println("stopped")
-		case service.StatusUnknown:
+		default:
+			// unknown, failed
 			fmt.Println("unknown")
 		}
-		return 0
 	}
 
 	if stop && (status == service.StatusRunning) {
@@ -206,7 +206,7 @@ func (fm *Frontman) HandleFlagServiceInstall(systemManager service.System, usern
 }
 
 // returns error code
-func (fm *Frontman) HandleFlagOneRunOnlyMode(inputFile string, output *os.File, interruptChan chan struct{}) int {
+func (fm *Frontman) HandleFlagOneRunOnlyMode(inputFile string, output *os.File) int {
 
 	logrus.Debug("OneRunOnlyMode invoked (-r)")
 
@@ -220,8 +220,7 @@ func (fm *Frontman) HandleFlagOneRunOnlyMode(inputFile string, output *os.File, 
 		logrus.Infoln("All health checks are positive. Resuming normal operation.")
 	}
 
-	resultsChan := make(chan Result, 100)
-	err := fm.RunOnce(inputFile, output, interruptChan, &resultsChan)
+	err := fm.RunOnce(inputFile, output)
 	if err != nil {
 		fmt.Println(err)
 		return 1
@@ -402,28 +401,25 @@ func getSystemMangerCommand(manager string, service string, command string) stri
 // serviceWrapper provides context and methods that satisfies service.Interface
 // in order to run Frontman under OS Service Manager
 type serviceWrapper struct {
-	Frontman      *Frontman
-	ResultsChan   chan Result
-	InterruptChan chan struct{}
-	DoneChan      chan struct{}
+	Frontman *Frontman
 }
 
 func (sw *serviceWrapper) Start(s service.Service) error {
-	sw.ResultsChan = make(chan Result, 100)
-	sw.InterruptChan = make(chan struct{})
-	sw.DoneChan = make(chan struct{})
 	go func() {
-		sw.Frontman.Run("", nil, sw.InterruptChan, sw.ResultsChan)
-		sw.DoneChan <- struct{}{}
+		sw.Frontman.Run("", nil)
+		sw.Frontman.DoneChan <- true
 	}()
 
 	return nil
 }
 
 func (sw *serviceWrapper) Stop(s service.Service) error {
-	sw.InterruptChan <- struct{}{}
+
 	logrus.Println("Finishing the batch and stop the service...")
-	<-sw.DoneChan
+	close(sw.Frontman.InterruptChan)
+	sw.Frontman.TerminateQueue.Wait()
+
+	<-sw.Frontman.DoneChan
 	return nil
 }
 
