@@ -250,6 +250,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	data, err := ioutil.ReadAll(limitedReader)
 	if err != nil {
 		res.Message = fmt.Sprintf("got error while reading response body: %s", err.Error())
+		return res, nil
 	}
 
 	if check.Check.ExpectedPattern != "" {
