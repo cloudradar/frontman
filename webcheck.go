@@ -20,6 +20,8 @@ import (
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
 )
 
+const maxBodySize = 1_000_000
+
 func getTextFromHTML(data []byte) (text string) {
 	r := bytes.NewReader(data)
 	dom := html.NewTokenizer(r)
@@ -214,7 +216,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	if check.Check.Method != "HEAD" {
 		if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
 			length, err := strconv.ParseInt(contentLength, 10, 64)
-			if err == nil && length > 1_000_000 {
+			if err == nil && length > maxBodySize {
 				res.Message = fmt.Sprintf("Content-Length too large for checking (%d)", length)
 				return res, nil
 			}
@@ -239,23 +241,21 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 		}
 	}
 
-	// XXX limit body read ...
-
-	// wrap body reader with the ReadCloserCounter
-	//bodyReaderWithCounter := datacounters.NewReadCloserCounter(resp.Body)
-	//resp.Body = bodyReaderWithCounter
-
 	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip") {
 		// wrap body reader with gzip reader
 		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	limitedReader := http.MaxBytesReader(nil, resp.Body, maxBodySize)
+	data, err := ioutil.ReadAll(limitedReader)
+	if err != nil {
+		res.Message = fmt.Sprintf("got error while reading response body: %s", err.Error())
+	}
 
 	if check.Check.ExpectedPattern != "" {
 		err = checkBodyReaderMatchesPattern(data, check.Check.ExpectedPattern, check.Check.ExpectedPatternPresence, !check.Check.SearchHTMLSource)
 		if err != nil {
-			res.Message = fmt.Sprintf("got error while reading response body: %s", err.Error())
+			res.Message = err.Error()
 		}
 	}
 
