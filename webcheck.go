@@ -20,7 +20,7 @@ import (
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
 )
 
-const maxBodySize = 1_000_000
+const maxBodySize = 1 * 1024 * 1024
 
 func getTextFromHTML(data []byte) (text string) {
 	r := bytes.NewReader(data)
@@ -249,8 +249,11 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	limitedReader := http.MaxBytesReader(nil, resp.Body, maxBodySize)
 	data, err := ioutil.ReadAll(limitedReader)
 	if err != nil {
-		res.Message = fmt.Sprintf("got error while reading response body: %s", err.Error())
-		return res, nil
+		if err.Error() == "http: request body too large" {
+			res.Message = fmt.Sprintf("got error while reading full response body: http: request body exceeds the maximum of %dMB", maxBodySize/1024/1024)
+		} else {
+			res.Message = fmt.Sprintf("got error while reading response body: %s", err.Error())
+		}
 	}
 
 	if check.Check.ExpectedPattern != "" {
@@ -273,7 +276,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 		if ctx.Err() == context.DeadlineExceeded {
 			return res, fmt.Errorf("timeout exceeded")
 		}
-		return res, err
+		return res, nil
 	}
 
 	res.Measurements[prefix+"success"] = 1
