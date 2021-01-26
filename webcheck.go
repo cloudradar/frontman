@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -18,11 +17,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 
-	"github.com/cloudradar-monitoring/frontman/pkg/utils/datacounters"
 	"github.com/cloudradar-monitoring/frontman/pkg/utils/gzipreader"
 )
 
-func getTextFromHTML(r io.Reader) (text string) {
+const maxBodySize = 1 * 1024 * 1024
+
+func getTextFromHTML(data []byte) (text string) {
+	r := bytes.NewReader(data)
 	dom := html.NewTokenizer(r)
 	startToken := dom.Token()
 
@@ -78,9 +79,7 @@ func (fm *Frontman) newHTTPTransport(ignoreSSLErrors *bool) *http.Transport {
 	return t
 }
 
-func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPresence string, extractTextFromHTML bool) error {
-	var text []byte
-
+func checkBodyReaderMatchesPattern(data []byte, pattern string, expectedPresence string, extractTextFromHTML bool) error {
 	expectedPresence = strings.ToLower(expectedPresence)
 	if expectedPresence != "absent" {
 		expectedPresence = "present"
@@ -88,21 +87,16 @@ func checkBodyReaderMatchesPattern(reader io.Reader, pattern string, expectedPre
 
 	var whereSuffix string
 	if extractTextFromHTML {
-		text = []byte(getTextFromHTML(reader))
+		data = []byte(getTextFromHTML(data))
 		whereSuffix = "in the extracted text"
 	} else {
-		var err error
-		text, err = ioutil.ReadAll(reader)
-		if err != nil {
-			return fmt.Errorf("got error while reading response body: %s", err.Error())
-		}
 		whereSuffix = "in the raw HTML"
 	}
 
-	if expectedPresence == "present" && !bytes.Contains(text, []byte(pattern)) {
+	if expectedPresence == "present" && !bytes.Contains(data, []byte(pattern)) {
 		return fmt.Errorf("pattern expected to be present '%s' not found %s", pattern, whereSuffix)
 	}
-	if expectedPresence == "absent" && bytes.Contains(text, []byte(pattern)) {
+	if expectedPresence == "absent" && bytes.Contains(data, []byte(pattern)) {
 		return fmt.Errorf("pattern expected to be absent '%s' found %s", pattern, whereSuffix)
 	}
 
@@ -222,7 +216,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 	if check.Check.Method != "HEAD" {
 		if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
 			length, err := strconv.ParseInt(contentLength, 10, 64)
-			if err == nil && length > 1_000_000 {
+			if err == nil && length > maxBodySize {
 				res.Message = fmt.Sprintf("Content-Length too large for checking (%d)", length)
 				return res, nil
 			}
@@ -247,24 +241,29 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 		}
 	}
 
-	// wrap body reader with the ReadCloserCounter
-	bodyReaderWithCounter := datacounters.NewReadCloserCounter(resp.Body)
-	resp.Body = bodyReaderWithCounter
-
 	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip") {
 		// wrap body reader with gzip reader
 		resp.Body = &gzipreader.GzipReader{Reader: resp.Body}
 	}
 
-	if check.Check.ExpectedPattern != "" {
-		err = checkBodyReaderMatchesPattern(resp.Body, check.Check.ExpectedPattern, check.Check.ExpectedPatternPresence, !check.Check.SearchHTMLSource)
-	} else {
-		// we don't need the content itself because we don't need to check any pattern
-		// just read the reader, so bodyReaderWithCounter will be able to count bytes
-		_, err = ioutil.ReadAll(resp.Body)
+	limitedReader := http.MaxBytesReader(nil, resp.Body, maxBodySize)
+	data, err := ioutil.ReadAll(limitedReader)
+	if err != nil {
+		if err.Error() == "http: request body too large" {
+			res.Message = fmt.Sprintf("got error while reading full response body: http: request body exceeds the maximum of %dMB", maxBodySize/1024/1024)
+		} else {
+			res.Message = fmt.Sprintf("got error while reading response body: %s", err.Error())
+		}
 	}
 
-	bytesReceived := bodyReaderWithCounter.Count()
+	if check.Check.ExpectedPattern != "" {
+		err = checkBodyReaderMatchesPattern(data, check.Check.ExpectedPattern, check.Check.ExpectedPatternPresence, !check.Check.SearchHTMLSource)
+		if err != nil {
+			res.Message = err.Error()
+		}
+	}
+
+	bytesReceived := len(data)
 	res.Measurements[prefix+"bytesReceived"] = bytesReceived
 
 	secondsSinceRequestWasSent := time.Since(wroteRequestAt).Seconds()
@@ -277,7 +276,7 @@ func (check WebCheck) run(fm *Frontman) (*Result, error) {
 		if ctx.Err() == context.DeadlineExceeded {
 			return res, fmt.Errorf("timeout exceeded")
 		}
-		return res, err
+		return res, nil
 	}
 
 	res.Measurements[prefix+"success"] = 1
