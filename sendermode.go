@@ -175,9 +175,6 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 	sendResults := []Result{}
 	lastSentToHub := time.Unix(0, 0)
 
-	fm.TerminateQueue.Add(1)
-	defer fm.TerminateQueue.Done()
-
 	for {
 		if time.Since(lastSentToHub) >= sendInterval {
 			lastSentToHub = time.Now()
@@ -194,6 +191,9 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 			if len(sendResults) > 0 {
 				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
 				go func(r []Result) {
+					fm.TerminateQueue.Add(1)
+					defer fm.TerminateQueue.Done()
+
 					err := fm.postResultsToHub(r)
 
 					fm.statsLock.Lock()

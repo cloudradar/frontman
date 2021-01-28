@@ -124,7 +124,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 			continue
 		}
 		url.Path = path.Join(url.Path, "check")
-		logrus.Debug("asking node ", node.URL)
+		logrus.Debugf("askNodes asking %s (%s)", node.URL, check.uniqueID())
 
 		client := &http.Client{
 			Timeout: time.Duration(fm.Config.Node.NodeTimeout) * time.Second,
@@ -141,7 +141,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			logrus.Errorf("askNodes failed: %s", err.Error())
+			logrus.Errorf("askNodes failed: %s (%s)", err.Error(), check.uniqueID())
 			fm.markNodeFailure(&node, nil)
 		} else {
 			defer resp.Body.Close()
@@ -240,10 +240,10 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	var fastestResult []Result
 	if err := json.Unmarshal([]byte(nodeResults[resultID]), &fastestResult); err != nil {
-		logrus.Errorf("unmarshal of fastest node result '%v' failed: %v", nodeResults[resultID], err)
+		logrus.Errorf("askNodes unmarshal of fastest node result '%v' failed: %v", nodeResults[resultID], err)
 	}
 	if len(fastestResult) < 1 {
-		logrus.Warning("no results gathered from node")
+		logrus.Warning("askNodes no results gathered from node")
 		return
 	}
 
@@ -267,6 +267,8 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	}
 
 	(*res).Message = nodeMsg
+
+	logrus.Debug("askNodes succeess:", nodeMsg)
 
 	// combine the other measurments with the failing measurement
 	for idx := range nodeResults {
