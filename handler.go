@@ -505,7 +505,6 @@ func (fm *Frontman) processInputContinuous(local bool) {
 			}(currentCheck, &fm.ipc)
 		} else {
 			// queue is empty
-			logrus.Debug("processInputContinuous: check queue is empty")
 			sleepDuration = sleepDurationForEmptyQueue
 		}
 
