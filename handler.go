@@ -252,10 +252,14 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File) {
 		fm.hostInfoSent = true
 	}
 
-	go fm.pollResultsChan()
-	go fm.updateInputChecksContinuous(inputFilePath)
-	go fm.processInputContinuous(true)
-	go fm.sendResultsChanToHubQueue()
+	if fm.Config.HTTPListener.HTTPListen != "" {
+		logrus.Info("Running in node mode, no checks from hub will be processed")
+	} else {
+		go fm.updateInputChecksContinuous(inputFilePath)
+		go fm.processInputContinuous(true)
+		go fm.sendResultsChanToHubQueue()
+		go fm.pollResultsChan()
+	}
 	go fm.writeQueueStatsContinuous()
 
 	for {

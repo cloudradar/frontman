@@ -42,7 +42,6 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 	fm.resultsLock.Lock()
 
 	// perform the checks, collect result and pass it back as json
-	oldResults := fm.resultsChan
 	fm.resultsChan = make(chan Result, 100)
 	fm.processInput(inputConfig.asChecks(), false)
 
@@ -53,8 +52,6 @@ func (fm *Frontman) checkHandler(w http.ResponseWriter, req *http.Request) {
 	for elem := range fm.resultsChan {
 		res = append(res, elem)
 	}
-
-	fm.resultsChan = oldResults
 
 	fm.resultsLock.Unlock()
 
