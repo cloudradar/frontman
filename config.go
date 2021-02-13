@@ -212,6 +212,17 @@ func NewConfig() *Config {
 		Node: NodeConfig{
 			NodeTimeout:     3,
 			NodeCacheErrors: 10,
+			ForwardExcept: []string{
+				"bad status code",
+				"certificate.*(expire|unknown)",
+				"(tls|ssl) (error|failed|handshake)",
+				"service.*support (ssl|tls)",
+				"failed to verify .* service",
+				"connection.*refused",
+				"no such host",
+				"x509",
+				"pattern.*extraxcted text",
+			},
 		},
 	}
 	if runtime.GOOS == "windows" {

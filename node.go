@@ -142,7 +142,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			logrus.Errorf("askNodes failed: %s (%s)", err.Error(), check.uniqueID())
+			logrus.Debugf("askNodes failed: %s (%s)", err.Error(), check.uniqueID())
 			fm.markNodeFailure(&node, nil)
 		} else {
 			defer resp.Body.Close()
