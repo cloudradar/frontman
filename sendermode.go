@@ -191,26 +191,26 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 			if len(sendResults) > 0 {
 				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
 				fm.TerminateQueue.Add(1)
-				go func(r []Result) {
-					defer fm.TerminateQueue.Done()
+				go func(r []Result, frontman *Frontman) {
+					defer frontman.TerminateQueue.Done()
 
-					err := fm.postResultsToHub(r)
+					err := frontman.postResultsToHub(r)
 
-					fm.statsLock.Lock()
-					fm.stats.CheckResultsSentToHub += uint64(len(r))
-					fm.statsLock.Unlock()
+					frontman.statsLock.Lock()
+					frontman.stats.CheckResultsSentToHub += uint64(len(r))
+					frontman.statsLock.Unlock()
 
 					if err != nil {
 						switch err.(type) {
 						case ErrorHubGeneral:
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
-							fm.resultsLock.Lock()
-							fm.results = append(fm.results, sendResults...)
-							fm.resultsLock.Unlock()
+							frontman.resultsLock.Lock()
+							frontman.results = append(frontman.results, sendResults...)
+							frontman.resultsLock.Unlock()
 						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
 					}
-				}(sendResults)
+				}(sendResults, fm)
 			} else {
 				logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
 			}
