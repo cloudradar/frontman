@@ -205,7 +205,7 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 						case ErrorHubGeneral:
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
 							fm.resultsLock.Lock()
-							fm.results = append(fm.results, sendResults...)
+							fm.results = append(fm.results, r...)
 							fm.resultsLock.Unlock()
 						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
