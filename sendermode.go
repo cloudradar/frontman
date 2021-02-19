@@ -190,8 +190,8 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 
 			if len(sendResults) > 0 {
 				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
+				fm.TerminateQueue.Add(1)
 				go func(r []Result) {
-					fm.TerminateQueue.Add(1)
 					defer fm.TerminateQueue.Done()
 
 					err := fm.postResultsToHub(r)
