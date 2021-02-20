@@ -95,7 +95,7 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	secondsSpent := float64(time.Since(started) / time.Second)
+	secondsSpent := float64(time.Since(started)) / float64(time.Second)
 	logrus.Infof("Sent %d results to Hub.. Status %d. Spent %fs", len(fm.offlineResultsBuffer), resp.StatusCode, secondsSpent)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
@@ -175,7 +175,7 @@ func (fm *Frontman) pollResultsChan() {
 func (fm *Frontman) sendResultsChanToHubQueue() {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
-	sendResults := []Result{}
+	var sendResults []Result
 	lastSentToHub := time.Unix(0, 0)
 
 	for {
@@ -199,11 +199,11 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 
 					err := fm.postResultsToHub(r)
 
-					fm.statsLock.Lock()
-					fm.stats.CheckResultsSentToHub += uint64(len(r))
-					fm.statsLock.Unlock()
-
-					if err != nil {
+					if err == nil {
+						fm.statsLock.Lock()
+						fm.stats.CheckResultsSentToHub += uint64(len(r))
+						fm.statsLock.Unlock()
+					} else {
 						switch err.(type) {
 						case ErrorHubGeneral:
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
