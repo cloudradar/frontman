@@ -86,6 +86,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
+	started := time.Now()
+
 	resp, err := fm.hubClient.Do(req)
 	if err != nil {
 		return err
@@ -93,7 +95,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	logrus.Infof("Sent %d results to Hub.. Status %d", len(fm.offlineResultsBuffer), resp.StatusCode)
+	secondsSpent := float64(time.Since(started) / time.Second)
+	logrus.Infof("Sent %d results to Hub.. Status %d. Spent %fs", len(fm.offlineResultsBuffer), resp.StatusCode, secondsSpent)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
