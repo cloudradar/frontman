@@ -76,6 +76,9 @@ type Frontman struct {
 
 	TerminateQueue sync.WaitGroup
 
+	// current number of send result threads
+	senderThreads int64
+
 	// interrupt handler, close it to shut down frontman
 	InterruptChan chan struct{}
 

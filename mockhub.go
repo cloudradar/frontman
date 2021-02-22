@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type MockHub struct {
@@ -41,6 +42,9 @@ func (hub *MockHub) postHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// simulate slow hub
+	time.Sleep(500 * time.Millisecond)
 
 	log.Println("MockHub: got post data", string(data))
 }

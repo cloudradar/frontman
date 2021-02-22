@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -191,31 +192,39 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 			}
 			fm.resultsLock.Unlock()
 
-			if len(sendResults) > 0 {
-				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
-				fm.TerminateQueue.Add(1)
-				go func(r []Result) {
-					defer fm.TerminateQueue.Done()
+			currentSenders := int(atomic.LoadInt64(&fm.senderThreads))
+			if currentSenders < fm.Config.SenderThreadConcurrency {
+				if len(sendResults) > 0 {
+					logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
+					fm.TerminateQueue.Add(1)
+					// XXX atomic increase counter
+					atomic.AddInt64(&fm.senderThreads, 1)
+					go func(r []Result) {
+						defer fm.TerminateQueue.Done()
+						defer atomic.AddInt64(&fm.senderThreads, -1)
 
-					err := fm.postResultsToHub(r)
+						err := fm.postResultsToHub(r)
 
-					if err == nil {
-						fm.statsLock.Lock()
-						fm.stats.CheckResultsSentToHub += uint64(len(r))
-						fm.statsLock.Unlock()
-					} else {
-						switch err.(type) {
-						case ErrorHubGeneral:
-							// If the hub doesn't respond with 2XX, the results remain in the queue.
-							fm.resultsLock.Lock()
-							fm.results = append(fm.results, r...)
-							fm.resultsLock.Unlock()
+						if err == nil {
+							fm.statsLock.Lock()
+							fm.stats.CheckResultsSentToHub += uint64(len(r))
+							fm.statsLock.Unlock()
+						} else {
+							switch err.(type) {
+							case ErrorHubGeneral:
+								// If the hub doesn't respond with 2XX, the results remain in the queue.
+								fm.resultsLock.Lock()
+								fm.results = append(fm.results, r...)
+								fm.resultsLock.Unlock()
+							}
+							logrus.Errorf("postResultsToHub error: %s", err.Error())
 						}
-						logrus.Errorf("postResultsToHub error: %s", err.Error())
-					}
-				}(sendResults)
+					}(sendResults)
+				} else {
+					logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
+				}
 			} else {
-				logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
+				logrus.Debugf("Too many concurrent sender threads (%d)", currentSenders)
 			}
 		}
 
