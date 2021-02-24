@@ -10,7 +10,6 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type MockHub struct {
@@ -38,13 +37,16 @@ func (hub *MockHub) indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hub *MockHub) postHandler(w http.ResponseWriter, r *http.Request) {
+	// simulate reset content
+	//w.WriteHeader(205)
+
+	// simulate slow hub
+	//time.Sleep(500 * time.Millisecond)
+
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// simulate slow hub
-	time.Sleep(500 * time.Millisecond)
 
 	log.Println("MockHub: got post data", string(data))
 }

@@ -99,6 +99,10 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	secondsSpent := float64(time.Since(started)) / float64(time.Second)
 	logrus.Infof("Sent %d results to Hub.. Status %d. Spent %fs", len(fm.offlineResultsBuffer), resp.StatusCode, secondsSpent)
 
+	if resp.StatusCode == 205 {
+		logrus.Debugf("postResultsToHub hub returned 205")
+		return ErrorHubResetContent{}
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
 		return ErrorHubGeneral{resp.StatusCode, resp.Status}
@@ -197,7 +201,7 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 				if len(sendResults) > 0 {
 					logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
 					fm.TerminateQueue.Add(1)
-					// XXX atomic increase counter
+
 					atomic.AddInt64(&fm.senderThreads, 1)
 					go func(r []Result) {
 						defer fm.TerminateQueue.Done()
@@ -211,6 +215,12 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 							fm.statsLock.Unlock()
 						} else {
 							switch err.(type) {
+							case ErrorHubResetContent:
+								logrus.Debugf("result queue cleared")
+								fm.resultsLock.Lock()
+								fm.results = []Result{}
+								fm.resultsLock.Unlock()
+
 							case ErrorHubGeneral:
 								if !fm.Config.DiscardSenderQueueOnHTTPResponseError {
 									// If the hub doesn't respond with 2XX, the results remain in the queue.
