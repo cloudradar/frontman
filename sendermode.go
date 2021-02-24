@@ -218,6 +218,12 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 									fm.results = append(fm.results, r...)
 									fm.resultsLock.Unlock()
 								}
+							default:
+								if !fm.Config.DiscardSenderQueueOnHTTPConnectError {
+									fm.resultsLock.Lock()
+									fm.results = append(fm.results, r...)
+									fm.resultsLock.Unlock()
+								}
 							}
 							logrus.Errorf("postResultsToHub error: %s", err.Error())
 						}
