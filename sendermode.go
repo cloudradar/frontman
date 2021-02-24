@@ -166,10 +166,18 @@ func (fm *Frontman) writeQueueStatsContinuous() {
 
 func (fm *Frontman) pollResultsChan() {
 
-	// chan polling is blocking until closed
+	// chan polling forever until closed
 	for res := range fm.resultsChan {
 		fm.resultsLock.Lock()
 		fm.results = append(fm.results, res)
+
+		// drop oldest results from queue if size is over threshold
+		if len(fm.results) > fm.Config.MaxUnsentQueueSize && (fm.Config.DiscardSenderQueueOnHTTPConnectError && fm.Config.DiscardSenderQueueOnHTTPResponseError) {
+			idx := len(fm.results) - fm.Config.MaxUnsentQueueSize
+			fm.results = fm.results[idx:len(fm.results)]
+			logrus.Debugf("Result queue trimmed to %d", len(fm.results))
+		}
+
 		fm.resultsLock.Unlock()
 	}
 
