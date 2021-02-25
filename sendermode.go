@@ -170,18 +170,28 @@ func (fm *Frontman) pollResultsChan() {
 	for res := range fm.resultsChan {
 		fm.resultsLock.Lock()
 		fm.results = append(fm.results, res)
-
-		// drop oldest results from queue if size is over threshold
-		if len(fm.results) > fm.Config.MaxUnsentQueueSize && (fm.Config.DiscardSenderQueueOnHTTPConnectError && fm.Config.DiscardSenderQueueOnHTTPResponseError) {
-			idx := len(fm.results) - fm.Config.MaxUnsentQueueSize
-			fm.results = fm.results[idx:len(fm.results)]
-			logrus.Debugf("Result queue trimmed to %d", len(fm.results))
-		}
-
 		fm.resultsLock.Unlock()
 	}
 
 	logrus.Debugf("pollResultsChan resultsChan closed, returning")
+}
+
+// expire results who is past TTL
+func (fm *Frontman) expireOldResults() {
+	ttlDuration := time.Duration(fm.Config.CheckResultsTTL) * time.Second
+
+	fm.resultsLock.Lock()
+	currentResults := []Result{}
+	for _, result := range fm.results {
+		since := time.Since(time.Unix(result.Timestamp, 0))
+		if since <= ttlDuration {
+			currentResults = append(currentResults, result)
+		} else {
+			logrus.Debugf("result %s is %v old, expiring", result.CheckUUID, since)
+		}
+	}
+	fm.results = currentResults
+	fm.resultsLock.Unlock()
 }
 
 // sends results to hub continuously
@@ -194,6 +204,9 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 	for {
 		if time.Since(lastSentToHub) >= sendInterval {
 			lastSentToHub = time.Now()
+
+			fm.expireOldResults()
+
 			fm.resultsLock.Lock()
 			if len(fm.results) >= fm.Config.SenderBatchSize {
 				sendResults = fm.results[0:fm.Config.SenderBatchSize]
@@ -230,14 +243,14 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 								fm.resultsLock.Unlock()
 
 							case ErrorHubGeneral:
-								if !fm.Config.DiscardSenderQueueOnHTTPResponseError {
+								if !fm.Config.DiscardOnHTTPResponseError {
 									// If the hub doesn't respond with 2XX, the results remain in the queue.
 									fm.resultsLock.Lock()
 									fm.results = append(fm.results, r...)
 									fm.resultsLock.Unlock()
 								}
 							default:
-								if !fm.Config.DiscardSenderQueueOnHTTPConnectError {
+								if !fm.Config.DiscardOnHTTPConnectError {
 									fm.resultsLock.Lock()
 									fm.results = append(fm.results, r...)
 									fm.resultsLock.Unlock()
