@@ -252,10 +252,14 @@ func (fm *Frontman) Run(inputFilePath string, outputFile *os.File) {
 		fm.hostInfoSent = true
 	}
 
-	go fm.pollResultsChan()
-	go fm.updateInputChecksContinuous(inputFilePath)
-	go fm.processInputContinuous(true)
-	go fm.sendResultsChanToHubQueue()
+	if fm.Config.HTTPListener.HTTPListen != "" {
+		logrus.Info("Running in node mode, no checks from hub will be processed")
+	} else {
+		go fm.updateInputChecksContinuous(inputFilePath)
+		go fm.processInputContinuous(true)
+		go fm.sendResultsChanToHubQueue()
+		go fm.pollResultsChan()
+	}
 	go fm.writeQueueStatsContinuous()
 
 	for {
@@ -490,7 +494,7 @@ func (fm *Frontman) processInputContinuous(local bool) {
 			fm.ipc.add(currentCheck.uniqueID())
 
 			fm.TerminateQueue.Add(1)
-			go func(check Check, inProgress *inProgressChecks) {
+			go func(check Check) {
 				defer fm.TerminateQueue.Done()
 
 				res, _ := fm.runCheck(check, local)
@@ -502,7 +506,7 @@ func (fm *Frontman) processInputContinuous(local bool) {
 				fm.stats.ChecksPerformedTotal++
 				fm.statsLock.Unlock()
 
-			}(currentCheck, &fm.ipc)
+			}(currentCheck)
 		} else {
 			// queue is empty
 			sleepDuration = sleepDurationForEmptyQueue

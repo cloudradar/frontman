@@ -107,7 +107,8 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 	var failedNodes []string
 	failedNodeMessage := make(map[string]string)
 
-	for _, node := range fm.Config.Nodes {
+	for i := range fm.Config.Nodes {
+		node := fm.Config.Nodes[i]
 		if fm.nodeRecentlyFailed(&node) {
 			logrus.Warnf("Skipping recently failed node %s", node.URL)
 			failedNodes = append(failedNodes, node.URL)
@@ -158,7 +159,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	if len(nodeResults) == 0 {
 		// all nodes failed, use original measure
-		logrus.Errorf("askNodes received no successful results")
+		logrus.Errorf("askNodes received no successful results (%s)", check.uniqueID())
 		return
 	}
 

@@ -86,6 +86,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 		req.SetBasicAuth(fm.Config.HubUser, fm.Config.HubPassword)
 	}
 
+	started := time.Now()
+
 	resp, err := fm.hubClient.Do(req)
 	if err != nil {
 		return err
@@ -93,7 +95,8 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 
 	defer resp.Body.Close()
 
-	logrus.Infof("Sent %d results to Hub.. Status %d", len(fm.offlineResultsBuffer), resp.StatusCode)
+	secondsSpent := float64(time.Since(started)) / float64(time.Second)
+	logrus.Infof("Sent %d results to Hub.. Status %d. Spent %fs", len(fm.offlineResultsBuffer), resp.StatusCode, secondsSpent)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
@@ -172,7 +175,7 @@ func (fm *Frontman) pollResultsChan() {
 func (fm *Frontman) sendResultsChanToHubQueue() {
 
 	sendInterval := secToDuration(float64(fm.Config.SenderInterval))
-	sendResults := []Result{}
+	var sendResults []Result
 	lastSentToHub := time.Unix(0, 0)
 
 	for {
@@ -190,22 +193,22 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 
 			if len(sendResults) > 0 {
 				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
+				fm.TerminateQueue.Add(1)
 				go func(r []Result) {
-					fm.TerminateQueue.Add(1)
 					defer fm.TerminateQueue.Done()
 
 					err := fm.postResultsToHub(r)
 
-					fm.statsLock.Lock()
-					fm.stats.CheckResultsSentToHub += uint64(len(r))
-					fm.statsLock.Unlock()
-
-					if err != nil {
+					if err == nil {
+						fm.statsLock.Lock()
+						fm.stats.CheckResultsSentToHub += uint64(len(r))
+						fm.statsLock.Unlock()
+					} else {
 						switch err.(type) {
 						case ErrorHubGeneral:
 							// If the hub doesn't respond with 2XX, the results remain in the queue.
 							fm.resultsLock.Lock()
-							fm.results = append(fm.results, sendResults...)
+							fm.results = append(fm.results, r...)
 							fm.resultsLock.Unlock()
 						}
 						logrus.Errorf("postResultsToHub error: %s", err.Error())
