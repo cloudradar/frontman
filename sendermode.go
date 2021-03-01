@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -98,6 +99,10 @@ func (fm *Frontman) postResultsToHub(results []Result) error {
 	secondsSpent := float64(time.Since(started)) / float64(time.Second)
 	logrus.Infof("Sent %d results to Hub.. Status %d. Spent %fs", len(fm.offlineResultsBuffer), resp.StatusCode, secondsSpent)
 
+	if resp.StatusCode == 205 {
+		logrus.Debugf("postResultsToHub hub returned 205")
+		return ErrorHubResetContent{}
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		logrus.Debugf("postResultsToHub failed with %v", resp.Status)
 		return ErrorHubGeneral{resp.StatusCode, resp.Status}
@@ -161,7 +166,7 @@ func (fm *Frontman) writeQueueStatsContinuous() {
 
 func (fm *Frontman) pollResultsChan() {
 
-	// chan polling is blocking until closed
+	// chan polling forever until closed
 	for res := range fm.resultsChan {
 		fm.resultsLock.Lock()
 		fm.results = append(fm.results, res)
@@ -169,6 +174,24 @@ func (fm *Frontman) pollResultsChan() {
 	}
 
 	logrus.Debugf("pollResultsChan resultsChan closed, returning")
+}
+
+// expire results who is past TTL
+func (fm *Frontman) expireOldResults() {
+	ttlDuration := time.Duration(fm.Config.CheckResultsTTL) * time.Second
+
+	fm.resultsLock.Lock()
+	currentResults := []Result{}
+	for _, result := range fm.results {
+		since := time.Since(time.Unix(result.Timestamp, 0))
+		if since <= ttlDuration {
+			currentResults = append(currentResults, result)
+		} else {
+			logrus.Debugf("result %s is %v old, expiring", result.CheckUUID, since)
+		}
+	}
+	fm.results = currentResults
+	fm.resultsLock.Unlock()
 }
 
 // sends results to hub continuously
@@ -181,6 +204,9 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 	for {
 		if time.Since(lastSentToHub) >= sendInterval {
 			lastSentToHub = time.Now()
+
+			fm.expireOldResults()
+
 			fm.resultsLock.Lock()
 			if len(fm.results) >= fm.Config.SenderBatchSize {
 				sendResults = fm.results[0:fm.Config.SenderBatchSize]
@@ -191,31 +217,53 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 			}
 			fm.resultsLock.Unlock()
 
-			if len(sendResults) > 0 {
-				logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
-				fm.TerminateQueue.Add(1)
-				go func(r []Result) {
-					defer fm.TerminateQueue.Done()
+			currentSenders := int(atomic.LoadInt64(&fm.senderThreads))
+			if currentSenders < fm.Config.SenderThreadConcurrency {
+				if len(sendResults) > 0 {
+					logrus.Infof("sendResultsChanToHubQueue: sending %v results", len(sendResults))
+					fm.TerminateQueue.Add(1)
 
-					err := fm.postResultsToHub(r)
+					atomic.AddInt64(&fm.senderThreads, 1)
+					go func(r []Result) {
+						defer fm.TerminateQueue.Done()
+						defer atomic.AddInt64(&fm.senderThreads, -1)
 
-					if err == nil {
-						fm.statsLock.Lock()
-						fm.stats.CheckResultsSentToHub += uint64(len(r))
-						fm.statsLock.Unlock()
-					} else {
-						switch err.(type) {
-						case ErrorHubGeneral:
-							// If the hub doesn't respond with 2XX, the results remain in the queue.
-							fm.resultsLock.Lock()
-							fm.results = append(fm.results, r...)
-							fm.resultsLock.Unlock()
+						err := fm.postResultsToHub(r)
+
+						if err == nil {
+							fm.statsLock.Lock()
+							fm.stats.CheckResultsSentToHub += uint64(len(r))
+							fm.statsLock.Unlock()
+						} else {
+							switch err.(type) {
+							case ErrorHubResetContent:
+								logrus.Debugf("result queue cleared")
+								fm.resultsLock.Lock()
+								fm.results = []Result{}
+								fm.resultsLock.Unlock()
+
+							case ErrorHubGeneral:
+								if !fm.Config.DiscardOnHTTPResponseError {
+									// If the hub doesn't respond with 2XX, the results remain in the queue.
+									fm.resultsLock.Lock()
+									fm.results = append(fm.results, r...)
+									fm.resultsLock.Unlock()
+								}
+							default:
+								if !fm.Config.DiscardOnHTTPConnectError {
+									fm.resultsLock.Lock()
+									fm.results = append(fm.results, r...)
+									fm.resultsLock.Unlock()
+								}
+							}
+							logrus.Errorf("postResultsToHub error: %s", err.Error())
 						}
-						logrus.Errorf("postResultsToHub error: %s", err.Error())
-					}
-				}(sendResults)
+					}(sendResults)
+				} else {
+					logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
+				}
 			} else {
-				logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
+				logrus.Debugf("Too many concurrent sender threads (%d)", currentSenders)
 			}
 		}
 

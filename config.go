@@ -82,6 +82,13 @@ type Config struct {
 
 	SenderInterval float64 `toml:"sender_interval" comment:"Make a pause of N seconds between POST requests when processing the result queue"`
 
+	SenderThreadConcurrency int `toml:"sender_thread_concurrency" comment:"The maximum number of concurrent http connections for sending\nresults to the hub."`
+
+	DiscardOnHTTPResponseError bool `toml:"discard_on_http_response_error" comment:"Discard unsent data of the current sender thread\nif the hub responds with a status code other than 2XX."`
+	DiscardOnHTTPConnectError  bool `toml:"discard_on_http_connect_error" comment:"Discard unsent data from the current sender thread\nif the hub connection times out, name resolution fails,\nor cannot be established for other reasons."`
+
+	CheckResultsTTL float64 `toml:"check_results_ttl" comment:"Keep check results not longer than the TTL (seconds) in the internal queues.\nIf TTL is exceeded check results are discarded."`
+
 	SleepDurationAfterCheck float64 `toml:"sleep_duration_after_check" comment:"Time in seconds to sleep between each check being dispatched for execution"`
 	SleepDurationEmptyQueue float64 `toml:"sleep_duration_empty_queue" comment:"Time in seconds to sleep when the check queue is empty"`
 
@@ -173,22 +180,26 @@ func init() {
 
 func NewConfig() *Config {
 	cfg := &Config{
-		MinValuableConfig:       *NewMinimumConfig(),
-		NodeName:                "Frontman",
-		LogFile:                 defaultLogPath,
-		StatsFile:               defaultStatsFilePath,
-		QueueStatsFile:          defaultQueueStatsFilePath,
-		ICMPTimeout:             0.1,
-		Sleep:                   30,
-		SenderBatchSize:         100,
-		SenderInterval:          2,
-		SleepDurationAfterCheck: 0.005,
-		SleepDurationEmptyQueue: 0.2,
-		HTTPCheckMaxRedirects:   10,
-		HTTPCheckTimeout:        15,
-		NetTCPTimeout:           3,
-		NetUDPTimeout:           3,
-		SSLCertExpiryThreshold:  7,
+		MinValuableConfig:          *NewMinimumConfig(),
+		NodeName:                   "Frontman",
+		LogFile:                    defaultLogPath,
+		StatsFile:                  defaultStatsFilePath,
+		QueueStatsFile:             defaultQueueStatsFilePath,
+		ICMPTimeout:                0.1,
+		Sleep:                      30,
+		SenderBatchSize:            100,
+		SenderInterval:             2,
+		SenderThreadConcurrency:    1,
+		DiscardOnHTTPResponseError: false,
+		DiscardOnHTTPConnectError:  false,
+		CheckResultsTTL:            30,
+		SleepDurationAfterCheck:    0.005,
+		SleepDurationEmptyQueue:    0.2,
+		HTTPCheckMaxRedirects:      10,
+		HTTPCheckTimeout:           15,
+		NetTCPTimeout:              3,
+		NetUDPTimeout:              3,
+		SSLCertExpiryThreshold:     7,
 		HealthChecks: HealthCheckConfig{
 			ReferencePingTimeout: 1,
 			ReferencePingCount:   1,
