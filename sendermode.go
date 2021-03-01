@@ -263,7 +263,7 @@ func (fm *Frontman) sendResultsChanToHubQueue() {
 					logrus.Infof("sendResultsChanToHubQueue: nothing to do. outgoing queue empty.")
 				}
 			} else {
-				logrus.Debugf("Too few concurrent sender threads (%d)", currentSenders)
+				logrus.Errorf("Too few concurrent sender threads (%d)", currentSenders)
 			}
 		}
 
