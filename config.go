@@ -189,7 +189,7 @@ func NewConfig() *Config {
 		Sleep:                      30,
 		SenderBatchSize:            100,
 		SenderInterval:             2,
-		SenderThreadConcurrency:    1,
+		SenderThreadConcurrency:    10,
 		DiscardOnHTTPResponseError: false,
 		DiscardOnHTTPConnectError:  false,
 		CheckResultsTTL:            30,
