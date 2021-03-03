@@ -3,7 +3,9 @@
 CONFIG_PATH=/etc/frontman/frontman.conf
 
 # give frontman icmp ping rights
-setcap cap_net_raw=+ep /usr/bin/frontman
+if which setcap&>/dev/null;then
+    setcap cap_net_raw=+ep /usr/bin/frontman
+fi
 
 if [ "$1" = configure ]; then
 

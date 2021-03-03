@@ -114,6 +114,8 @@ nfpms:
         - procps-ng
         dependencies:
         - libcap
+        - checkpolicy
+        - policycoreutils-python
         scripts:
           postinstall: "pkg-scripts/postinstall-rpm.sh"
           preremove: "pkg-scripts/preremove-rpm.sh"

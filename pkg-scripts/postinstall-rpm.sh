@@ -2,12 +2,17 @@
 
 CONFIG_PATH=/etc/frontman/frontman.conf
 
+# give frontman icmp ping rights
+if which setcap&>/dev/null;then
+    setcap cap_net_raw=+ep /usr/bin/frontman
+fi
+
 # Install the first time:	1
 # Upgrade: 2 or higher (depending on the number of versions installed)
 versionsCount=$1
 
 # install selinux policy if SELinux is installed
-sestatus
+sestatus|grep -q "SELinux status:.*enabled"
 if [ $? -eq 0 ]; then
     echo "Installing SELinux policy for frontman"
     checkmodule -M -m -o frontman.mod /etc/frontman/frontman.tt
