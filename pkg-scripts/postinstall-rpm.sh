@@ -14,10 +14,16 @@ versionsCount=$1
 # install selinux policy if SELinux is installed
 sestatus|grep -q "SELinux status:.*enabled"
 if [ $? -eq 0 ]; then
-    echo "Installing SELinux policy for frontman"
-    checkmodule -M -m -o frontman.mod /etc/frontman/frontman.tt
-    semodule_package -o frontman.pp -m frontman.mod
-    semodule -i frontman.pp
+    if which checkmodule &>/dev/null; then
+        echo "Installing SELinux policy for frontman"
+        checkmodule -M -m -o frontman.mod /etc/frontman/frontman.tt
+        semodule_package -o frontman.pp -m frontman.mod
+        semodule -i frontman.pp
+    else
+        echo "###  WARNING!  ###"
+        echo "Command 'checkmodule' missing. Please install package 'checkpolicy'."
+        echo "If installed, run '/etc/frontman/se_linux_policy_install.sh'."
+    fi
 fi
 
 if [ ${versionsCount} = 1 ]; then # fresh install
