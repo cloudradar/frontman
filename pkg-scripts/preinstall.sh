@@ -11,4 +11,6 @@ if [ -z `getent passwd frontman` ]; then
 fi
 
 # remove deprecated sysctl setting
-rm -f /etc/sysctl.d/50-ping_group_range.conf
+if [ -e /etc/sysctl.d/50-ping_group_range.conf ]; then
+  rm -f /etc/sysctl.d/50-ping_group_range.conf
+fi

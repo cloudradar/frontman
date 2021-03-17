@@ -101,6 +101,7 @@ nfpms:
       "example.config.toml": "/etc/frontman/example.config.toml"
       "cacert.pem": "/etc/frontman/cacert.pem"
       "pkg-scripts/frontman.tt": "/etc/frontman/frontman.tt"
+      "pkg-scripts/se_linux_policy_install.sh": "/etc/frontman/se_linux_policy_install.sh"
 
     scripts:
       preinstall: "pkg-scripts/preinstall.sh"
