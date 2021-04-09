@@ -159,7 +159,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	if len(nodeResults) == 0 {
 		// all nodes failed, use original measure
-		logrus.Errorf("askNodes received no successful results (%s)", check.uniqueID())
+		logrus.Debugf("askNodes received no successful results (%s)", check.uniqueID())
 		return
 	}
 
