@@ -38,7 +38,7 @@ type ErrorHubGeneral struct {
 type ErrorHubResetContent struct{}
 
 func (e ErrorHubResetContent) Error() string {
-	return fmt.Sprintf("Hub replied with 205 RESET CONTENT")
+	return "Hub replied with 205 RESET CONTENT"
 }
 
 func (e ErrorHubGeneral) Error() string {
