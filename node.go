@@ -71,7 +71,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 			if err != nil {
 				logrus.Error("forward_except regexp error ", err)
 			} else if match {
-				logrus.Info("forward_except matched, won't forward ", msg)
+				logrus.Infof("forward_except matched on '%s', won't forward %s", rexp, msg)
 				return
 			}
 		}
