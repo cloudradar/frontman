@@ -71,7 +71,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 			if err != nil {
 				logrus.Error("forward_except regexp error ", err)
 			} else if match {
-				logrus.Info("forward_except matched, won't forward ", msg)
+				logrus.Infof("forward_except matched on '%s', won't forward %s", rexp, msg)
 				return
 			}
 		}
@@ -142,7 +142,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 		req.Header.Set("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
-			logrus.Errorf("askNodes failed: %s (%s)", err.Error(), check.uniqueID())
+			logrus.Debugf("askNodes failed: %s (%s)", err.Error(), check.uniqueID())
 			fm.markNodeFailure(&node, nil)
 		} else {
 			defer resp.Body.Close()
@@ -159,7 +159,7 @@ func (fm *Frontman) askNodes(check Check, res *Result) {
 
 	if len(nodeResults) == 0 {
 		// all nodes failed, use original measure
-		logrus.Errorf("askNodes received no successful results (%s)", check.uniqueID())
+		logrus.Debugf("askNodes received no successful results (%s)", check.uniqueID())
 		return
 	}
 

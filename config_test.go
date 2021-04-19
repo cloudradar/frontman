@@ -45,7 +45,7 @@ ignore_ssl_errors = true
 	assert.Nil(t, err)
 	defer os.Remove(tmpFile.Name())
 
-	err = ioutil.WriteFile(tmpFile.Name(), []byte(sampleConfig), 0755)
+	err = ioutil.WriteFile(tmpFile.Name(), []byte(sampleConfig), 0600)
 	assert.Nil(t, err)
 
 	err = cfg.TryUpdateConfigFromFile(tmpFile.Name())
