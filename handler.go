@@ -383,7 +383,7 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 	}
 
 	checks := input.asChecks()
-	diag := fmt.Sprintf("fetchInputChecks read %v checks from hub", len(checks))
+	diag := fmt.Sprintf("fetchInputChecks: read %v checks from hub", len(checks))
 	if len(checks) > 0 {
 		logrus.Info(diag)
 	} else {

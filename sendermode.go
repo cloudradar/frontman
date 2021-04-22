@@ -132,12 +132,12 @@ func (fm *Frontman) sendResultsChanToFile(outputFile *os.File) error {
 // posts results to hub, used by RunOnce
 func (fm *Frontman) sendResultsChanToHub() error {
 	var results []Result
-	logrus.Infof("sendResultsChanToHub collecting results. len %v", len(fm.resultsChan))
-
+	logrus.Infof("sendResultsChanToHub collecting %d results", len(fm.resultsChan))
 	for res := range fm.resultsChan {
 		results = append(results, res)
 	}
-	logrus.Infof("sendResultsChanToHub posting. len %v", len(results))
+
+	logrus.Infof("sendResultsChanToHub: sending %d results", len(results))
 	err := fm.postResultsToHub(results)
 	if err != nil {
 		return fmt.Errorf("postResultsToHub: %s", err.Error())
