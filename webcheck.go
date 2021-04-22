@@ -295,11 +295,11 @@ func (fm *Frontman) newClientWithOptions(transport *http.Transport, maxRedirects
 			}
 		}
 
-		if maxRedirects <= 0 {
-			logrus.Println("redirects are not allowed")
+		if len(via) > 0 && maxRedirects <= 0 {
+			logrus.Debugf("request resulted in a redirect, but redirects are not allowed (max_redirects=%d)", maxRedirects)
 			return http.ErrUseLastResponse
 		} else if len(via) > maxRedirects {
-			logrus.Printf("too many(>%d) redirects", maxRedirects)
+			logrus.Debugf("request resulted in %d redirects (max_redirects=%d)", len(via), maxRedirects)
 			return http.ErrUseLastResponse
 		}
 		return nil
