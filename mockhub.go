@@ -14,6 +14,9 @@ import (
 
 type MockHub struct {
 	address string
+
+	// if set, responds with this status code on all requests. useful for testing 401 and such
+	ResponseStatusCode int
 }
 
 func NewMockHub(address string) *MockHub {
@@ -28,6 +31,11 @@ func (hub *MockHub) URL() string {
 
 // returns some mocked checks
 func (hub *MockHub) indexHandler(w http.ResponseWriter, r *http.Request) {
+	if hub.ResponseStatusCode != 0 {
+		log.Printf("Responding to request with status code %d", hub.ResponseStatusCode)
+		w.WriteHeader(hub.ResponseStatusCode)
+		return
+	}
 	switch r.Method {
 	case "GET":
 		hub.getHandler(w, r)
