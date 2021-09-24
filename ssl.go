@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"math"
 	"net"
 	"strings"
 	"time"
@@ -78,32 +77,10 @@ func (fm *Frontman) runSSLCheck(hostname string, port int, service string) (m Me
 	return
 }
 
+// returns remaining validity in days
 func findCertRemainingValidity(certChains [][]*x509.Certificate) (float64, *x509.Certificate) {
-	var remainingValidity float64
-	var firstToExpire *x509.Certificate
+	root := certChains[0]
 
-	// find chain with max remaining validity
-	for _, chain := range certChains {
-		chainRemainingValidity, c := findChainRemainingValidity(chain)
-		if chainRemainingValidity > remainingValidity {
-			remainingValidity = chainRemainingValidity
-			firstToExpire = c
-		}
-	}
-	return remainingValidity, firstToExpire
-}
-
-func findChainRemainingValidity(chain []*x509.Certificate) (float64, *x509.Certificate) {
-	var min = math.MaxFloat64
-	var firstToExpire *x509.Certificate
-
-	// find cert that will expire first
-	for _, cert := range chain {
-		remainingValidity := time.Until(cert.NotAfter).Hours() / 24
-		if remainingValidity < min {
-			min = remainingValidity
-			firstToExpire = cert
-		}
-	}
-	return min, firstToExpire
+	remainingValidity := time.Until(root[0].NotAfter).Hours() / 24
+	return remainingValidity, root[0]
 }

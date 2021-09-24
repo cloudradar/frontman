@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gosnmp/gosnmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/soniah/gosnmp"
 )
 
 const (
