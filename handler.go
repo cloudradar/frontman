@@ -383,7 +383,7 @@ func (fm *Frontman) fetchInputChecks(inputFilePath string) ([]Check, error) {
 	}
 
 	checks := input.asChecks()
-	diag := fmt.Sprintf("fetchInputChecks read %v checks from hub", len(checks))
+	diag := fmt.Sprintf("fetchInputChecks: read %v checks from hub", len(checks))
 	if len(checks) > 0 {
 		logrus.Info(diag)
 	} else {
@@ -539,7 +539,11 @@ func (fm *Frontman) processInput(checks []Check, local bool) {
 	fm.stats.ChecksPerformedTotal += uint64(totChecks)
 	fm.statsLock.Unlock()
 
-	logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+	if totChecks == 0 {
+		logrus.Debugf("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+	} else {
+		logrus.Infof("%d/%d checks succeed in %.1f sec", succeed, totChecks, time.Since(startedAt).Seconds())
+	}
 }
 
 // runs all checks in checkList and sends results to resultsChan
