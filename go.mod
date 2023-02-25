@@ -20,8 +20,8 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/soniah/gosnmp v1.21.1-0.20190510081145-1b12be15031c
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/net v0.0.0-20201029055024-942e2f445f3c
-	golang.org/x/sys v0.0.0-20201214095126-aec9a390925b
+	golang.org/x/net v0.7.0
+	golang.org/x/sys v0.5.0
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ldap.v3 v3.0.3
